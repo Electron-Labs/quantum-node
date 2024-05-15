@@ -11,6 +11,6 @@ pub fn register_circuit(data: RegisterCircuitRequest) -> RegisterCircuitResponse
     let hash = keccak(&mut keccak_ip);
     // 3. An async worker actually takes care of the registration request
     RegisterCircuitResponse { 
-        circuit_hash: hash.to_string()
+        circuit_hash: format!("{:?}", hash)
     }
 }
