@@ -1,9 +1,9 @@
+use service::register_circuit::register_circuit_exec;
 use types::register_circuit::RegisterCircuitRequest;
 use types::register_circuit::RegisterCircuitResponse;
-use requests::register_circuit::register_circuit;
 use rocket::serde::json::Json;
 mod types;
-mod requests;
+mod service;
 
 #[macro_use] extern crate rocket;
 
@@ -14,15 +14,15 @@ fn index() -> &'static str {
 
 #[get("/ping")]
 fn ping() -> &'static str {
-    requests::ping::ping()
+    service::ping::ping()
 }
 
-#[post("/regsiter_circuit", data = "<data>")]
-fn regsiter_circuit(data: RegisterCircuitRequest) -> Json<RegisterCircuitResponse> {
-    Json(register_circuit(data))
+#[post("/register_circuit", data = "<data>")]
+fn register_circuit(data: RegisterCircuitRequest) -> Json<RegisterCircuitResponse> {
+    Json(register_circuit_exec(data))
 }
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index, ping, regsiter_circuit])
+    rocket::build().mount("/", routes![index, ping, register_circuit])
 }
