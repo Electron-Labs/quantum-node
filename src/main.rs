@@ -1,3 +1,7 @@
+#[macro_use] extern crate rocket;
+
+use rocket_db_pools::{Database, Connection};
+use rocket_db_pools::diesel::{MysqlPool, prelude::*};
 use service::register_circuit::register_circuit_exec;
 use types::register_circuit::RegisterCircuitRequest;
 use types::register_circuit::RegisterCircuitResponse;
@@ -5,7 +9,9 @@ use rocket::serde::json::Json;
 mod types;
 mod service;
 
-#[macro_use] extern crate rocket;
+#[derive(Database)]
+#[database("diesel_mysql")]
+struct Db(MysqlPool);
 
 #[get("/")]
 fn index() -> &'static str {
@@ -24,5 +30,7 @@ fn register_circuit(data: RegisterCircuitRequest) -> Json<RegisterCircuitRespons
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index, ping, register_circuit])
+    rocket::build()
+        .attach(Db::init())
+        .mount("/", routes![index, ping, register_circuit])
 }

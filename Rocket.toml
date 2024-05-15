@@ -1,0 +1,2 @@
+[default.databases.diesel_mysql]
+url = "mysql://root:temp123@localhost:3306/quantum"
