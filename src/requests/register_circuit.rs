@@ -1,8 +1,11 @@
 use crate::types::{request::register_circuit::RegisterCircuitRequest, response::regsiter_circuit::RegisterCircuitResponse};
 
 pub fn register_circuit(data: RegisterCircuitRequest) -> RegisterCircuitResponse {
+    // 1. Dump whatever you need in db/queue 
+    // 2. Just return the keccak hash of the data.vkey at this point
+    // 3. An async worker actually takes care of the registration request
+    let hash = "0x00";
     RegisterCircuitResponse { 
-        circuit_hash: data.name.clone() ,
-        circuit: data.name
+        circuit_hash: String::from(hash)
     }
 }

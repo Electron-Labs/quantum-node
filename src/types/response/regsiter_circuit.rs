@@ -5,6 +5,5 @@ use rocket::serde::Serialize;
 #[serde(crate = "rocket::serde")]
 pub struct RegisterCircuitResponse {
     pub circuit_hash: String,
-    pub circuit: String
 }
 

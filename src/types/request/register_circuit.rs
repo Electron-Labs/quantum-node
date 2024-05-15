@@ -1,9 +1,12 @@
 use rocket::{data::{self, FromData, ToByteUnit}, http::{ContentType, Status}, outcome::Outcome, Data, Request};
 use serde::Deserialize;
+use crate::types::proving_schemes::ProvingSchemes;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct RegisterCircuitRequest {
-    pub name: String
+    pub vkey: Vec<u8>, // borsh serialised vkey
+    pub cd: Vec<u8>, // borsh serialised common data if any required
+    pub proof_type: ProvingSchemes
 }
 
 #[derive(Debug)]
@@ -29,6 +32,9 @@ impl<'r> FromData<'r> for RegisterCircuitRequest {
             Err(e) => return Outcome::Error((Status::InternalServerError, Io(e))),
         };
         println!("request data {:?}", stream);
+
+        // TODO: we can convert types here only
+
         let register_circuit_request = serde_json::from_str(&stream).unwrap();
 
         Outcome::Success(register_circuit_request)
