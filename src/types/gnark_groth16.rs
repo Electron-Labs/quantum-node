@@ -83,7 +83,7 @@ mod tests {
 	#[test]
 	pub fn serde_test() {
 		// Read JSON -> Get Struct -> Borsh Serialise -> Borsh Deserialise -> match
-		let json_data = fs::read_to_string("/Users/utsavjain/Desktop/electron_labs/quantum/quantum-node/dumps/gnark_vkey.json").expect("Failed to read file");
+		let json_data = fs::read_to_string("./dumps/gnark_vkey.json").expect("Failed to read file");
 		let gnark_vkey: GnarkGroth16Vkey = serde_json::from_str(&json_data).expect("Failed to deserialize JSON data");
 
 		let mut buffer: Vec<u8> = Vec::new();
