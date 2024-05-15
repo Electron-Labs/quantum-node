@@ -74,10 +74,8 @@ pub struct GnarkVkey {
 #[cfg(test)]
 mod tests {
 	use std::fs;
-
-use borsh::{BorshDeserialize, BorshSerialize};
-
-use super::GnarkVkey;
+	use borsh::{BorshDeserialize, BorshSerialize};
+	use super::GnarkVkey;
 
 	#[test]
 	pub fn serde_test() {
