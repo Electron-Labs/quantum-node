@@ -1,3 +1,6 @@
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+
 use borsh::{BorshSerialize, BorshDeserialize};
 use serde::{Serialize, Deserialize};
 /*
@@ -62,7 +65,7 @@ pub struct PedersenCommitmentKey {
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
-pub struct GnarkVkey {
+pub struct GnarkGroth16Vkey {
 	G1: G1Struct,
 	G2: G2Struct,
 	CommitmentKey: PedersenCommitmentKey,
@@ -75,19 +78,19 @@ pub struct GnarkVkey {
 mod tests {
 	use std::fs;
 	use borsh::{BorshDeserialize, BorshSerialize};
-	use super::GnarkVkey;
+	use super::GnarkGroth16Vkey;
 
 	#[test]
 	pub fn serde_test() {
 		// Read JSON -> Get Struct -> Borsh Serialise -> Borsh Deserialise -> match
 		let json_data = fs::read_to_string("/Users/utsavjain/Desktop/electron_labs/quantum/quantum-node/dumps/gnark_vkey.json").expect("Failed to read file");
-		let gnark_vkey: GnarkVkey = serde_json::from_str(&json_data).expect("Failed to deserialize JSON data");
+		let gnark_vkey: GnarkGroth16Vkey = serde_json::from_str(&json_data).expect("Failed to deserialize JSON data");
 
 		let mut buffer: Vec<u8> = Vec::new();
 		gnark_vkey.serialize(&mut buffer).unwrap();
 		println!("serialised vkey {:?}", buffer);
 
-		let re_gnark_vkey = GnarkVkey::deserialize(&mut &buffer[..]).unwrap();
+		let re_gnark_vkey = GnarkGroth16Vkey::deserialize(&mut &buffer[..]).unwrap();
 		
 		assert_eq!(gnark_vkey, re_gnark_vkey);
 

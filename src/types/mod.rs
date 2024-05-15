@@ -1,4 +1,3 @@
-pub mod request;
-pub mod response;
-pub mod gnark;
+pub mod gnark_groth16;
 pub mod proving_schemes;
+pub mod register_circuit;

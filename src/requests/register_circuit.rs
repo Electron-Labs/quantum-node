@@ -1,4 +1,4 @@
-use crate::types::{request::register_circuit::RegisterCircuitRequest, response::regsiter_circuit::RegisterCircuitResponse};
+use crate::types::{register_circuit::RegisterCircuitRequest, register_circuit::RegisterCircuitResponse};
 
 pub fn register_circuit(data: RegisterCircuitRequest) -> RegisterCircuitResponse {
     // 1. Dump whatever you need in db/queue 

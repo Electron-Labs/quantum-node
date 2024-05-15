@@ -1,3 +1,4 @@
+use rocket::serde::Serialize;
 use rocket::{data::{self, FromData, ToByteUnit}, http::{ContentType, Status}, outcome::Outcome, Data, Request};
 use serde::Deserialize;
 use crate::types::proving_schemes::ProvingSchemes;
@@ -39,5 +40,13 @@ impl<'r> FromData<'r> for RegisterCircuitRequest {
 
         Outcome::Success(register_circuit_request)
     }
+}
+
+
+
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+pub struct RegisterCircuitResponse {
+    pub circuit_hash: String,
 }
 

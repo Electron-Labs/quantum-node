@@ -1,5 +1,5 @@
-use types::request::register_circuit::RegisterCircuitRequest;
-use types::response::regsiter_circuit::RegisterCircuitResponse;
+use types::register_circuit::RegisterCircuitRequest;
+use types::register_circuit::RegisterCircuitResponse;
 use requests::register_circuit::register_circuit;
 use rocket::serde::json::Json;
 mod types;
