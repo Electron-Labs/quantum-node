@@ -1,4 +1,4 @@
-use keccak_hash::{keccak};
+use keccak_hash::keccak;
 
 use crate::types::{register_circuit::RegisterCircuitRequest, register_circuit::RegisterCircuitResponse};
 
