@@ -6,7 +6,7 @@ use crate::types::proving_schemes::ProvingSchemes;
 #[derive(Clone, Debug, Deserialize)]
 pub struct RegisterCircuitRequest {
     pub vkey: Vec<u8>, // borsh serialised vkey
-    pub cd: Vec<u8>, // borsh serialised common data if any required
+    pub num_public_inputs: u8,
     pub proof_type: ProvingSchemes
 }
 
