@@ -14,7 +14,6 @@ USE $DB_NAME;
 CREATE TABLE IF NOT EXISTS user_circuit_data (
   circuit_hash VARCHAR(255) PRIMARY KEY,
   vk_path VARCHAR(255),
-  cd_path VARCHAR(255),
   reduction_circuit_id INT DEFAULT NULL,
   pis_len INT                   
 );
@@ -36,8 +35,8 @@ CREATE TABLE IF NOT EXISTS task (
   ciruit_reduction_status INT
 );
 
-CREATE INDEX id_circuit_reduction_status ON tasks(ciruit_reduction_status);
-CREATE INDEX idx_proof_status ON tasks(proof_status);
+CREATE INDEX id_circuit_reduction_status ON task(ciruit_reduction_status);
+CREATE INDEX idx_proof_status ON task(proof_status);
 
 CREATE TABLE IF NOT EXISTS proof (
   id INT AUTO_INCREMENT PRIMARY KEY,
