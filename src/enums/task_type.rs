@@ -14,6 +14,7 @@ impl TaskType {
         }
     }
 
+    #[allow(dead_code)]
     fn from(value: u8) -> Self {
         match value {
             1 => TaskType::CircuitReduction,

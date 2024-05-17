@@ -6,7 +6,7 @@ use sqlx::{Error, Row};
 use crate::connection::get_pool;
 use crate::error::error::CustomError;
 use crate::types::db::user_circuit_data::UserCircuitData;
-use crate::types::proving_schemes::{self, ProvingSchemes};
+use crate::types::proving_schemes::ProvingSchemes;
 use anyhow::{anyhow, Result as AnyhowResult};
 
 pub async fn get_user_circuit_data_by_circuit_hash(circuit_hash: &str) -> AnyhowResult<UserCircuitData>{

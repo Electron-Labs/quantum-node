@@ -1,8 +1,7 @@
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use std::io::Cursor;
 use rocket::http::Status;
 use rocket::request::Request;
-use rocket::response::{content, status};
 use rocket::response::{self, Response, Responder};
 use rocket::http::ContentType;
 //use core::resp::Error;

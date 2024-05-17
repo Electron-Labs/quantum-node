@@ -6,8 +6,7 @@ use anyhow::Result as AnyhowResult;
 
 use crate::{ config::ConfigData,
     enums::{circuit_reduction_status::CircuitReductionStatus, task_type::TaskType},
-    repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, 
-        task_repository::create_circuit_reduction_task, 
+    repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository,
         user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}},
     types::{ db::reduction_circuit::ReductionCircuit, gnark_groth16::GnarkGroth16Vkey, proving_schemes::ProvingSchemes, 
         register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}, 
@@ -34,26 +33,30 @@ pub async fn register_circuit_exec(data: RegisterCircuitRequest, config_data: &S
     let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
     dump_vkey(gnark_vkey, vk_path.as_str())?;
 
-    let reduction_circuit_id = handle_reduce_circuit(&circuit_hash_string, data.num_public_inputs, data.proof_type).await?;
+    let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
     insert_user_circuit_data(&circuit_hash_string, &vk_key_full_path, reduction_circuit_id, data.num_public_inputs, data.proof_type ).await?;
-
+    create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
     // 3. An async worker actually takes care of the registration request
     Ok(
         RegisterCircuitResponse{ circuit_hash: circuit_hash_string }
     )
 }
 
-async fn handle_reduce_circuit(circuit_hash: &str, num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<Option<u64>>{
+async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<Option<u64>>{
     let reduction_circuit = get_existing_compatible_reduction_circuit(num_public_inputs, proving_scheme).await;
     let reduction_circuit_id = match reduction_circuit {
         Some(rc) => rc.id,
         None => None
     };
     println!("reduction circuit id: {:?}", reduction_circuit_id );
-    if reduction_circuit_id.is_none() {
-        create_circuit_reduction_task(&circuit_hash, TaskType::CircuitReduction , CircuitReductionStatus::NotPicked).await?;
-    }
     Ok(reduction_circuit_id)
+}
+
+async fn create_circuit_reduction_task(reduction_circuit_id: Option<u64>, circuit_hash: &str) -> AnyhowResult<()> {
+    if reduction_circuit_id.is_none() {
+        task_repository::create_circuit_reduction_task(circuit_hash, TaskType::CircuitReduction , CircuitReductionStatus::NotPicked).await?;
+    }
+    Ok(())
 }
 
 async fn get_existing_compatible_reduction_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> Option<ReductionCircuit> {
