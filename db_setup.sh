@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS user_circuit_data (
   circuit_hash VARCHAR(255) PRIMARY KEY,
   vk_path VARCHAR(255),
   reduction_circuit_id INT DEFAULT NULL,
-  pis_len INT                   
+  pis_len INT,
+  proving_scheme VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS reduction_circuit (
