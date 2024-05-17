@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, )]
 pub enum ProvingSchemes {
     GnarkGroth16,
     Groth16,
@@ -25,6 +25,17 @@ impl FromStr for ProvingSchemes {
             "plonky2" => Ok(ProvingSchemes::Plonky2),
             "halo2kzg" => Ok(ProvingSchemes::Halo2KZG),
             _ => Err(format!("Invalid proving scheme: {}", s)),
+        }
+    }
+}
+
+impl ToString for ProvingSchemes {
+    fn to_string(&self) -> String {
+        match self {
+            ProvingSchemes::GnarkGroth16 => String::from("GnarkGroth16"),
+            ProvingSchemes::Groth16 => String::from("Groth16"),
+            ProvingSchemes::Halo2KZG => String::from("Halo2KZG"),
+            ProvingSchemes::Plonky2 => String::from("Plonky2")
         }
     }
 }
