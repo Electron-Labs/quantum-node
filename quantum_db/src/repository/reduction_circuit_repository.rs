@@ -1,28 +1,25 @@
 use quantum_types::types::db::reduction_circuit::ReductionCircuit;
-use sqlx::mysql::MySqlRow;
-use sqlx::Row;
+use sqlx::{mysql::MySqlRow, Pool};
+use sqlx::{MySql, Row};
 
-use crate::{connection::get_pool, error::error::CustomError};
-// use crate::error::error::QuantumError;
 use anyhow::{anyhow, Result as AnyhowResult};
 
+use crate::error::error::CustomError;
 
-
-pub async fn get_reduction_circuit_by_pis_len(num_public_inputs: u8) -> AnyhowResult<ReductionCircuit>{
-    let pool = get_pool().await;
+pub async fn get_reduction_circuit_by_pis_len(pool: &Pool<MySql>, num_public_inputs: u8) -> AnyhowResult<ReductionCircuit>{
     let query  = sqlx::query("SELECT * from reduction_circuit where pis_len = ?")
                 .bind(num_public_inputs);
 
     // info!("{}", query.sql());
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) => get_reduction_circuit_data_from_mysql_row(t),
-        Err(e) => Err(anyhow!(CustomError::Internal(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
     };
     reduction_circuit
 }
 
-pub async fn check_if_pis_len_compatible_reduction_circuit_exist(num_public_inputs: u8) -> Option<ReductionCircuit>{
-    let rc = get_reduction_circuit_by_pis_len(num_public_inputs).await;
+pub async fn check_if_pis_len_compatible_reduction_circuit_exist(pool: &Pool<MySql>, num_public_inputs: u8) -> Option<ReductionCircuit>{
+    let rc = get_reduction_circuit_by_pis_len(pool, num_public_inputs).await;
     match rc {
         Ok(rc) => Some(rc),
         Err(_) => None
