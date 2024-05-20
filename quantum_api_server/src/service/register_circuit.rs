@@ -1,16 +1,15 @@
 use keccak_hash::keccak;
 use borsh::BorshDeserialize;
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_type::TaskType}, types::db::reduction_circuit::ReductionCircuit};
 use rocket::State;
 
 use anyhow::Result as AnyhowResult;
 use serde::Serialize;
 
 use crate::{ config::ConfigData,
-    enums::{circuit_reduction_status::CircuitReductionStatus, task_type::TaskType},
     repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository,
         user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}},
-    types::{ db::reduction_circuit::ReductionCircuit, proving_schemes::ProvingSchemes, 
-        register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}, 
+    types::register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}, 
     utils::file::{create_dir, dump_json_file}};
 
 pub async fn register_circuit_exec<T: BorshDeserialize + Serialize>(data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<RegisterCircuitResponse> {

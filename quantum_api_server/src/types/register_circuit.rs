@@ -1,7 +1,8 @@
+use quantum_types::enums::proving_schemes::ProvingSchemes;
 use rocket::serde::Serialize;
 use rocket::{data::{self, FromData, ToByteUnit}, http::{ContentType, Status}, outcome::Outcome, Data, Request};
 use serde::Deserialize;
-use crate::types::proving_schemes::ProvingSchemes;
+// use crate::types::proving_schemes::ProvingSchemes;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct RegisterCircuitRequest {

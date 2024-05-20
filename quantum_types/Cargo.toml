@@ -1,5 +1,5 @@
 [package]
-name = "quantum-api-server"
+name = "quantum_types"
 version = "0.1.0"
 edition = "2021"
 
@@ -19,4 +19,3 @@ tokio = { version = "1.12.0", features = ["full"] }
 dotenv = "0.15.0"
 serde_yaml = "0.9.30"
 anyhow = "1.0.83"
-quantum_types = {path = "../quantum_types"}

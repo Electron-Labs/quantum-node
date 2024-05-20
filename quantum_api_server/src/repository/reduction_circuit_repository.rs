@@ -1,9 +1,9 @@
+use quantum_types::types::db::reduction_circuit::ReductionCircuit;
 use sqlx::mysql::MySqlRow;
 use sqlx::Row;
 
 use crate::{connection::get_pool, error::error::CustomError};
 // use crate::error::error::QuantumError;
-use crate::types::db::reduction_circuit::ReductionCircuit;
 use anyhow::{anyhow, Result as AnyhowResult};
 
 

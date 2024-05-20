@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::types::proving_schemes::ProvingSchemes;
-
+use crate::enums::proving_schemes::ProvingSchemes;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-
 pub struct UserCircuitData{
     pub circuit_hash: String,
     pub vk_path: String,
