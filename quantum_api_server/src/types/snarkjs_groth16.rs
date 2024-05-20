@@ -26,7 +26,7 @@ use super::SnarkJSGroth16Vkey;
 
     #[test]
     pub fn serde_test() {
-        let json_data = fs::read_to_string("/Users/utsavjain/Desktop/electron_labs/quantum/quantum-node/dumps/circom1_vk.json").expect("Failed to read file");
+        let json_data = fs::read_to_string("./dumps/circom1_vk.json").expect("Failed to read file");
 		let snarkjs_vkey: SnarkJSGroth16Vkey = serde_json::from_str(&json_data).expect("Failed to deserialize JSON data");
 
 		let mut buffer: Vec<u8> = Vec::new();
