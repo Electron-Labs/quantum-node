@@ -20,3 +20,4 @@ dotenv = "0.15.0"
 serde_yaml = "0.9.30"
 anyhow = "1.0.83"
 quantum_types = {path = "../quantum_types"}
+quantum_db = {path = "../quantum_db"}
