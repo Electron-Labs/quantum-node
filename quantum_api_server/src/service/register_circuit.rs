@@ -3,25 +3,28 @@ use borsh::BorshDeserialize;
 use rocket::State;
 
 use anyhow::Result as AnyhowResult;
+use serde::Serialize;
 
 use crate::{ config::ConfigData,
     enums::{circuit_reduction_status::CircuitReductionStatus, task_type::TaskType},
     repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository,
         user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}},
-    types::{ db::reduction_circuit::ReductionCircuit, gnark_groth16::GnarkGroth16Vkey, proving_schemes::ProvingSchemes, 
+    types::{ db::reduction_circuit::ReductionCircuit, proving_schemes::ProvingSchemes, 
         register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}, 
     utils::file::{create_dir, dump_json_file}};
 
-pub async fn register_circuit_exec(data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<RegisterCircuitResponse> {
-    // 1. Dump whatever you need in db/queue 
-    // 2. Just return the keccak hash of the data.vkey at this point
-    // Keccak hash borshified vkey for now
-    
+pub async fn register_circuit_exec<T: BorshDeserialize + Serialize>(data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<RegisterCircuitResponse> {
+    // Retreive verification key bytes
     let vkey_bytes: Vec<u8> = data.vkey.clone();
-    let gnark_vkey = GnarkGroth16Vkey::deserialize(&mut vkey_bytes.as_slice())?;
+
+    // Borsh deserialise to corresponding vkey struct 
+    let vkey: T = T::deserialize(&mut vkey_bytes.as_slice())?;
+
+    // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
     let circuit_hash_string = get_circuit_hash_from_vkey_bytes(vkey_bytes);
+
+    // Check if circuit is already registerd
     let is_circuit_already_registered = check_if_circuit_has_already_registered(circuit_hash_string.as_str()).await;
-    
     if is_circuit_already_registered  {
         println!("circuit has alerady been registered");
         return Ok(
@@ -29,14 +32,19 @@ pub async fn register_circuit_exec(data: RegisterCircuitRequest, config_data: &S
         );
     }
 
+    // Dump vkey
     let vk_path = format!("{}/{}", config_data.user_circuit_vk_path, circuit_hash_string );
     let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
-    dump_vkey(gnark_vkey, vk_path.as_str())?;
+    dump_vkey(vkey, vk_path.as_str())?;
 
+    // Get a reduction circuit id
     let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
+
+    // Add user circuit data to DB
     insert_user_circuit_data(&circuit_hash_string, &vk_key_full_path, reduction_circuit_id, data.num_public_inputs, data.proof_type ).await?;
+
+    // Create a reduction task for Async worker to pick up later on
     create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
-    // 3. An async worker actually takes care of the registration request
     Ok(
         RegisterCircuitResponse{ circuit_hash: circuit_hash_string }
     )
@@ -67,9 +75,9 @@ async fn get_existing_compatible_reduction_circuit(num_public_inputs: u8, provin
     reduction_circuit
 }
 
-fn dump_vkey(gnark_vkey: GnarkGroth16Vkey, vk_path: &str) -> AnyhowResult<()> {
+fn dump_vkey<T: Serialize>(vkey: T, vk_path: &str) -> AnyhowResult<()> {
     create_dir(vk_path)?;
-    dump_json_file(vk_path, "vk.json", gnark_vkey)?;
+    dump_json_file(vk_path, "vk.json", vkey)?;
     Ok(())
 }
 
