@@ -3,16 +3,19 @@ use config::ConfigData;
 use connection::get_pool;
 use dotenv::dotenv;
 use error::error::CustomError;
+use quantum_types::enums::proving_schemes::ProvingSchemes;
+use quantum_types::types::gnark_groth16::GnarkGroth16Vkey;
+use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Vkey;
 use rocket::State;
 use service::register_circuit::register_circuit_exec;
-use types::gnark_groth16::GnarkGroth16Vkey;
-use types::proving_schemes::ProvingSchemes;
-use types::register_circuit::RegisterCircuitRequest;
-use types::register_circuit::RegisterCircuitResponse;
+// use types::gnark_groth16::GnarkGroth16Vkey;
+// use types::proving_schemes::ProvingSchemes;
+// use types::register_circuit::RegisterCircuitRequest;
+// use types::register_circuit::RegisterCircuitResponse;
 use rocket::serde::json::Json;
 mod types;
 mod service;
-pub mod enums;
+// pub mod enums;
 pub mod repository;
 pub mod connection;
 pub mod config;
@@ -20,7 +23,11 @@ pub mod utils;
 pub mod error;
 
 use anyhow::Result as AnyhowResult;
-use types::snarkjs_groth16::SnarkJSGroth16Vkey;
+use types::register_circuit::RegisterCircuitRequest;
+use types::register_circuit::RegisterCircuitResponse;
+// use types::snarkjs_groth16::SnarkJSGroth16Vkey;
+
+use quantum_types;
 
 #[macro_use] extern crate rocket;
 
