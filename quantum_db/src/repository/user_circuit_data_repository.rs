@@ -52,3 +52,11 @@ fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircu
     };
     Ok(user_circuit_data)
 }
+
+pub async fn update_user_circuit_data_reduction_status(pool: &Pool<MySql>, user_circuit_hash: &str, status: CircuitReductionStatus) -> AnyhowResult<()> {
+    todo!()
+}
+
+pub async fn update_user_circuit_data_redn_circuit(pool: &Pool<MySql>, user_circuit_hash: &str, reduction_circuit_id: u64) -> AnyhowResult<()> {
+    todo!()
+}

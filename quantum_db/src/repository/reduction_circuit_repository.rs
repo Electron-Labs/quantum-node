@@ -35,3 +35,8 @@ fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<Redu
     };
     Ok(reduction_circuit)
 }
+
+// Sending ReductionCircuit type with reduction_circuit.id = None, return id
+pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: ReductionCircuit) -> AnyhowResult<u64> {
+    todo!()
+}
