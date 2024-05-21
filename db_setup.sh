@@ -11,6 +11,14 @@ CREATE DATABASE IF NOT EXISTS $DB_NAME;
 
 USE $DB_NAME;
 
+CREATE TABLE IF NOT EXISTS reduction_circuit (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  proving_key_path VARCHAR(255),
+  vk_path VARCHAR(255),
+  pis_len INT,
+  KEY idx_pis_len (pis_len)
+);
+
 CREATE TABLE IF NOT EXISTS user_circuit_data (
   circuit_hash VARCHAR(255) PRIMARY KEY,
   vk_path VARCHAR(255),
@@ -18,14 +26,7 @@ CREATE TABLE IF NOT EXISTS user_circuit_data (
   pis_len INT,
   proving_scheme VARCHAR(255),
   circuit_reduction_status INT
-);
-
-CREATE TABLE IF NOT EXISTS reduction_circuit (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  proving_key_path VARCHAR(255),
-  vk_path VARCHAR(255),
-  pis_len INT,
-  KEY idx_pis_len (pis_len)
+  FOREIGN KEY (reduction_circuit_id) REFERENCES reduction_circuit(id)
 );
 
 CREATE TABLE IF NOT EXISTS task (
@@ -48,7 +49,9 @@ CREATE TABLE IF NOT EXISTS proof (
   reduction_proof_pis_path VARCHAR(255),
   superproof_id INT,
   reduction_time INT,
-  proof_status INT
+  proof_status INT,
+  user_circuit_hash VARCHAR(255),
+  FOREIGN KEY (user_circuit_hash) REFERENCES user_circuit_data(circuit_hash)
 );
 
 CREATE INDEX idx_proof_status ON proof(proof_status);
