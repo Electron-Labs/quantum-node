@@ -1,4 +1,4 @@
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
+use quantum_types::{enums::{task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
 use sqlx::{Error, MySql, Pool};
 
 // use crate::connection::get_pool;

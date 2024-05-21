@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_type::TaskType};
+use crate::enums::task_type::TaskType;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Task {
