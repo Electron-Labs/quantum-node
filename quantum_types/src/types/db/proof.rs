@@ -11,5 +11,6 @@ pub struct Proof {
     pub reduction_proof_pis_path: Option<String>,
     pub superproof_id: Option<u64>,
     pub reduction_time: Option<u64>,
-    pub proof_status: ProofStatus
+    pub proof_status: ProofStatus,
+    pub user_circuit_hash: String
 }

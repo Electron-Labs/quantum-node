@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS proof (
   reduction_proof_pis_path VARCHAR(255),
   superproof_id INT,
   reduction_time INT,
-  proof_status INT
+  proof_status INT,
+  user_circuit_hash VARCHAR(255)
 );
 
 CREATE INDEX idx_proof_status ON proof(proof_status);
