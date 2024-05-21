@@ -4,7 +4,7 @@ use quantum_db::repository::{reduction_circuit_repository::check_if_pis_len_comp
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, types::db::reduction_circuit::ReductionCircuit};
 use rocket::State;
 
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::Result as AnyhowResult;
 use serde::Serialize;
 
 use crate::{ config::ConfigData, connection::get_pool, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}, utils::file::{create_dir, dump_json_file}};

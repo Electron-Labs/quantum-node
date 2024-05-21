@@ -3,7 +3,6 @@ use config::ConfigData;
 use connection::get_pool;
 use dotenv::dotenv;
 use error::error::CustomError;
-use quantum_types::enums::circuit_reduction_status::CircuitReductionStatus;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
 use quantum_types::types::gnark_groth16::GnarkGroth16Vkey;
 use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Vkey;
