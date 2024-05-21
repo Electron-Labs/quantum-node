@@ -18,14 +18,38 @@ impl CircuitReductionStatus {
         }
     }
 
-    #[allow(dead_code)]
+    // #[allow(dead_code)]
+    // fn from(value: u8) -> Self {
+    //     match value {
+    //         1 => CircuitReductionStatus::NotPicked,
+    //         2 => CircuitReductionStatus::InProgress,
+    //         3 => CircuitReductionStatus::Completed,
+    //         4 => CircuitReductionStatus::Failed,
+    //         _ => panic!("Invalid enum value"),
+    //     }
+    // }
+}
+
+impl From<u8> for CircuitReductionStatus {
     fn from(value: u8) -> Self {
         match value {
             1 => CircuitReductionStatus::NotPicked,
             2 => CircuitReductionStatus::InProgress,
             3 => CircuitReductionStatus::Completed,
             4 => CircuitReductionStatus::Failed,
+            // TODO: remove panic
             _ => panic!("Invalid enum value"),
+        }
+    }
+}
+
+impl ToString for CircuitReductionStatus {
+    fn to_string(&self) -> String {
+        match self {
+            CircuitReductionStatus::NotPicked => String::from("NotPicked"),
+            CircuitReductionStatus::InProgress => String::from("InProgress"),
+            CircuitReductionStatus::Completed => String::from("Completed"),
+            CircuitReductionStatus::Failed => String::from("Failed"),
         }
     }
 }

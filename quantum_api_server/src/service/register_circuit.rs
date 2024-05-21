@@ -1,13 +1,13 @@
 use keccak_hash::keccak;
 use borsh::BorshDeserialize;
 use quantum_db::repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_type::TaskType}, types::db::reduction_circuit::ReductionCircuit};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, types::db::reduction_circuit::ReductionCircuit};
 use rocket::State;
 
-use anyhow::Result as AnyhowResult;
+use anyhow::{anyhow, Result as AnyhowResult};
 use serde::Serialize;
 
-use crate::{ config::ConfigData, connection::get_pool, types::register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}, utils::file::{create_dir, dump_json_file}};
+use crate::{ config::ConfigData, connection::get_pool, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}, utils::file::{create_dir, dump_json_file}};
 
 pub async fn register_circuit_exec<T: BorshDeserialize + Serialize>(data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<RegisterCircuitResponse> {
     // Retreive verification key bytes
@@ -37,13 +37,21 @@ pub async fn register_circuit_exec<T: BorshDeserialize + Serialize>(data: Regist
     let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vk_key_full_path, reduction_circuit_id, data.num_public_inputs, data.proof_type ).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vk_key_full_path, reduction_circuit_id, data.num_public_inputs, data.proof_type,CircuitReductionStatus::NotPicked).await?;
 
     // Create a reduction task for Async worker to pick up later on
     create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
     Ok(
         RegisterCircuitResponse{ circuit_hash: circuit_hash_string }
     )
+}
+
+pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResult<CircuitRegistrationStatusResponse> {
+    let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash.as_str()).await?;
+    let status = user_circuit.circuit_reduction_status;
+    return Ok(CircuitRegistrationStatusResponse {
+        circuit_registration_status: status.to_string()
+    })
 }
 
 async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<Option<u64>>{
@@ -58,7 +66,7 @@ async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSch
 
 async fn create_circuit_reduction_task(reduction_circuit_id: Option<u64>, circuit_hash: &str) -> AnyhowResult<()> {
     if reduction_circuit_id.is_none() {
-        task_repository::create_circuit_reduction_task(get_pool().await, circuit_hash, TaskType::CircuitReduction , CircuitReductionStatus::NotPicked).await?;
+        task_repository::create_circuit_reduction_task(get_pool().await, circuit_hash, TaskType::CircuitReduction , TaskStatus::NotPicked).await?;
     }
     Ok(())
 }
