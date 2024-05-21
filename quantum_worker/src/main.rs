@@ -28,6 +28,9 @@ pub const WORKER_SLEEP_SECS: u64 = 2;
 pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task) -> AnyhowResult<()> {
     let user_circuit_hash = registration_task.clone().user_circuit_hash;
 
+    // Change Task status ro InProgress
+    update_task_status(pool, registration_task.id.unwrap(), TaskStatus::InProgress).await?;
+
     // Change user_circuit_data.circuit_reduction_status to InProgress
     update_user_circuit_data_reduction_status(pool, &user_circuit_hash, CircuitReductionStatus::InProgress).await?;
 
