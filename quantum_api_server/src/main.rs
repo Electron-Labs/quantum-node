@@ -3,10 +3,12 @@ use config::ConfigData;
 use connection::get_pool;
 use dotenv::dotenv;
 use error::error::CustomError;
+use quantum_types::enums::circuit_reduction_status::CircuitReductionStatus;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
 use quantum_types::types::gnark_groth16::GnarkGroth16Vkey;
 use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Vkey;
 use rocket::State;
+use service::register_circuit::get_circuit_registration_status;
 use service::register_circuit::register_circuit_exec;
 use rocket::serde::json::Json;
 mod types;
@@ -17,6 +19,7 @@ pub mod utils;
 pub mod error;
 
 use anyhow::Result as AnyhowResult;
+use types::circuit_registration_status::CircuitRegistrationStatusResponse;
 use types::register_circuit::RegisterCircuitRequest;
 use types::register_circuit::RegisterCircuitResponse;
 // use types::snarkjs_groth16::SnarkJSGroth16Vkey;
@@ -51,10 +54,19 @@ async fn register_circuit(data: RegisterCircuitRequest, config_data: &State<Conf
     }
 }
 
+#[get("/circuit/<circuit_id>/status")]
+async fn get_circuit_reduction_status(circuit_id: String) -> AnyhowResult<Json<CircuitRegistrationStatusResponse>, CustomError>{
+    let status = get_circuit_registration_status(circuit_id).await;
+    match status {
+        Ok(s) => Ok(Json(s)),
+        Err(_) => Err(CustomError::Internal(String::from("error in db call")))
+    }
+}
+
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
     let config_data = load_config_data();
     let _db_initialize = get_pool().await;
-    rocket::build().manage(config_data).mount("/", routes![index, ping, register_circuit])
+    rocket::build().manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status])
 }

@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS user_circuit_data (
   vk_path VARCHAR(255),
   reduction_circuit_id INT DEFAULT NULL,
   pis_len INT,
-  proving_scheme VARCHAR(255)
+  proving_scheme VARCHAR(255),
+  circuit_reduction_status INT
 );
 
 CREATE TABLE IF NOT EXISTS reduction_circuit (
@@ -32,12 +33,11 @@ CREATE TABLE IF NOT EXISTS task (
   user_circuit_hash VARCHAR(255),
   task_type INT,
   proof_id INT,
-  proof_status INT,
-  ciruit_reduction_status INT
+  task_status INT
 );
 
-CREATE INDEX id_circuit_reduction_status ON task(ciruit_reduction_status);
-CREATE INDEX idx_proof_status ON task(proof_status);
+CREATE INDEX id_task_status ON task(task_status);
+
 
 CREATE TABLE IF NOT EXISTS proof (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -47,8 +47,11 @@ CREATE TABLE IF NOT EXISTS proof (
   reduction_proof_path VARCHAR(255),
   reduction_proof_pis_path VARCHAR(255),
   superproof_id INT,
-  reduction_time INT
+  reduction_time INT,
+  proof_status INT
 );
+
+CREATE INDEX idx_proof_status ON proof(proof_status);
 
 CREATE TABLE IF NOT EXISTS superproof (
   id INT AUTO_INCREMENT PRIMARY KEY,

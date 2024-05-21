@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::enums::proving_schemes::ProvingSchemes;
+use crate::enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserCircuitData{
@@ -8,5 +8,6 @@ pub struct UserCircuitData{
     pub vk_path: String,
     pub reduction_circuit_id: Option<u64>,
     pub pis_len: u64,
-    pub proving_scheme: ProvingSchemes
+    pub proving_scheme: ProvingSchemes,
+    pub circuit_reduction_status: CircuitReductionStatus
 }
