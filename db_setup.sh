@@ -2,7 +2,7 @@
 
 # MySQL/MariaDB connection parameters
 DB_USER="root"
-DB_PASS="sql123"
+DB_PASS="temp123"
 DB_NAME="quantum"
 
 # Create the database and tables
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS user_circuit_data (
   reduction_circuit_id INT DEFAULT NULL,
   pis_len INT,
   proving_scheme VARCHAR(255),
-  circuit_reduction_status INT
+  circuit_reduction_status INT,
   FOREIGN KEY (reduction_circuit_id) REFERENCES reduction_circuit(id)
 );
 
