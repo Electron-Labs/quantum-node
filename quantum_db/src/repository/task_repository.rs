@@ -1,4 +1,4 @@
-use quantum_types::enums::{circuit_reduction_status::CircuitReductionStatus, task_status::TaskStatus, task_type::TaskType};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
 use sqlx::{Error, MySql, Pool};
 
 // use crate::connection::get_pool;
@@ -13,4 +13,14 @@ pub async fn create_circuit_reduction_task(pool: &Pool<MySql>,user_circuit_hash:
         Err(e) => Err(e)
     };
     row_affected
+}
+
+pub async fn get_aggregation_waiting_tasks_num(pool: &Pool<MySql>) -> Result<u64, Error> {
+    // Num(task_type: TaskType::ProofGeneration + task_status: TaskSatus::Completed) >= BatchNum
+    todo!()
+}
+
+pub async fn get_unpicked_circuit_reduction_task(pool: &Pool<MySql>) -> Result<Option<Task>, Error> {
+    // oldest_entry(task_status: TaskStatus::NotPicked)
+    todo!()
 }
