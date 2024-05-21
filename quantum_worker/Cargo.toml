@@ -13,3 +13,7 @@ lazy_static = "1.4.0"
 tokio = { version = "1.12.0", features = ["full"] }
 dotenv = "0.15.0"
 anyhow = "1.0.83"
+serde_json = "1.0.117"
+
+#[TODO] Change this to git repo
+quantum-reduction-circuits-ffi = {path = "../../quantum-reduction-circuits/quantum-reduction-circuits-ffi"}
