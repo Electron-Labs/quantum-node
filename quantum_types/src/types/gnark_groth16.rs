@@ -2,7 +2,11 @@
 #![allow(non_camel_case_types)]
 
 use borsh::{BorshSerialize, BorshDeserialize};
+use quantum_utils::file::{dump_object, read_file};
 use serde::{Serialize, Deserialize};
+use anyhow::Result as AnyhowResult;
+
+use crate::traits::vkey::Vkey;
 /*
 type VerifyingKey struct {
 	// [α]₁, [Kvk]₁
@@ -71,6 +75,33 @@ pub struct GnarkGroth16Vkey {
 	CommitmentKey: PedersenCommitmentKey,
 	// We wont support gnark proofs which have PublicAndCommitmentCommitted non-empty
 	PublicAndCommitmentCommitted: Vec<Vec<u32>>
+}
+
+impl Vkey for GnarkGroth16Vkey {
+	fn serialize(&self) -> AnyhowResult<Vec<u8>> {
+		let mut buffer: Vec<u8> = Vec::new();
+		BorshSerialize::serialize(&self,&mut buffer)?;
+		Ok(buffer)
+	}
+
+	fn deserialize(bytes: Vec<u8>) -> AnyhowResult<Self>{
+		let key: GnarkGroth16Vkey = BorshDeserialize::deserialize(&mut bytes.as_slice())?;
+		Ok(key)
+	}
+
+	fn dump_vk(&self, circuit_hash: &str, storage_path: &str, user_data_path: &str) -> AnyhowResult<String> {
+		let vk_path = format!("{}/{}{}", storage_path, circuit_hash, user_data_path);
+   		let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
+		// println!("{;]:?}")
+    	dump_object(&self, vk_path.as_str(), "vk.json")?;
+		Ok(vk_key_full_path)
+	}
+
+	fn read_vk(full_path: &str) -> AnyhowResult<Self> {
+		let json_data = read_file(full_path)?;
+		let gnark_vkey: GnarkGroth16Vkey = serde_json::from_str(&json_data)?;
+		Ok(gnark_vkey)
+	}
 }
 
 

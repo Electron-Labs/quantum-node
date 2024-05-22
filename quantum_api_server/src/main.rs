@@ -12,7 +12,6 @@ use rocket::serde::json::Json;
 mod types;
 mod service;
 pub mod connection;
-pub mod utils;
 pub mod error;
 
 use anyhow::Result as AnyhowResult;

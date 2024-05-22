@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConfigData {
+    pub storage_folder_path: String,
     pub user_data_path: String,
     pub proof_path: String,
     pub public_inputs_path: String,

@@ -1,21 +1,18 @@
 use keccak_hash::keccak;
-use borsh::BorshDeserialize;
 use quantum_db::repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, types::db::reduction_circuit::ReductionCircuit, types::config::ConfigData};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::vkey::Vkey, types::{config::ConfigData, db::reduction_circuit::ReductionCircuit}};
 use rocket::State;
 
 use anyhow::Result as AnyhowResult;
-use serde::Serialize;
 
-use crate::{connection::get_pool, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}, utils::file::{create_dir, dump_json_file}};
+use crate::{connection::get_pool, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
-pub async fn register_circuit_exec<T: BorshDeserialize + Serialize>(data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<RegisterCircuitResponse> {
+pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<RegisterCircuitResponse> {
     // Retreive verification key bytes
     let vkey_bytes: Vec<u8> = data.vkey.clone();
 
     // Borsh deserialise to corresponding vkey struct 
-    let vkey: T = T::deserialize(&mut vkey_bytes.as_slice())?;
-
+    let vkey: T = T::deserialize(vkey_bytes.clone())?;
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
     let circuit_hash_string = get_circuit_hash_from_vkey_bytes(vkey_bytes);
 
@@ -28,16 +25,14 @@ pub async fn register_circuit_exec<T: BorshDeserialize + Serialize>(data: Regist
         );
     }
 
-    // Dump vkey
-    let vk_path = format!("{}/{}",circuit_hash_string, config_data.user_data_path  );
-    let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
-    dump_vkey(vkey, vk_path.as_str())?;
+    // dump vkey
+    let vkey_path = vkey.dump_vk(&circuit_hash_string, &config_data.storage_folder_path, &config_data.user_data_path)?;
 
     // Get a reduction circuit id
     let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vk_key_full_path, reduction_circuit_id, data.num_public_inputs, data.proof_type,CircuitReductionStatus::NotPicked).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id, data.num_public_inputs, data.proof_type,CircuitReductionStatus::NotPicked).await?;
 
     // Create a reduction task for Async worker to pick up later on
     create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
@@ -79,11 +74,7 @@ async fn get_existing_compatible_reduction_circuit(num_public_inputs: u8, provin
     reduction_circuit
 }
 
-fn dump_vkey<T: Serialize>(vkey: T, vk_path: &str) -> AnyhowResult<()> {
-    create_dir(vk_path)?;
-    dump_json_file(vk_path, "vk.json", vkey)?;
-    Ok(())
-}
+
 
 async fn check_if_circuit_has_already_registered(circuit_hash_string: &str) -> bool {
     let circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash_string).await;

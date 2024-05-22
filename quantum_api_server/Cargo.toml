@@ -21,3 +21,4 @@ serde_yaml = "0.9.30"
 anyhow = "1.0.83"
 quantum_types = {path = "../quantum_types"}
 quantum_db = {path = "../quantum_db"}
+quantum_utils = {path = "../quantum_utils"}
