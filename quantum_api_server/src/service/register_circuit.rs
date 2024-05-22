@@ -29,7 +29,7 @@ pub async fn register_circuit_exec<T: BorshDeserialize + Serialize>(data: Regist
     }
 
     // Dump vkey
-    let vk_path = format!("{}/{}", config_data.user_circuit_vk_path, circuit_hash_string );
+    let vk_path = format!("{}/{}",circuit_hash_string, config_data.user_data_path  );
     let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
     dump_vkey(vkey, vk_path.as_str())?;
 
