@@ -15,10 +15,9 @@ pub struct ConfigData {
 
 }
 
-pub fn load_config_data() -> ConfigData {
-    let config_contents_str = fs::read_to_string("config.yaml").expect("provide a valid path");
-    let config_data: ConfigData = serde_yaml::from_str(&config_contents_str).unwrap();
-    println!("Config loaded: {:?}", config_data);
-    // info!("loaded config data: {:?}", config_data);
-    config_data
+impl ConfigData {
+    pub fn new(path: &str) -> ConfigData {
+        let config_contents_str = fs::read_to_string(path).expect("provide a valid path");
+        serde_yaml::from_str(&config_contents_str).unwrap()
+    }
 }
