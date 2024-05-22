@@ -1,3 +1,4 @@
+storage_folder_path: "/storage" # Root folder for all the storage stuff
 user_data_path: "/user_data"
 proof_path: "/proof"
 public_inputs_path: "/public_inputs"
