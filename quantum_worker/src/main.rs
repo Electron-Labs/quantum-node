@@ -14,6 +14,7 @@ pub mod connection;
 pub mod aggregator;
 pub mod registration;
 pub mod proof_generator;
+pub mod utils;
 
 use std::{thread::sleep, time::Duration};
 use dotenv::dotenv;

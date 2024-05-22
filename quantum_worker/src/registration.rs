@@ -1,10 +1,12 @@
-use std::{fmt::Error, fs};
+use std::fs;
 
 use quantum_db::repository::{reduction_circuit_repository::add_reduction_circuit_row, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, update_user_circuit_data_redn_circuit, update_user_circuit_data_reduction_status}};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_type::TaskType}, types::db::{reduction_circuit::{self, ReductionCircuit}, task::Task}};
+use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType}, types::db::{reduction_circuit::{self, ReductionCircuit}, task::Task}};
 use anyhow::{Ok, Result as AnyhowResult};
 use sqlx::{MySql, Pool};
 use quantum_reduction_circuits_ffi::circuit_builder::{BuildResult, CircomVK, GnarkVK};
+
+use crate::utils::write_bytes_to_file;
 
 pub async fn handle_registration_task(pool: &Pool<MySql>, registration_task: Task) -> AnyhowResult<()> {
     assert_eq!(registration_task.task_type, TaskType::CircuitReduction);
@@ -37,9 +39,10 @@ pub async fn handle_registration_task(pool: &Pool<MySql>, registration_task: Tas
         return Err(anyhow::Error::msg(build_result.msg));
     }
     // Dump reduction circuit proving key and verification key as raw bytes 
-    // TODO: Utkarsh
     let pk_path = "";
     let vk_path = "";
+    write_bytes_to_file(&build_result.pk_bytes_raw, &pk_path)?;
+    write_bytes_to_file(&build_result.vk_bytes_raw, &vk_path)?;
 
     // Add reduction circuit row (pk_path, vk_path, pis_len)
     let reduction_circuit = ReductionCircuit {
