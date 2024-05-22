@@ -1,6 +1,5 @@
 use quantum_types::types::db::reduction_circuit::ReductionCircuit;
-use sqlx::{mysql::MySqlRow, Pool};
-use sqlx::{MySql, Row};
+use sqlx::{mysql::MySqlRow, Error, MySql, Pool, Row};
 
 use anyhow::{anyhow, Result as AnyhowResult};
 
@@ -37,6 +36,14 @@ fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<Redu
 }
 
 // Sending ReductionCircuit type with reduction_circuit.id = None, return id
-pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: ReductionCircuit) -> AnyhowResult<u64> {
-    todo!()
+pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: ReductionCircuit) -> AnyhowResult<u64, Error> {
+    let query  = sqlx::query("INSERT into reduction_circuit(proving_key_path, vk_path, pis_len) VALUES(?,?,?)")
+                .bind(reduction_circuit.proving_key_path).bind(reduction_circuit.vk_path).bind(reduction_circuit.pis_len);
+
+    // info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(t) => Ok(t.last_insert_id()),
+        Err(e) => Err(e)
+    };
+    row_affected
 }

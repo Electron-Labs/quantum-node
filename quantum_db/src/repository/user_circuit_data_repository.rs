@@ -54,9 +54,25 @@ fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircu
 }
 
 pub async fn update_user_circuit_data_reduction_status(pool: &Pool<MySql>, user_circuit_hash: &str, status: CircuitReductionStatus) -> AnyhowResult<()> {
-    todo!()
+    let query  = sqlx::query("UPDATE user_circuit_data set circuit_reduction_status = ? where circuit_hash = ?")
+                .bind(status.as_u8()).bind(user_circuit_hash);
+
+    // info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    row_affected
 }
 
 pub async fn update_user_circuit_data_redn_circuit(pool: &Pool<MySql>, user_circuit_hash: &str, reduction_circuit_id: u64) -> AnyhowResult<()> {
-    todo!()
+    let query  = sqlx::query("UPDATE user_circuit_data set reduction_circuit_id = ? where circuit_hash = ?")
+                .bind(reduction_circuit_id).bind(user_circuit_hash);
+
+    // info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    row_affected
 }
