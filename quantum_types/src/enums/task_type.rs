@@ -13,8 +13,9 @@ impl TaskType {
             TaskType::ProofGeneration => 2
         }
     }
+}
 
-    #[allow(dead_code)]
+impl From<u8> for TaskType {
     fn from(value: u8) -> Self {
         match value {
             1 => TaskType::CircuitReduction,

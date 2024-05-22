@@ -18,3 +18,14 @@ pub fn create_dir(full_path: &str) -> AnyhowResult<()>{
     let res = fs::create_dir_all(full_path)?;
     Ok(res)
 }
+
+pub fn dump_object<T: Serialize>(object: T, path: &str, file_name: &str) -> AnyhowResult<()> {
+    create_dir(path)?;
+    dump_json_file(path, file_name, object)?;
+    Ok(())
+}
+
+pub fn read_file(path: &str) -> AnyhowResult<String> {
+    let data_string = fs::read_to_string(path)?;
+    Ok(data_string)
+}

@@ -1,5 +1,5 @@
 [package]
-name = "quantum_types"
+name = "quantum_utils"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,7 @@ edition = "2021"
 
 [dependencies]
 serde = {version = "1.0.201", features = ["derive"]}
-serde_json = "1.0.117"
-borsh = {version = "1.5.0", features = ["derive"]}
-borsh-derive = { version = "1.0.0-alpha.6" }
 serde_yaml = "0.9.30"
+serde_json = "1.0.117"
 anyhow = "1.0.83"
-quantum_utils = {path = "../quantum_utils"}
+

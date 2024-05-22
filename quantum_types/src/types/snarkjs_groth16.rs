@@ -2,7 +2,14 @@
 #![allow(non_camel_case_types)]
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use quantum_utils::file::{dump_object, read_file};
 use serde::{Deserialize, Serialize};
+
+use anyhow::Result as AnyhowResult;
+
+use crate::traits::vkey::Vkey;
+
+use super::config::ConfigData;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
@@ -15,6 +22,32 @@ pub struct SnarkJSGroth16Vkey {
     vk_delta_2: Vec<Vec<String>>,
     vk_alphabeta_12: Vec<Vec<Vec<String>>>,
     IC: Vec<Vec<String>>
+}
+
+impl Vkey for SnarkJSGroth16Vkey {
+	fn serialize(&self) -> AnyhowResult<Vec<u8>> {
+		let mut buffer: Vec<u8> = Vec::new();
+		BorshSerialize::serialize(&self,&mut buffer)?;
+		Ok(buffer)
+	}
+
+	fn deserialize(bytes: Vec<u8>) -> AnyhowResult<Self>{
+		let key: SnarkJSGroth16Vkey = BorshDeserialize::deserialize(&mut bytes.as_slice())?;
+		Ok(key)
+	}
+
+	fn dump_vk(&self, circuit_hash: &str, config_data: &ConfigData) -> AnyhowResult<String> {
+		let vk_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.user_data_path);
+   		let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
+    	dump_object(&self, vk_path.as_str(), "vkey.json")?;
+		Ok(vk_key_full_path)
+	}
+
+	fn read_vk(full_path: &str) -> AnyhowResult<Self> {
+		let json_data = read_file(full_path)?;
+		let gnark_vkey: SnarkJSGroth16Vkey = serde_json::from_str(&json_data)?;
+		Ok(gnark_vkey)
+	}
 }
 
 #[cfg(test)]
