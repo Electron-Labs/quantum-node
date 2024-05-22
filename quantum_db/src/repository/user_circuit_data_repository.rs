@@ -22,7 +22,7 @@ pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_h
     user_circuit_data
 }
 
-pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, reduction_circuit_id: Option<u64>, pis_len: u8, proving_scheme: ProvingSchemes, circuit_reduction_status: CircuitReductionStatus) -> AnyhowResult<u64, Error>{
+pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, reduction_circuit_id: Option<String>, pis_len: u8, proving_scheme: ProvingSchemes, circuit_reduction_status: CircuitReductionStatus) -> AnyhowResult<u64, Error>{
     let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, reduction_circuit_id, pis_len, proving_scheme, circuit_reduction_status) VALUES(?,?,?,?,?,?)")
                 .bind(circuit_hash).bind(vk_path).bind(reduction_circuit_id).bind(pis_len).bind(proving_scheme.to_string()).bind(circuit_reduction_status.as_u8());
 

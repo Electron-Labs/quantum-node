@@ -18,24 +18,24 @@ pub mod utils;
 
 use std::{thread::sleep, time::Duration};
 use dotenv::dotenv;
-use quantum_db::repository::{proof_repository::get_aggregation_waiting_tasks_num, task_repository::{get_unpicked_circuit_reduction_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
+use quantum_db::repository::{task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_circuit_reduction_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
 use anyhow::Result as AnyhowResult;
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, task_status::TaskStatus, task_type::TaskType}, types::{config::ConfigData, db::task::Task}};
 use sqlx::{MySql, Pool};
 
 pub const BATCH_SIZE: u64 = 20; // Number of proofs to be included in 1 batch
 pub const WORKER_SLEEP_SECS: u64 = 2;
 
-pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task) -> AnyhowResult<()> {
+pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, config: &ConfigData) -> AnyhowResult<()> {
     let user_circuit_hash = registration_task.clone().user_circuit_hash;
 
-    // Change Task status ro InProgress
+    // Change Task status to InProgress
     update_task_status(pool, registration_task.id.unwrap(), TaskStatus::InProgress).await?;
 
     // Change user_circuit_data.circuit_reduction_status to InProgress
     update_user_circuit_data_reduction_status(pool, &user_circuit_hash, CircuitReductionStatus::InProgress).await?;
 
-    let request = registration::handle_registration_task(pool, registration_task.clone()).await;
+    let request = registration::handle_registration_task(pool, registration_task.clone(), config).await;
 
     match request {
         Ok(_) => {
@@ -59,12 +59,13 @@ pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task) -> An
     Ok(())
 }
 
-pub async fn worker(sleep_duration: Duration) -> AnyhowResult<()> {
+pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> AnyhowResult<()> {
     println!(" --- Initialising DB connection pool ---");
     let pool = connection::get_pool().await;
     loop {
         println!("Running worker loop");
         let aggregation_awaiting_tasks = get_aggregation_waiting_tasks_num(pool).await?;
+        println!("Aggregation awaiting tasks {:?}", aggregation_awaiting_tasks);
         if aggregation_awaiting_tasks >= BATCH_SIZE {
             // TODO: Do aggregation and submit on ethereum
         }
@@ -73,10 +74,14 @@ pub async fn worker(sleep_duration: Duration) -> AnyhowResult<()> {
         if unpicked_task.is_some() {
             let task = unpicked_task.unwrap();
             if task.task_type == TaskType::CircuitReduction {
-                regsiter_circuit(pool, task).await?;
+                println!("Picked up circuit reduction task --> {:?}", task);
+                regsiter_circuit(pool, task, config).await?;
             } else if task.task_type == TaskType::ProofGeneration {
+                println!("Picked up proof generation task --> {:?}", task);
                 // TODO: Generate reduced proof and do DB updations accordingly
             }
+        } else {
+            println!("No task available to pick");
         }
         sleep(sleep_duration)
     }
@@ -88,5 +93,6 @@ async fn main() {
     dotenv().ok();
     println!(" --- Starting worker --- ");
     let worker_sleep_duration = Duration::from_secs(WORKER_SLEEP_SECS);
-    let _res = worker(worker_sleep_duration).await;
+    let config_data = ConfigData::new("./config.yaml");
+    let _res = worker(worker_sleep_duration, &config_data).await;
 }

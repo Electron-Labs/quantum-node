@@ -12,7 +12,7 @@ CREATE DATABASE IF NOT EXISTS $DB_NAME;
 USE $DB_NAME;
 
 CREATE TABLE IF NOT EXISTS reduction_circuit (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  circuit_id VARCHAR(255) PRIMARY KEY,
   proving_key_path VARCHAR(255),
   vk_path VARCHAR(255),
   pis_len INT,

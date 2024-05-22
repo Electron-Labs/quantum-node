@@ -1,26 +1,26 @@
 use std::fs::File;
 use std::io::{Read, Write};
 use anyhow::Result as AnyhowResult;
+use quantum_types::types::config::ConfigData;
+use quantum_utils::file::{create_dir, write_bytes_to_file};
 
-// Write bytes to file
-pub fn write_bytes_to_file(bytes: &Vec<u8>, path: &str) -> AnyhowResult<()> {
-    let mut file = File::create(path)?;
-    file.write_all(&bytes)?;
-    Ok(())
+// Returns circuit_id, pk_path, vk_path
+pub fn dump_reduction_circuit_data(config: &ConfigData, pk_bytes_raw: &Vec<u8>, vk_bytes_raw: &Vec<u8>) -> AnyhowResult<(String, String, String)> {
+    // Reduction circuit id --> keccak256(vk_bytes_raw)
+    let circuit_id = "hash_circuit_id";
+    let reduced_circuit_path = format!("{}{}/{}", config.storage_folder_path, config.reduced_circuit_path, circuit_id);
+    create_dir(&reduced_circuit_path)?;
+    let pk_path = format!("{}/{}", &reduced_circuit_path, "pk.bin");
+    let vk_path = format!("{}/{}", &reduced_circuit_path, "vk.bin");
+    write_bytes_to_file(&pk_bytes_raw, &pk_path)?;
+    write_bytes_to_file(&vk_bytes_raw, &vk_path)?;
+    Ok((circuit_id.to_string(), pk_path.to_string(), vk_path.to_string()))
 }
 
-// Read bytes from file
-pub fn read_bytes_from_file(path: &str) -> AnyhowResult<Vec<u8>> {
-    let mut buffer = Vec::<u8>::new();
-    let mut file = File::open(path)?;
-    file.read_to_end(&mut buffer)?;
-    Ok(buffer)
-}
 
 #[cfg(test)]
 mod tests {
-    use super::{read_bytes_from_file, write_bytes_to_file};
-
+    use quantum_utils::file::{write_bytes_to_file, read_bytes_from_file};
 
     #[test]
     pub fn test_read_write() {

@@ -27,7 +27,7 @@ pub async fn check_if_pis_len_compatible_reduction_circuit_exist(pool: &Pool<MyS
 
 fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<ReductionCircuit>{
     let reduction_circuit = ReductionCircuit {
-        id: row.try_get_unchecked("id")?,
+        circuit_id: row.try_get_unchecked("circuit_id")?,
         proving_key_path: row.try_get_unchecked("proving_key_path")?,
         vk_path: row.try_get_unchecked("vk_path")?,
         pis_len: row.try_get_unchecked("pis_len")?,
@@ -37,8 +37,8 @@ fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<Redu
 
 // Sending ReductionCircuit type with reduction_circuit.id = None, return id
 pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: ReductionCircuit) -> AnyhowResult<u64, Error> {
-    let query  = sqlx::query("INSERT into reduction_circuit(proving_key_path, vk_path, pis_len) VALUES(?,?,?)")
-                .bind(reduction_circuit.proving_key_path).bind(reduction_circuit.vk_path).bind(reduction_circuit.pis_len);
+    let query  = sqlx::query("INSERT into reduction_circuit(circuit_id, proving_key_path, vk_path, pis_len) VALUES(?,?,?,?)")
+                .bind(reduction_circuit.circuit_id).bind(reduction_circuit.proving_key_path).bind(reduction_circuit.vk_path).bind(reduction_circuit.pis_len);
 
     // info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {

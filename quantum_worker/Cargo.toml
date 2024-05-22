@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 quantum_types = {path = "../quantum_types"}
 quantum_db = {path = "../quantum_db"}
+quantum_utils = {path = "../quantum_utils"}
 sqlx = { version = "0.7", features = [ "runtime-tokio", "mysql", "chrono", "macros" ] }
 lazy_static = "1.4.0"
 tokio = { version = "1.12.0", features = ["full"] }

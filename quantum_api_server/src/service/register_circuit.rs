@@ -32,7 +32,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id, data.num_public_inputs, data.proof_type,CircuitReductionStatus::NotPicked).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,CircuitReductionStatus::NotPicked).await?;
 
     // Create a reduction task for Async worker to pick up later on
     create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
@@ -49,17 +49,17 @@ pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResu
     })
 }
 
-async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<Option<u64>>{
+async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<Option<String>>{
     let reduction_circuit = get_existing_compatible_reduction_circuit(num_public_inputs, proving_scheme).await;
     let reduction_circuit_id = match reduction_circuit {
-        Some(rc) => rc.id,
+        Some(rc) => Some(rc.circuit_id),
         None => None
     };
     println!("reduction circuit id: {:?}", reduction_circuit_id );
     Ok(reduction_circuit_id)
 }
 
-async fn create_circuit_reduction_task(reduction_circuit_id: Option<u64>, circuit_hash: &str) -> AnyhowResult<()> {
+async fn create_circuit_reduction_task(reduction_circuit_id: Option<String>, circuit_hash: &str) -> AnyhowResult<()> {
     if reduction_circuit_id.is_none() {
         task_repository::create_circuit_reduction_task(get_pool().await, circuit_hash, TaskType::CircuitReduction , TaskStatus::NotPicked).await?;
     }
