@@ -18,7 +18,7 @@ pub mod utils;
 
 use std::{thread::sleep, time::Duration};
 use dotenv::dotenv;
-use quantum_db::repository::{proof_repository::get_aggregation_waiting_proof_num, task_repository::{get_unpicked_circuit_reduction_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
+use quantum_db::repository::{proof_repository::get_aggregation_waiting_tasks_num, task_repository::{get_unpicked_circuit_reduction_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
 use anyhow::Result as AnyhowResult;
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
 use sqlx::{MySql, Pool};
@@ -64,7 +64,7 @@ pub async fn worker(sleep_duration: Duration) -> AnyhowResult<()> {
     let pool = connection::get_pool().await;
     loop {
         println!("Running worker loop");
-        let aggregation_awaiting_tasks = get_aggregation_waiting_proof_num(pool).await?;
+        let aggregation_awaiting_tasks = get_aggregation_waiting_tasks_num(pool).await?;
         if aggregation_awaiting_tasks >= BATCH_SIZE {
             // TODO: Do aggregation and submit on ethereum
         }
