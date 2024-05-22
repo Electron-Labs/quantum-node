@@ -26,7 +26,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     }
 
     // dump vkey
-    let vkey_path = vkey.dump_vk(&circuit_hash_string, &config_data.storage_folder_path, &config_data.user_data_path)?;
+    let vkey_path = vkey.dump_vk(&circuit_hash_string, &config_data)?;
 
     // Get a reduction circuit id
     let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;

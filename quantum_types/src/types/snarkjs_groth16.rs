@@ -9,6 +9,8 @@ use anyhow::Result as AnyhowResult;
 
 use crate::traits::vkey::Vkey;
 
+use super::config::ConfigData;
+
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
 	protocol: String,
@@ -34,8 +36,8 @@ impl Vkey for SnarkJSGroth16Vkey {
 		Ok(key)
 	}
 
-	fn dump_vk(&self, circuit_hash: &str, storage_path: &str, user_data_path: &str) -> AnyhowResult<String> {
-		let vk_path = format!("{}/{}{}", storage_path, circuit_hash, user_data_path);
+	fn dump_vk(&self, circuit_hash: &str, config_data: &ConfigData) -> AnyhowResult<String> {
+		let vk_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.user_data_path);
    		let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
     	dump_object(&self, vk_path.as_str(), "vkey.json")?;
 		Ok(vk_key_full_path)

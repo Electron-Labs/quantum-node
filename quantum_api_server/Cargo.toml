@@ -1,5 +1,5 @@
 [package]
-name = "quantum-api-server"
+name = "quantum_api_server"
 version = "0.1.0"
 edition = "2021"
 

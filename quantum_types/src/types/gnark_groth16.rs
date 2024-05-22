@@ -7,6 +7,8 @@ use serde::{Serialize, Deserialize};
 use anyhow::Result as AnyhowResult;
 
 use crate::traits::vkey::Vkey;
+
+use super::config::ConfigData;
 /*
 type VerifyingKey struct {
 	// [α]₁, [Kvk]₁
@@ -89,8 +91,8 @@ impl Vkey for GnarkGroth16Vkey {
 		Ok(key)
 	}
 
-	fn dump_vk(&self, circuit_hash: &str, storage_path: &str, user_data_path: &str) -> AnyhowResult<String> {
-		let vk_path = format!("{}/{}{}", storage_path, circuit_hash, user_data_path);
+	fn dump_vk(&self, circuit_hash: &str, config_data: &ConfigData) -> AnyhowResult<String> {
+		let vk_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.user_data_path);
    		let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
 		// println!("{;]:?}")
     	dump_object(&self, vk_path.as_str(), "vk.json")?;
