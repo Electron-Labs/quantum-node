@@ -18,7 +18,7 @@ pub mod utils;
 
 use std::{thread::sleep, time::Duration};
 use dotenv::dotenv;
-use quantum_db::repository::{proof_repository::get_aggregation_waiting_proof_num, task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_circuit_reduction_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
+use quantum_db::repository::{proof_repository::get_aggregation_waiting_proof_num, task_repository::{get_unpicked_circuit_reduction_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
 use anyhow::Result as AnyhowResult;
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
 use sqlx::{MySql, Pool};
