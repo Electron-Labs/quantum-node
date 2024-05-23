@@ -45,11 +45,27 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
 }
 
 pub async fn update_proof_status(pool: &Pool<MySql>, proof_id: &str, proof_status: ProofStatus) -> AnyhowResult<()>{
-    todo!()
+    let query  = sqlx::query("UPDATE proof set proof_status = ? where proof_hash = ?")
+                .bind(proof_status.as_u8()).bind(proof_id);
+
+    // info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    row_affected
 }
 
 pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction_proof_path: &str, reduction_pis_path: &str, reduction_time: u64) -> AnyhowResult<()> {
-    todo!()
+    let query  = sqlx::query("UPDATE proof set reduction_proof_path = ?, reduction_proof_pis_path = ?, reduction_time = ?  where proof_hash = ?")
+                .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(proof_id);
+
+    // info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    row_affected
 }
 
 fn get_proof_from_mysql_row(row: MySqlRow) -> AnyhowResult<Proof>{
