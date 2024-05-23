@@ -12,7 +12,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     let vkey_bytes: Vec<u8> = data.vkey.clone();
 
     // Borsh deserialise to corresponding vkey struct 
-    let vkey: T = T::deserialize(vkey_bytes.clone())?;
+    let vkey: T = T::deserialize(&mut vkey_bytes.as_slice())?;
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
     let circuit_hash_string = get_circuit_hash_from_vkey_bytes(vkey_bytes);
 

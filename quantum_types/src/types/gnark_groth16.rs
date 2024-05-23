@@ -86,8 +86,8 @@ impl Vkey for GnarkGroth16Vkey {
 		Ok(buffer)
 	}
 
-	fn deserialize(bytes: Vec<u8>) -> AnyhowResult<Self>{
-		let key: GnarkGroth16Vkey = BorshDeserialize::deserialize(&mut bytes.as_slice())?;
+	fn deserialize(bytes: &mut &[u8]) -> AnyhowResult<Self>{
+		let key: GnarkGroth16Vkey = BorshDeserialize::deserialize(bytes)?;
 		Ok(key)
 	}
 
@@ -122,8 +122,8 @@ impl Proof for GnarkGroth16Proof {
 		Ok(buffer)
 	}
 
-	fn deserialize(bytes: Vec<u8>) -> AnyhowResult<Self> {
-		let key: GnarkGroth16Proof = BorshDeserialize::deserialize(&mut bytes.as_slice())?;
+	fn deserialize(bytes: &mut &[u8]) -> AnyhowResult<Self> {
+		let key: GnarkGroth16Proof = BorshDeserialize::deserialize(bytes)?;
 		Ok(key)
 	}
 
@@ -153,8 +153,8 @@ impl Pis for GnarkGroth16Pis {
 		Ok(buffer)
 	}
 
-	fn deserialize(bytes: Vec<u8>) -> AnyhowResult<Self> {
-		let key: GnarkGroth16Pis = BorshDeserialize::deserialize(&mut bytes.as_slice())?;
+	fn deserialize(bytes: &mut &[u8]) -> AnyhowResult<Self> {
+		let key: GnarkGroth16Pis = BorshDeserialize::deserialize(bytes)?;
 		Ok(key)
 	}
 
