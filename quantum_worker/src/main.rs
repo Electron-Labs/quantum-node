@@ -75,7 +75,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             let task = unpicked_task.unwrap();
             if task.task_type == TaskType::CircuitReduction {
                 println!("Picked up circuit reduction task --> {:?}", task);
-                regsiter_circuit(pool, task, config).await?;
+                regsiter_circuit(pool, task, config_data).await?;
             } else if task.task_type == TaskType::ProofGeneration {
                 println!("Picked up proof generation task --> {:?}", task);
                 // TODO: Generate reduced proof and do DB updations accordingly
