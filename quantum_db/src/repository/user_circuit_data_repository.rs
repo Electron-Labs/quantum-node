@@ -65,7 +65,7 @@ pub async fn update_user_circuit_data_reduction_status(pool: &Pool<MySql>, user_
     row_affected
 }
 
-pub async fn update_user_circuit_data_redn_circuit(pool: &Pool<MySql>, user_circuit_hash: &str, reduction_circuit_id: u64) -> AnyhowResult<()> {
+pub async fn update_user_circuit_data_redn_circuit(pool: &Pool<MySql>, user_circuit_hash: &str, reduction_circuit_id: &str) -> AnyhowResult<()> {
     let query  = sqlx::query("UPDATE user_circuit_data set reduction_circuit_id = ? where circuit_hash = ?")
                 .bind(reduction_circuit_id).bind(user_circuit_hash);
 

@@ -1,5 +1,6 @@
 use std::{fs::{self, File}, io::{BufWriter, Read, Write}};
 
+use keccak_hash::keccak;
 use serde::Serialize;
 
 use anyhow::Result as AnyhowResult;
@@ -43,4 +44,11 @@ pub fn read_bytes_from_file(path: &str) -> AnyhowResult<Vec<u8>> {
     let mut file = File::open(path)?;
     file.read_to_end(&mut buffer)?;
     Ok(buffer)
+}
+
+pub fn get_keccak_256_hash(bytes: &Vec<u8>) -> String {
+    let mut keccak_ip = bytes.as_slice();
+    let hash = keccak(&mut keccak_ip);
+    let hash_string = format!("{:?}", hash);
+    hash_string
 }

@@ -42,7 +42,7 @@ pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: Re
 
     // info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
-        Ok(t) => Ok(t.last_insert_id()),
+        Ok(t) => Ok(t.rows_affected()),
         Err(e) => Err(e)
     };
     row_affected

@@ -93,9 +93,9 @@ impl Vkey for GnarkGroth16Vkey {
 
 	fn dump_vk(&self, circuit_hash: &str, config_data: &ConfigData) -> AnyhowResult<String> {
 		let vk_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.user_data_path);
-   		let vk_key_full_path = format!("{}/vk.json", vk_path.as_str() );
+   		let vk_key_full_path = format!("{}/vkey.json", vk_path.as_str() );
 		// println!("{;]:?}")
-    	dump_object(&self, vk_path.as_str(), "vk.json")?;
+    	dump_object(&self, vk_path.as_str(), "vkey.json")?;
 		Ok(vk_key_full_path)
 	}
 
