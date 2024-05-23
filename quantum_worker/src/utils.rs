@@ -3,12 +3,12 @@ use std::io::{Read, Write};
 use anyhow::Result as AnyhowResult;
 use quantum_types::types::config::ConfigData;
 use quantum_utils::file::{create_dir, write_bytes_to_file};
-use quantum_utils::keccak::get_keccal_hash_from_bytes;
+use quantum_utils::keccak::get_keccak_hash_from_bytes;
 
 // Returns circuit_id, pk_path, vk_path
 pub fn dump_reduction_circuit_data(config: &ConfigData, pk_bytes_raw: &Vec<u8>, vk_bytes_raw: &Vec<u8>) -> AnyhowResult<(String, String, String)> {
     // Reduction circuit id --> keccak256(vk_bytes_raw)
-    let circuit_id = get_keccal_hash_from_bytes(vk_bytes_raw);
+    let circuit_id = get_keccak_hash_from_bytes(vk_bytes_raw.as_slice());
     let reduced_circuit_path = format!("{}{}/{}", config.storage_folder_path, config.reduced_circuit_path, circuit_id);
     create_dir(&reduced_circuit_path)?;
     let pk_path = format!("{}/{}", &reduced_circuit_path, "pk.bin");

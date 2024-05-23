@@ -1,6 +1,6 @@
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_proof}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::config::ConfigData};
-use quantum_utils::keccak::get_keccal_hash_from_bytes;
+use quantum_utils::keccak::get_keccak_hash_from_bytes;
 use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};
 use crate::{connection::get_pool, error::error::CustomError, types::submit_proof::{SubmitProofRequest, SubmitProofResponse}};
@@ -8,14 +8,12 @@ use crate::{connection::get_pool, error::error::CustomError, types::submit_proof
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     check_if_circuit_reduction_completed(&data.circuit_hash).await?;
     
-    let proof_encoded: Vec<u8> = data.proof.clone();
-    let proof: T = T::deserialize(&mut proof_encoded.as_slice())?;
-    let proof_id = get_keccal_hash_from_bytes(proof_encoded.clone());
+    let proof: T = T::deserialize(&mut data.proof.as_slice())?;
+    let proof_id = get_keccak_hash_from_bytes(data.proof.as_slice());
 
     check_if_proof_already_exist(&proof_id).await?;
     println!("{:?}", proof_id);
-    let pis_encoded: Vec<u8> = data.pis.clone();
-    let pis: F = F::deserialize(&mut pis_encoded.as_slice())?;
+    let pis: F = F::deserialize(&mut data.pis.as_slice())?;
     
     let proof_full_path = proof.dump_proof(&data.circuit_hash, config_data, &proof_id)?;
     let pis_full_path = pis.dump_pis(&data.circuit_hash, config_data, &proof_id)?;
