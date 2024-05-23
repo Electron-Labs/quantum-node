@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::{BufWriter, Write}};
+use std::{fs::{self, File}, io::{BufWriter, Read, Write}};
 
 use serde::Serialize;
 
@@ -28,4 +28,19 @@ pub fn dump_object<T: Serialize>(object: T, path: &str, file_name: &str) -> Anyh
 pub fn read_file(path: &str) -> AnyhowResult<String> {
     let data_string = fs::read_to_string(path)?;
     Ok(data_string)
+}
+
+// Write bytes to file
+pub fn write_bytes_to_file(bytes: &Vec<u8>, path: &str) -> AnyhowResult<()> {
+    let mut file = File::create(path)?;
+    file.write_all(&bytes)?;
+    Ok(())
+}
+
+// Read bytes from file
+pub fn read_bytes_from_file(path: &str) -> AnyhowResult<Vec<u8>> {
+    let mut buffer = Vec::<u8>::new();
+    let mut file = File::open(path)?;
+    file.read_to_end(&mut buffer)?;
+    Ok(buffer)
 }
