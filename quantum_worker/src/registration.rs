@@ -19,11 +19,13 @@ pub async fn handle_registration_task(pool: &Pool<MySql>, registration_task: Tas
     let user_vk_path = user_circuit_data.vk_path;
     
     // Load User Vkey
+    println!("Loading user vkey from path {:?}", user_vk_path);
     let user_vk_data = fs::read_to_string(user_vk_path)?;
     
     let build_result: BuildResult;
 
     // Call build_reduction_circuit from quantum_reduction_circuit
+    println!("Calling gnark groth16 reduction circuit");
     if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
         let gnark_vkey: GnarkVK = serde_json::from_str(&user_vk_data)?;
         build_result = gnark_vkey.build(user_circuit_data.pis_len as u8);
@@ -38,21 +40,23 @@ pub async fn handle_registration_task(pool: &Pool<MySql>, registration_task: Tas
     if !build_result.pass{
         return Err(anyhow::Error::msg(build_result.msg));
     }
+    println!("Reduction circuit successfully built");
     // Dump reduction circuit proving key and verification key as raw bytes 
     let (circuit_id, pk_path, vk_path) = dump_reduction_circuit_data(config, &build_result.pk_bytes_raw, &build_result.vk_bytes_raw)?;
 
+    println!("Dumped pk_bytes and vk_bytes for reduction circuit");
     // Add reduction circuit row (pk_path, vk_path, pis_len)
     let reduction_circuit = ReductionCircuit {
-        circuit_id: circuit_id,
+        circuit_id: circuit_id.clone(),
         proving_key_path: pk_path,
         vk_path: vk_path,
         pis_len: user_circuit_data.pis_len,
     };
-    let reduction_circuit_id = add_reduction_circuit_row(pool, reduction_circuit).await?;
-
+    add_reduction_circuit_row(pool, reduction_circuit).await?;
+    println!("Added reduction circuit data to DB");
     // Add reduction circuit id to user_circuit_data
-    update_user_circuit_data_redn_circuit(pool, &user_circuit_hash, reduction_circuit_id).await?;
-
+    update_user_circuit_data_redn_circuit(pool, &user_circuit_hash, &circuit_id).await?;
+    println!("Updated reduction_circuit_id to user circuit data");
     Ok(())
 }
 
