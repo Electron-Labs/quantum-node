@@ -1,4 +1,4 @@
-use quantum_types::types::db::reduction_circuit::ReductionCircuit;
+use quantum_types::types::db::{proof::Proof, reduction_circuit::ReductionCircuit};
 use sqlx::{mysql::MySqlRow, Error, MySql, Pool, Row};
 
 use anyhow::{anyhow, Result as AnyhowResult};

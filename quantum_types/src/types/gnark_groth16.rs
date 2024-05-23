@@ -6,7 +6,7 @@ use quantum_utils::file::{dump_object, read_file};
 use serde::{Serialize, Deserialize};
 use anyhow::Result as AnyhowResult;
 
-use crate::traits::vkey::Vkey;
+use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
 use super::config::ConfigData;
 /*
@@ -86,8 +86,8 @@ impl Vkey for GnarkGroth16Vkey {
 		Ok(buffer)
 	}
 
-	fn deserialize(bytes: Vec<u8>) -> AnyhowResult<Self>{
-		let key: GnarkGroth16Vkey = BorshDeserialize::deserialize(&mut bytes.as_slice())?;
+	fn deserialize(bytes: &mut &[u8]) -> AnyhowResult<Self>{
+		let key: GnarkGroth16Vkey = BorshDeserialize::deserialize(bytes)?;
 		Ok(key)
 	}
 
@@ -103,6 +103,74 @@ impl Vkey for GnarkGroth16Vkey {
 		let json_data = read_file(full_path)?;
 		let gnark_vkey: GnarkGroth16Vkey = serde_json::from_str(&json_data)?;
 		Ok(gnark_vkey)
+	}
+}
+
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
+pub struct GnarkGroth16Proof {
+	Ar: Fq,
+	Krs: Fq,
+	Bs: Fq2,
+	Commitments: Vec<Fq>,
+	CommitmentPok: Fq,
+}
+
+impl Proof for GnarkGroth16Proof {
+	fn serialize(&self) -> AnyhowResult<Vec<u8>> {
+		let mut buffer: Vec<u8> = Vec::new();
+		BorshSerialize::serialize(&self,&mut buffer)?;
+		Ok(buffer)
+	}
+
+	fn deserialize(bytes: &mut &[u8]) -> AnyhowResult<Self> {
+		let key: GnarkGroth16Proof = BorshDeserialize::deserialize(bytes)?;
+		Ok(key)
+	}
+
+	fn dump_proof(&self, circuit_hash: &str, config_data: &ConfigData, proof_id: &str) -> AnyhowResult<String> {
+		let proof_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.proof_path);
+		let file_name = format!("proof_{}.json", proof_id);
+   		let proof_key_full_path = format!("{}/{}", proof_path.as_str(),&file_name );
+		// println!("{;]:?}")
+    	dump_object(&self, &proof_path, &file_name)?;
+		Ok(proof_key_full_path)
+	}
+
+	fn read_proof(full_path: &str) -> AnyhowResult<Self> {
+		let json_data = read_file(full_path)?;
+		let gnark_proof: GnarkGroth16Proof = serde_json::from_str(&json_data)?;
+		Ok(gnark_proof)
+	}
+}
+
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
+pub struct GnarkGroth16Pis(Vec<String>);
+
+impl Pis for GnarkGroth16Pis {
+	fn serialize(&self) -> AnyhowResult<Vec<u8>> {
+		let mut buffer: Vec<u8> = Vec::new();
+		BorshSerialize::serialize(&self,&mut buffer)?;
+		Ok(buffer)
+	}
+
+	fn deserialize(bytes: &mut &[u8]) -> AnyhowResult<Self> {
+		let key: GnarkGroth16Pis = BorshDeserialize::deserialize(bytes)?;
+		Ok(key)
+	}
+
+	fn dump_pis(&self, circuit_hash: &str, config_data: &ConfigData, proof_id: &str) -> AnyhowResult<String> {
+		let pis_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.public_inputs_path);
+		let file_name = format!("pis_{}.json", proof_id);
+   		let pis_key_full_path = format!("{}/{}", pis_path.as_str(), &file_name);
+		// println!("{;]:?}")
+    	dump_object(&self, &pis_path, &file_name)?;
+		Ok(pis_key_full_path)
+	}
+
+	fn read_pis(full_path: &str) -> AnyhowResult<Self> {
+		let json_data = read_file(full_path)?;
+		let gnark_pis: GnarkGroth16Pis = serde_json::from_str(&json_data)?;
+		Ok(gnark_pis)
 	}
 }
 
