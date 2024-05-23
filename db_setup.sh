@@ -22,11 +22,11 @@ CREATE TABLE IF NOT EXISTS reduction_circuit (
 CREATE TABLE IF NOT EXISTS user_circuit_data (
   circuit_hash VARCHAR(255) PRIMARY KEY,
   vk_path VARCHAR(255),
-  reduction_circuit_id INT DEFAULT NULL,
+  reduction_circuit_id VARCHAR(255) DEFAULT NULL,
   pis_len INT,
   proving_scheme VARCHAR(255),
   circuit_reduction_status INT,
-  FOREIGN KEY (reduction_circuit_id) REFERENCES reduction_circuit(id)
+  FOREIGN KEY (reduction_circuit_id) REFERENCES reduction_circuit(circuit_id)
 );
 
 CREATE TABLE IF NOT EXISTS task (
