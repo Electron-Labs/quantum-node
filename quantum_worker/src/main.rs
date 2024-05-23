@@ -18,13 +18,13 @@ pub mod utils;
 
 use std::{thread::sleep, time::Duration};
 use dotenv::dotenv;
-use quantum_db::repository::{task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_circuit_reduction_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
+use quantum_db::repository::{proof_repository::update_proof_status, task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
 use anyhow::Result as AnyhowResult;
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, task_status::TaskStatus, task_type::TaskType}, types::{config::ConfigData, db::task::Task}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, types::{config::ConfigData, db::task::Task}};
 use sqlx::{MySql, Pool};
 
 pub const BATCH_SIZE: u64 = 20; // Number of proofs to be included in 1 batch
-pub const WORKER_SLEEP_SECS: u64 = 2;
+pub const WORKER_SLEEP_SECS: u64 = 10;
 
 pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, config: &ConfigData) -> AnyhowResult<()> {
     let user_circuit_hash = registration_task.clone().user_circuit_hash;
@@ -59,6 +59,40 @@ pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, confi
     Ok(())
 }
 
+pub async fn generate_reduced_proof(pool: &Pool<MySql>, proof_generation_task: Task, config: &ConfigData) -> AnyhowResult<()> {
+    let proof_hash = proof_generation_task.clone().proof_id.clone().unwrap();
+    // Change Task status to InProgress
+    update_task_status(pool, proof_generation_task.clone().id.unwrap(), TaskStatus::InProgress).await?;
+
+    // Update Proof Status to Reducing
+    update_proof_status(pool, &proof_hash, ProofStatus::Reducing).await?;
+
+    let request = proof_generator::handle_proof_generation_task(pool, proof_generation_task.clone(), config).await;
+
+    match request {
+        Ok(_) => {
+            // Change proof_generation status to REDUCED
+            update_proof_status(pool, &proof_hash, ProofStatus::Reduced).await?;
+
+            // Update task status to completed
+            update_task_status(pool, proof_generation_task.clone().id.unwrap(), TaskStatus::Completed).await?;
+
+            println!("Proof Reduced Successfully");
+        },  
+        Err(e) => {
+            // Change proof_generation status to FAILED
+            update_proof_status(pool, &proof_hash, ProofStatus::ReductionFailed).await?;
+
+            // Update task status to failed
+            update_task_status(pool, proof_generation_task.clone().id.unwrap(), TaskStatus::Failed).await?;
+
+            println!("Proof Reduction Failed: {:?}", e.to_string());
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> AnyhowResult<()> {
     println!(" --- Initialising DB connection pool ---");
     let pool = connection::get_pool().await;
@@ -70,7 +104,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             // TODO: Do aggregation and submit on ethereum
         }
 
-        let unpicked_task = get_unpicked_circuit_reduction_task(pool).await?;
+        let unpicked_task = get_unpicked_task(pool).await?;
         if unpicked_task.is_some() {
             let task = unpicked_task.unwrap();
             if task.task_type == TaskType::CircuitReduction {

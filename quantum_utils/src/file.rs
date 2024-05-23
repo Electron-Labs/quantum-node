@@ -1,6 +1,5 @@
 use std::{fs::{self, File}, io::{BufWriter, Read, Write}};
 
-use keccak_hash::keccak;
 use serde::Serialize;
 
 use anyhow::Result as AnyhowResult;

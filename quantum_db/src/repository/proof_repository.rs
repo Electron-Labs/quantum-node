@@ -44,6 +44,14 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
     proof
 }
 
+pub async fn update_proof_status(pool: &Pool<MySql>, proof_id: &str, proof_status: ProofStatus) -> AnyhowResult<()>{
+    todo!()
+}
+
+pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction_proof_path: &str, reduction_pis_path: &str, reduction_time: u64) -> AnyhowResult<()> {
+    todo!()
+}
+
 fn get_proof_from_mysql_row(row: MySqlRow) -> AnyhowResult<Proof>{
     let proof_status_as_u8: u8 = row.try_get_unchecked("proof_status")?;
     let proof_status =  ProofStatus::from(proof_status_as_u8);

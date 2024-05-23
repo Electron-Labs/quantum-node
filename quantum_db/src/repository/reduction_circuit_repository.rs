@@ -47,3 +47,8 @@ pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: Re
     };
     row_affected
 }
+
+// get ReductionCircuit data from reduction_circuit_id
+pub async fn get_reduction_circuit_data_by_id(pool: &Pool<MySql>, id: &str) -> AnyhowResult<ReductionCircuit> {
+    todo!()
+}
