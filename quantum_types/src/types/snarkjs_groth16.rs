@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use anyhow::Result as AnyhowResult;
 
-use crate::traits::vkey::Vkey;
+use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
 use super::config::ConfigData;
 
@@ -49,6 +49,76 @@ impl Vkey for SnarkJSGroth16Vkey {
 		Ok(gnark_vkey)
 	}
 }
+
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
+pub struct SnarkJSGroth16Proof {
+    pi_a: Vec<String>,
+    pi_b: Vec<Vec<String>>,
+    pi_c: Vec<String>,
+    protocol: String,
+    curve: String
+}
+
+impl Proof for SnarkJSGroth16Proof {
+	fn serialize(&self) -> AnyhowResult<Vec<u8>> {
+		let mut buffer: Vec<u8> = Vec::new();
+		BorshSerialize::serialize(&self,&mut buffer)?;
+		Ok(buffer)
+	}
+
+	fn deserialize(bytes: Vec<u8>) -> AnyhowResult<Self> {
+		let key: SnarkJSGroth16Proof = BorshDeserialize::deserialize(&mut bytes.as_slice())?;
+		Ok(key)
+	}
+
+	fn dump_proof(&self, circuit_hash: &str, config_data: &ConfigData, proof_id: &str) -> AnyhowResult<String> {
+		let proof_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.proof_path);
+		let file_name = format!("proof_{}.json", proof_id);
+   		let proof_key_full_path = format!("{}/{}", proof_path.as_str(),&file_name );
+		// println!("{;]:?}")
+    	dump_object(&self, &proof_path, &file_name)?;
+		Ok(proof_key_full_path)
+	}
+
+	fn read_proof(full_path: &str) -> AnyhowResult<Self> {
+		let json_data = read_file(full_path)?;
+		let gnark_vkey: SnarkJSGroth16Proof = serde_json::from_str(&json_data)?;
+		Ok(gnark_vkey)
+	}
+}
+
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
+pub struct SnarkJSGroth16Pis(Vec<String>);
+
+impl Pis for SnarkJSGroth16Pis {
+	fn serialize(&self) -> AnyhowResult<Vec<u8>> {
+		let mut buffer: Vec<u8> = Vec::new();
+		BorshSerialize::serialize(&self,&mut buffer)?;
+		Ok(buffer)
+	}
+
+	fn deserialize(bytes: Vec<u8>) -> AnyhowResult<Self> {
+		let key: SnarkJSGroth16Pis = BorshDeserialize::deserialize(&mut bytes.as_slice())?;
+		Ok(key)
+	}
+
+	fn dump_pis(&self, circuit_hash: &str, config_data: &ConfigData, proof_id: &str) -> AnyhowResult<String> {
+		let pis_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.public_inputs_path);
+		let file_name = format!("pis_{}.json", proof_id);
+   		let pis_key_full_path = format!("{}/{}", pis_path.as_str(), &file_name);
+		// println!("{;]:?}")
+    	dump_object(&self, &pis_path, &file_name)?;
+		Ok(pis_key_full_path)
+	}
+
+	fn read_pis(full_path: &str) -> AnyhowResult<Self> {
+		let json_data = read_file(full_path)?;
+		let gnark_pis: SnarkJSGroth16Pis = serde_json::from_str(&json_data)?;
+		Ok(gnark_pis)
+	}
+}
+
+
 
 #[cfg(test)]
 mod tests {

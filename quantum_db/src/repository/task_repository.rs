@@ -77,3 +77,18 @@ pub async fn get_aggregation_waiting_tasks_num(pool: &Pool<MySql>) -> Result<u64
     };
     reduction_circuit
 } 
+
+pub async fn create_proof_task(pool: &Pool<MySql>, user_circuit_hash: &str, task_type: TaskType, task_status: TaskStatus, proof_id: &str) -> AnyhowResult<u64, Error> { 
+    let query  = sqlx::query("INSERT into task(user_circuit_hash, task_type, task_status, proof_id) VALUES(?,?,?,?)")
+                .bind(user_circuit_hash).bind(task_type.as_u8()).bind(task_status.as_u8()).bind(proof_id);
+
+    // info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(t) => Ok(t.rows_affected()),
+        Err(e) => {
+            println!("error in db: {:?}", e.to_string());
+            Err(anyhow!(CustomError::DB(e.to_string())))
+        }
+    };
+    row_affected
+}
