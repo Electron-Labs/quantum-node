@@ -10,6 +10,7 @@ use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Proof;
 use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Vkey;
 use quantum_types::types::config::ConfigData;
 use rocket::State;
+use service::proof::get_proof_data_exec;
 use service::proof::submit_proof_exec;
 use service::register_circuit::get_circuit_registration_status;
 use service::register_circuit::register_circuit_exec;
@@ -21,9 +22,9 @@ pub mod error;
 
 use anyhow::Result as AnyhowResult;
 use types::circuit_registration_status::CircuitRegistrationStatusResponse;
+use types::proof_data::ProofDataResponse;
 use types::register_circuit::RegisterCircuitRequest;
 use types::register_circuit::RegisterCircuitResponse;
-// use types::snarkjs_groth16::SnarkJSGroth16Vkey;
 
 use quantum_types;
 use types::submit_proof::SubmitProofRequest;
@@ -83,10 +84,19 @@ async fn submit_proof(data: SubmitProofRequest, config_data: &State<ConfigData>)
     }
 }
 
+#[get("/proof/<proof_id>")]
+async fn get_proof_status(proof_id: String, config_data: &State<ConfigData>) -> AnyhowResult<Json<ProofDataResponse>, CustomError> {
+    let response = get_proof_data_exec(proof_id, config_data).await;
+    match response{
+        Ok(r) => Ok(Json(r)),
+        Err(e) => Err(CustomError::Internal(e.to_string()))
+    }
+}
+
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
     let config_data = ConfigData::new("./config.yaml");
     let _db_initialize = get_pool().await;
-    rocket::build().manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof])
+    rocket::build().manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status])
 }
