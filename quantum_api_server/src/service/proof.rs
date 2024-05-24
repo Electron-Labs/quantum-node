@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result as AnyhowResult};
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
-    check_if_circuit_reduction_completed(&data.circuit_hash).await?;
+    validate_circuit_data_in_submit_proof_request(&data).await?;
     
     let proof: T = T::deserialize(&mut data.proof.as_slice())?;
     let proof_id = get_keccak_hash_from_bytes(data.proof.as_slice());
@@ -61,8 +61,8 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
     return Ok(response);
 }
 
-pub async fn check_if_circuit_reduction_completed(circuit_hash: &str) -> AnyhowResult<()>{
-    let circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash).await;
+async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest) -> AnyhowResult<()>{
+    let circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await;
     let circuit_data = match circuit_data {
         Ok(cd) => Ok(cd),
         Err(_) => {
@@ -71,11 +71,16 @@ pub async fn check_if_circuit_reduction_completed(circuit_hash: &str) -> AnyhowR
         }
     };
 
-    let cd = circuit_data?;
-    if cd.circuit_reduction_status != CircuitReductionStatus::Completed {
+    let circuit_data = circuit_data?;
+    if circuit_data.circuit_reduction_status != CircuitReductionStatus::Completed {
         println!("circuit reduction not completed");
         return Err(anyhow!(CustomError::BadRequest("circuit reduction not completed".to_string())));
     }
+    if data.proof_type != circuit_data.proving_scheme {
+        println!("prove type is not correct");
+        return Err(anyhow!(CustomError::BadRequest("prove type is not correct".to_string())));
+    }
+    
     Ok(())
 }
 
