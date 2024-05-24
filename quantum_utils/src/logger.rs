@@ -1,4 +1,4 @@
-use tracing_appender::{non_blocking::WorkerGuard, rolling::{daily}};
+use tracing_appender::{non_blocking::WorkerGuard, rolling::daily};
 use tracing_subscriber::{filter, fmt, prelude::*, util::SubscriberInitExt};
 
 pub fn initialize_logger(file_name: &str) -> WorkerGuard {

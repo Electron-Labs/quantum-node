@@ -16,3 +16,8 @@ quantum_utils = {path = "../quantum_utils"}
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
 tracing-appender = "0.2.3"
+num-bigint = "0.4.4"
+ark-bn254 = "0.4.0"
+ark-ec = "0.4.2"
+ark-ff = "0.4.2"
+ark-groth16 = "0.4.0"
