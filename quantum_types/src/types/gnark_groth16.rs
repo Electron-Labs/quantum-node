@@ -94,7 +94,6 @@ impl Vkey for GnarkGroth16Vkey {
 	fn dump_vk(&self, circuit_hash: &str, config_data: &ConfigData) -> AnyhowResult<String> {
 		let vk_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.user_data_path);
    		let vk_key_full_path = format!("{}/vkey.json", vk_path.as_str() );
-		// println!("{;]:?}")
     	dump_object(&self, vk_path.as_str(), "vkey.json")?;
 		Ok(vk_key_full_path)
 	}
@@ -131,7 +130,6 @@ impl Proof for GnarkGroth16Proof {
 		let proof_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.proof_path);
 		let file_name = format!("proof_{}.json", proof_id);
    		let proof_key_full_path = format!("{}/{}", proof_path.as_str(),&file_name );
-		// println!("{;]:?}")
     	dump_object(&self, &proof_path, &file_name)?;
 		Ok(proof_key_full_path)
 	}
@@ -162,7 +160,6 @@ impl Pis for GnarkGroth16Pis {
 		let pis_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.public_inputs_path);
 		let file_name = format!("pis_{}.json", proof_id);
    		let pis_key_full_path = format!("{}/{}", pis_path.as_str(), &file_name);
-		// println!("{;]:?}")
     	dump_object(&self, &pis_path, &file_name)?;
 		Ok(pis_key_full_path)
 	}

@@ -9,6 +9,7 @@ use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Pis;
 use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Proof;
 use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Vkey;
 use quantum_types::types::config::ConfigData;
+use quantum_utils::logger::initialize_logger;
 use rocket::State;
 use service::proof::get_proof_data_exec;
 use service::proof::submit_proof_exec;
@@ -21,6 +22,7 @@ pub mod connection;
 pub mod error;
 
 use anyhow::Result as AnyhowResult;
+use tracing::info;
 use types::circuit_registration_status::CircuitRegistrationStatusResponse;
 use types::proof_data::ProofDataResponse;
 use types::register_circuit::RegisterCircuitRequest;
@@ -75,7 +77,7 @@ async fn submit_proof(data: SubmitProofRequest, config_data: &State<ConfigData>)
     } else if data.proof_type == ProvingSchemes::Groth16 {
         response = submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis>(data, config_data).await;
     } else {
-        println!("unspoorted proving scheme");
+        info!("unspoorted proving scheme");
         return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
     }
     match response {
@@ -96,6 +98,7 @@ async fn get_proof_status(proof_id: String, config_data: &State<ConfigData>) -> 
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
+    let _guard = initialize_logger("qunatum_node_api.log");
     let config_data = ConfigData::new("./config.yaml");
     let _db_initialize = get_pool().await;
     rocket::build().manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status])

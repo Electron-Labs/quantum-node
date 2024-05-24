@@ -4,6 +4,7 @@ use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, pr
 use rocket::State;
 
 use anyhow::Result as AnyhowResult;
+use tracing::info;
 
 use crate::{connection::get_pool, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
@@ -19,7 +20,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     // Check if circuit is already registerd
     let is_circuit_already_registered = check_if_circuit_has_already_registered(circuit_hash_string.as_str()).await;
     if is_circuit_already_registered  {
-        println!("circuit has alerady been registered");
+        info!("circuit has alerady been registered");
         return Ok(
             RegisterCircuitResponse{circuit_hash: circuit_hash_string}
         );
@@ -55,7 +56,7 @@ async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSch
         Some(rc) => Some(rc.circuit_id),
         None => None
     };
-    println!("reduction circuit id: {:?}", reduction_circuit_id );
+    info!("reduction circuit id: {:?}", reduction_circuit_id );
     Ok(reduction_circuit_id)
 }
 

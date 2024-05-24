@@ -3,6 +3,7 @@ use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, pr
 use quantum_utils::keccak::get_keccak_hash_from_bytes;
 use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};
+use tracing::info;
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
@@ -12,8 +13,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     let proof_id = get_keccak_hash_from_bytes(data.proof.as_slice());
 
     check_if_proof_already_exist(&proof_id).await?;
-    // TODO: add correct proving scheme check also
-    println!("{:?}", proof_id);
+
     let pis: F = F::deserialize(&mut data.pis.as_slice())?;
     
     let proof_full_path = proof.dump_proof(&data.circuit_hash, config_data, &proof_id)?;
@@ -47,7 +47,7 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
         let superproof = match superproof {
             Ok(sp) => Ok(sp),
             Err(e) => {
-                println!("err in superproof fetch");
+                info!("err in superproof fetch");
                 let error_msg = format!("superproof not found in db: {}", e.to_string());
                 Err(anyhow!(CustomError::Internal(error_msg)))
             }
@@ -66,18 +66,18 @@ async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest
     let circuit_data = match circuit_data {
         Ok(cd) => Ok(cd),
         Err(_) => {
-            println!("circuit has not been registered");
+            info!("circuit has not been registered");
             Err(anyhow!(CustomError::BadRequest("circuit hash not found".to_string())))
         }
     };
 
     let circuit_data = circuit_data?;
     if circuit_data.circuit_reduction_status != CircuitReductionStatus::Completed {
-        println!("circuit reduction not completed");
+        info!("circuit reduction not completed");
         return Err(anyhow!(CustomError::BadRequest("circuit reduction not completed".to_string())));
     }
     if data.proof_type != circuit_data.proving_scheme {
-        println!("prove type is not correct");
+        info!("prove type is not correct");
         return Err(anyhow!(CustomError::BadRequest("prove type is not correct".to_string())));
     }
     
@@ -91,7 +91,7 @@ pub async fn check_if_proof_already_exist(proof_id: &str) -> AnyhowResult<()> {
         Err(_) => false
     };
     if is_proof_already_registered {
-        println!("proof already exist");
+        info!("proof already exist");
         return Err(anyhow!(CustomError::BadRequest("proof already exist".to_string())));
     }
     Ok(())

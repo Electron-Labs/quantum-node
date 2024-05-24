@@ -9,3 +9,6 @@ edition = "2021"
 sqlx = { version = "0.7", features = [ "runtime-tokio", "mysql", "chrono", "macros" ] }
 quantum_types = {path = "../quantum_types"}
 anyhow = "1.0.83"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
+tracing-appender = "0.2.3"

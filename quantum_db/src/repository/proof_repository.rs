@@ -1,7 +1,8 @@
 use quantum_types::{enums::proof_status::ProofStatus, types::db::proof::Proof};
-use sqlx::{mysql::MySqlRow, MySql, Pool, Row};
+use sqlx::{mysql::MySqlRow, Execute, MySql, Pool, Row};
 
 use anyhow::{anyhow, Error, Result as AnyhowResult};
+use tracing::info;
 
 use crate::error::error::CustomError;
 
@@ -9,7 +10,7 @@ pub async fn get_aggregation_waiting_proof_num(pool: &Pool<MySql>) -> AnyhowResu
     let query  = sqlx::query("SELECT Count(*) as reduced_proof_count from proof where proof_status = ?")
                 .bind(ProofStatus::Reduced.as_u8());
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) =>{ 
             let id: u64 = t.try_get_unchecked("reduced_proof_count")?;
@@ -24,7 +25,7 @@ pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, 
     let query  = sqlx::query("INSERT into proof(proof_hash, pis_path, proof_path, proof_status, user_circuit_hash) VALUES(?,?,?,?,?)")
                 .bind(proof_hash).bind(pis_path).bind(proof_path).bind(proof_status.as_u8()).bind(user_circuit_hash);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) =>Err(anyhow!(CustomError::DB(e.to_string())))
@@ -36,7 +37,7 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
     let query  = sqlx::query("SELECT * from proof where proof_hash = ?")
                 .bind(proof_hash);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let proof = match query.fetch_one(pool).await{
         Ok(t) => get_proof_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
@@ -48,7 +49,7 @@ pub async fn update_proof_status(pool: &Pool<MySql>, proof_id: &str, proof_statu
     let query  = sqlx::query("UPDATE proof set proof_status = ? where proof_hash = ?")
                 .bind(proof_status.as_u8()).bind(proof_id);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
@@ -60,7 +61,7 @@ pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction
     let query  = sqlx::query("UPDATE proof set reduction_proof_path = ?, reduction_proof_pis_path = ?, reduction_time = ?  where proof_hash = ?")
                 .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(proof_id);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))

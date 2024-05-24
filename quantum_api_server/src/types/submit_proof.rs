@@ -1,6 +1,7 @@
 use quantum_types::enums::proving_schemes::ProvingSchemes;
 use rocket::{data::{self, FromData, ToByteUnit}, http::{ContentType, Status}, outcome::Outcome, Data, Request};
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SubmitProofRequest {
@@ -32,12 +33,11 @@ impl<'r> FromData<'r> for SubmitProofRequest {
             Ok(_) => return Outcome::Error((Status::PayloadTooLarge, TooLarge)),
             Err(e) => return Outcome::Error((Status::InternalServerError, Io(e))),
         };
-        println!("request data {:?}", stream);
+        info!("request data {:?}", stream);
 
         // TODO: we can convert types here only
 
         let submit_proof_request = serde_json::from_str(&stream).unwrap();
-        println!("{:?}", submit_proof_request);
         Outcome::Success(submit_proof_request)
     }
 }

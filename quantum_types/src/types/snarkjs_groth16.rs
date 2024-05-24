@@ -75,7 +75,6 @@ impl Proof for SnarkJSGroth16Proof {
 		let proof_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.proof_path);
 		let file_name = format!("proof_{}.json", proof_id);
    		let proof_key_full_path = format!("{}/{}", proof_path.as_str(),&file_name );
-		// println!("{;]:?}")
     	dump_object(&self, &proof_path, &file_name)?;
 		Ok(proof_key_full_path)
 	}
@@ -106,7 +105,6 @@ impl Pis for SnarkJSGroth16Pis {
 		let pis_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.public_inputs_path);
 		let file_name = format!("pis_{}.json", proof_id);
    		let pis_key_full_path = format!("{}/{}", pis_path.as_str(), &file_name);
-		// println!("{;]:?}")
     	dump_object(&self, &pis_path, &file_name)?;
 		Ok(pis_key_full_path)
 	}

@@ -2,6 +2,7 @@ use quantum_types::enums::proving_schemes::ProvingSchemes;
 use rocket::serde::Serialize;
 use rocket::{data::{self, FromData, ToByteUnit}, http::{ContentType, Status}, outcome::Outcome, Data, Request};
 use serde::Deserialize;
+use tracing::info;
 // use crate::types::proving_schemes::ProvingSchemes;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -33,7 +34,7 @@ impl<'r> FromData<'r> for RegisterCircuitRequest {
             Ok(_) => return Outcome::Error((Status::PayloadTooLarge, TooLarge)),
             Err(e) => return Outcome::Error((Status::InternalServerError, Io(e))),
         };
-        println!("request data {:?}", stream);
+        info!("request data {:?}", stream);
 
         // TODO: we can convert types here only
 

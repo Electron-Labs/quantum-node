@@ -4,7 +4,8 @@ use quantum_types::enums::circuit_reduction_status::CircuitReductionStatus;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use sqlx::mysql::MySqlRow;
-use sqlx::{Error, MySql, Pool, Row};
+use sqlx::{Error, MySql, Pool, Row, Execute};
+use tracing::info;
 
 // use crate::connection::get_pool;
 use crate::error::error::CustomError;
@@ -14,7 +15,7 @@ pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_h
     let query  = sqlx::query("SELECT * from user_circuit_data where circuit_hash = ?")
                 .bind(circuit_hash);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let user_circuit_data = match query.fetch_one(pool).await{
         Ok(t) => get_user_circuit_data_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
@@ -26,7 +27,7 @@ pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk
     let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, reduction_circuit_id, pis_len, proving_scheme, circuit_reduction_status) VALUES(?,?,?,?,?,?)")
                 .bind(circuit_hash).bind(vk_path).bind(reduction_circuit_id).bind(pis_len).bind(proving_scheme.to_string()).bind(circuit_reduction_status.as_u8());
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => Err(e)
@@ -57,7 +58,7 @@ pub async fn update_user_circuit_data_reduction_status(pool: &Pool<MySql>, user_
     let query  = sqlx::query("UPDATE user_circuit_data set circuit_reduction_status = ? where circuit_hash = ?")
                 .bind(status.as_u8()).bind(user_circuit_hash);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
@@ -69,7 +70,7 @@ pub async fn update_user_circuit_data_redn_circuit(pool: &Pool<MySql>, user_circ
     let query  = sqlx::query("UPDATE user_circuit_data set reduction_circuit_id = ? where circuit_hash = ?")
                 .bind(reduction_circuit_id).bind(user_circuit_hash);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
