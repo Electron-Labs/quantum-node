@@ -63,9 +63,11 @@ pub async fn generate_reduced_proof(pool: &Pool<MySql>, proof_generation_task: T
     let proof_hash = proof_generation_task.clone().proof_id.clone().unwrap();
     // Change Task status to InProgress
     update_task_status(pool, proof_generation_task.clone().id.unwrap(), TaskStatus::InProgress).await?;
+    println!("Updated Task Status to InProgress");
 
     // Update Proof Status to Reducing
     update_proof_status(pool, &proof_hash, ProofStatus::Reducing).await?;
+    println!("Update Proof Status to Reducing");
 
     let request = proof_generator::handle_proof_generation_task(pool, proof_generation_task.clone(), config).await;
 
@@ -73,18 +75,22 @@ pub async fn generate_reduced_proof(pool: &Pool<MySql>, proof_generation_task: T
         Ok(_) => {
             // Change proof_generation status to REDUCED
             update_proof_status(pool, &proof_hash, ProofStatus::Reduced).await?;
+            println!("Changed proof status to REDUCED");
 
             // Update task status to completed
             update_task_status(pool, proof_generation_task.clone().id.unwrap(), TaskStatus::Completed).await?;
+            println!("Changed task status to Completed");
 
             println!("Proof Reduced Successfully");
         },  
         Err(e) => {
             // Change proof_generation status to FAILED
             update_proof_status(pool, &proof_hash, ProofStatus::ReductionFailed).await?;
+            println!("Changed Proof Status to FAILED");
 
             // Update task status to failed
             update_task_status(pool, proof_generation_task.clone().id.unwrap(), TaskStatus::Failed).await?;
+            println!("Changed Task Status to FAILED");
 
             println!("Proof Reduction Failed: {:?}", e.to_string());
         }
@@ -112,7 +118,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
                 regsiter_circuit(pool, task, config_data).await?;
             } else if task.task_type == TaskType::ProofGeneration {
                 println!("Picked up proof generation task --> {:?}", task);
-                // TODO: Generate reduced proof and do DB updations accordingly
+                generate_reduced_proof(pool, task, config_data).await?;
             }
         } else {
             println!("No task available to pick");

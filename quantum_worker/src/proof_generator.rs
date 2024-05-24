@@ -27,22 +27,27 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
 
     // Get inner_proof
     let inner_proof_path = proof_data.proof_path;
-    let inner_proof_data = fs::read_to_string(inner_proof_path)?;
+    let inner_proof_data = fs::read_to_string(&inner_proof_path)?;
+    println!("inner_proof_path :: {:?}", inner_proof_path);
 
     // Get inner_vk
     let inner_vk_path = user_circuit_data.vk_path;
-    let inner_vk_data = fs::read_to_string(inner_vk_path)?;
+    let inner_vk_data = fs::read_to_string(&inner_vk_path)?;
+    println!("inner_vk_path :: {:?}", inner_vk_path);
 
     // Get inner_pis
     let inner_pis_path = proof_data.pis_path;
+    println!("inner_pis_path :: {:?}", inner_pis_path);
 
     // Get outer_pk
     let outer_pk_path = reduction_circuit_data.proving_key_path;
     let outer_pk_bytes = read_bytes_from_file(&outer_pk_path)?;
+    println!("outer_pk_path :: {:?}", outer_pk_path);
 
     // Get outer_vk
     let outer_vk_path = reduction_circuit_data.vk_path;
     let outer_vk_bytes = read_bytes_from_file(&outer_vk_path)?;
+    println!("outer_vk_path :: {:?}", outer_vk_path);
 
     let prove_result: ProveResult;
 
@@ -75,11 +80,11 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
         return Err(anyhow::Error::msg(prove_result.msg));
     }
 
-    println!("Reduced Proof successfully generated");
+    println!("Reduced Proof successfully generated in {:?}", reduction_time);
 
     // Dump reduced proof and public inputs
     // TODO change proof bytes and pis bytes values
-    let (reduced_proof_path, reduced_pis_path) = dump_reduction_proof_data(config, &user_circuit_hash, &proof_hash, Vec::<u8>::new(), Vec::<u8>::new())?;
+    let (reduced_proof_path, reduced_pis_path) = dump_reduction_proof_data(config, &user_circuit_hash, &proof_hash, prove_result.proof_raw_bytes, prove_result.pub_inputs)?;
     println!("Dumped reduced proof and pis");
 
     // update reduction data corresponding to proof
