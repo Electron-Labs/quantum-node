@@ -47,3 +47,16 @@ pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: Re
     };
     row_affected
 }
+
+// get ReductionCircuit data from reduction_circuit_id
+pub async fn get_reduction_circuit_data_by_id(pool: &Pool<MySql>, id: &str) -> AnyhowResult<ReductionCircuit> {
+    let query  = sqlx::query("SELECT * from reduction_circuit where circuit_id = ?")
+                .bind(id);
+
+    // info!("{}", query.sql());
+    let reduction_circuit = match query.fetch_one(pool).await{
+        Ok(t) => get_reduction_circuit_data_from_mysql_row(t),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    reduction_circuit
+}

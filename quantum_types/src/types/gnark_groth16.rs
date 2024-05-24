@@ -144,7 +144,7 @@ impl Proof for GnarkGroth16Proof {
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
-pub struct GnarkGroth16Pis(Vec<String>);
+pub struct GnarkGroth16Pis(pub Vec<String>);
 
 impl Pis for GnarkGroth16Pis {
 	fn serialize(&self) -> AnyhowResult<Vec<u8>> {

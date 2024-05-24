@@ -8,7 +8,9 @@ pub enum ProofStatus {
     Reduced = 4,
     Aggregating = 5,
     Aggregated = 6,
-    Verified = 7
+    Verified = 7,
+    ReductionFailed = 8,
+    AggregationFailed = 9,
 }
 
 impl ProofStatus {
@@ -20,7 +22,9 @@ impl ProofStatus {
             ProofStatus::Reduced => 4,
             ProofStatus::Aggregating => 5,
             ProofStatus::Aggregated => 6,
-            ProofStatus::Verified => 7
+            ProofStatus::Verified => 7,
+            ProofStatus::ReductionFailed => 8,
+            ProofStatus::AggregationFailed => 9
         }
     }
 }
@@ -35,6 +39,8 @@ impl From<u8> for ProofStatus {
             5 => ProofStatus::Aggregating,
             6 => ProofStatus::Aggregated,
             7 => ProofStatus::Verified,
+            8 => ProofStatus::ReductionFailed,
+            9 => ProofStatus::AggregationFailed,
             // TODO: remove panic
             _ => panic!("Invalid enum value"),
         }
@@ -51,6 +57,8 @@ impl ToString for ProofStatus {
             ProofStatus::Aggregating => String::from("Aggregating"),
             ProofStatus::Aggregated => String::from("Aggregated"),
             ProofStatus::Verified => String::from("Verified"),
+            ProofStatus::ReductionFailed => String::from("ReductionFailed"),
+            ProofStatus::AggregationFailed => String::from("AggregationFailed"),
         }
     }
 }

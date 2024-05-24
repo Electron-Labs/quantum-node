@@ -42,7 +42,7 @@ pub async fn handle_registration_task(pool: &Pool<MySql>, registration_task: Tas
     }
     println!("Reduction circuit successfully built");
     // Dump reduction circuit proving key and verification key as raw bytes 
-    let (circuit_id, pk_path, vk_path) = dump_reduction_circuit_data(config, &build_result.pk_bytes_raw, &build_result.vk_bytes_raw)?;
+    let (circuit_id, pk_path, vk_path) = dump_reduction_circuit_data(config, &build_result.pk_raw_bytes, &build_result.vk_raw_bytes)?;
 
     println!("Dumped pk_bytes and vk_bytes for reduction circuit");
     // Add reduction circuit row (pk_path, vk_path, pis_len)
