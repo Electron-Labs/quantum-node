@@ -1,11 +1,15 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
+use std::str::FromStr;
+
 use borsh::{BorshDeserialize, BorshSerialize};
+use num_bigint::BigUint;
 use quantum_utils::file::{dump_object, read_file};
 use serde::{Deserialize, Serialize};
 
-use anyhow::Result as AnyhowResult;
+use anyhow::{anyhow, Result as AnyhowResult};
+use tracing::info;
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -22,6 +26,42 @@ pub struct SnarkJSGroth16Vkey {
     vk_delta_2: Vec<Vec<String>>,
     vk_alphabeta_12: Vec<Vec<Vec<String>>>,
     IC: Vec<Vec<String>>
+}
+
+impl SnarkJSGroth16Vkey {
+    pub fn validate_fq_point(fq: &Vec<String>) -> AnyhowResult<()> {
+        if fq.len() != 3 || fq[2] != "1" {
+            return Err(anyhow!("not valid"));
+        }
+        let x = ark_bn254::Fq::from(BigUint::from_str(&fq[0]).unwrap());
+        let y = ark_bn254::Fq::from(BigUint::from_str(&fq[1]).unwrap());
+        let p = ark_bn254::G1Affine::new_unchecked(x, y);
+        let is_valid = p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve();
+        if !is_valid {
+            return Err(anyhow!("not valid"));
+        }
+        Ok(())
+    }
+
+    pub fn validate_fq2_point(fq2: &Vec<Vec<String>>)  -> AnyhowResult<()>{
+        if fq2.len() != 3 || fq2[2].len() != 2 ||  fq2[2][0] != "1" || fq2[2][1] != "0" {
+            return Err(anyhow!("not valid"));
+        }
+        let x1 = ark_bn254::Fq::from(BigUint::from_str(&fq2[0][0])?);
+        let x2 = ark_bn254::Fq::from(BigUint::from_str(&fq2[0][1])?);
+
+        let x = ark_bn254::Fq2::new(x1, x2);
+
+        let y1 = ark_bn254::Fq::from(BigUint::from_str(&fq2[1][0])?);
+        let y2 = ark_bn254::Fq::from(BigUint::from_str(&fq2[1][1])?);
+        let y = ark_bn254::Fq2::new(y1, y2);
+        let p = ark_bn254::G2Affine::new_unchecked(x, y);
+        let is_valid = p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve();
+        if !is_valid {
+            return Err(anyhow!("not valid"));
+        }
+        Ok(())
+    }
 }
 
 impl Vkey for SnarkJSGroth16Vkey {
@@ -48,6 +88,22 @@ impl Vkey for SnarkJSGroth16Vkey {
 		let gnark_vkey: SnarkJSGroth16Vkey = serde_json::from_str(&json_data)?;
 		Ok(gnark_vkey)
 	}
+    
+    fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()> {
+        if self.IC.len() as u8 != num_public_inputs+1 {
+            return Err(anyhow!("not valid"));
+        }
+        SnarkJSGroth16Vkey::validate_fq_point(&self.vk_alpha_1)?;
+        for ic in &self.IC {
+            SnarkJSGroth16Vkey::validate_fq_point(ic)?;
+        }
+
+        SnarkJSGroth16Vkey::validate_fq2_point(&self.vk_beta_2)?;
+        SnarkJSGroth16Vkey::validate_fq2_point(&self.vk_gamma_2)?;
+        SnarkJSGroth16Vkey::validate_fq2_point(&self.vk_delta_2)?;
+        info!("vkey validated");
+        Ok(())
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -75,7 +131,6 @@ impl Proof for SnarkJSGroth16Proof {
 		let proof_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.proof_path);
 		let file_name = format!("proof_{}.json", proof_id);
    		let proof_key_full_path = format!("{}/{}", proof_path.as_str(),&file_name );
-		// println!("{;]:?}")
     	dump_object(&self, &proof_path, &file_name)?;
 		Ok(proof_key_full_path)
 	}
@@ -106,7 +161,6 @@ impl Pis for SnarkJSGroth16Pis {
 		let pis_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.public_inputs_path);
 		let file_name = format!("pis_{}.json", proof_id);
    		let pis_key_full_path = format!("{}/{}", pis_path.as_str(), &file_name);
-		// println!("{;]:?}")
     	dump_object(&self, &pis_path, &file_name)?;
 		Ok(pis_key_full_path)
 	}

@@ -1,6 +1,7 @@
 use std::fs;
 
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConfigData {
@@ -20,6 +21,8 @@ pub struct ConfigData {
 impl ConfigData {
     pub fn new(path: &str) -> ConfigData {
         let config_contents_str = fs::read_to_string(path).expect("provide a valid path");
-        serde_yaml::from_str(&config_contents_str).unwrap()
+        let config_data = serde_yaml::from_str(&config_contents_str).unwrap();
+        info!("config data loaded: {:?}", config_data);
+        return config_data;
     }
 }

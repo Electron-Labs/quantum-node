@@ -1,6 +1,7 @@
 use quantum_types::types::db::superproof::Superproof;
-use sqlx::{mysql::MySqlRow, MySql, Pool, Row};
+use sqlx::{mysql::MySqlRow, MySql, Pool, Row, Execute};
 use anyhow::{anyhow, Result as AnyhowResult};
+use tracing::info;
 
 use crate::error::error::CustomError;
 
@@ -8,11 +9,11 @@ pub async fn get_superproof_by_id(pool: &Pool<MySql>, id: u64) -> AnyhowResult<S
     let query  = sqlx::query("SELECT * from superproof where id = ?")
                 .bind(id);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let superproof = match query.fetch_one(pool).await{
         Ok(t) => get_superproof_from_row(t),
         Err(e) => {
-            println!("error in super proof fetch");
+            info!("error in super proof fetch");
             Err(anyhow!(CustomError::DB(e.to_string())))
         }
     };

@@ -22,6 +22,8 @@ use quantum_db::repository::{proof_repository::update_proof_status, task_reposit
 use anyhow::Result as AnyhowResult;
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, types::{config::ConfigData, db::task::Task}};
 use sqlx::{MySql, Pool};
+use quantum_utils::logger::initialize_logger;
+use tracing::info;
 
 pub const BATCH_SIZE: u64 = 20; // Number of proofs to be included in 1 batch
 pub const WORKER_SLEEP_SECS: u64 = 10;
@@ -132,6 +134,7 @@ async fn main() {
     println!(" --- Load env configuration ---");
     dotenv().ok();
     println!(" --- Starting worker --- ");
+    let _guard = initialize_logger("qunatum_node_worker.log");
     let worker_sleep_duration = Duration::from_secs(WORKER_SLEEP_SECS);
     let config_data = ConfigData::new("./config.yaml");
     let _res = worker(worker_sleep_duration, &config_data).await;

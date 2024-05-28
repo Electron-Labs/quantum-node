@@ -3,9 +3,10 @@ use quantum_db::repository::{reduction_circuit_repository::check_if_pis_len_comp
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::vkey::Vkey, types::{config::ConfigData, db::reduction_circuit::ReductionCircuit}};
 use rocket::State;
 
-use anyhow::Result as AnyhowResult;
+use anyhow::{anyhow, Result as AnyhowResult};
+use tracing::info;
 
-use crate::{connection::get_pool, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
+use crate::{connection::get_pool, error::error::CustomError, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
 pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<RegisterCircuitResponse> {
     // Retreive verification key bytes
@@ -13,13 +14,20 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
 
     // Borsh deserialise to corresponding vkey struct 
     let vkey: T = T::deserialize(&mut vkey_bytes.as_slice())?;
+    let _ = match vkey.validate(data.num_public_inputs) {
+        Ok(_) => Ok(()),
+        Err(_) => {
+            info!("vk is not valid");
+            Err(anyhow!(CustomError::Internal("vk is invalid".to_string())))
+        },
+    }?;
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
     let circuit_hash_string = get_circuit_hash_from_vkey_bytes(vkey_bytes);
 
     // Check if circuit is already registerd
     let is_circuit_already_registered = check_if_circuit_has_already_registered(circuit_hash_string.as_str()).await;
     if is_circuit_already_registered  {
-        println!("circuit has alerady been registered");
+        info!("circuit has alerady been registered");
         return Ok(
             RegisterCircuitResponse{circuit_hash: circuit_hash_string}
         );
@@ -55,7 +63,7 @@ async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSch
         Some(rc) => Some(rc.circuit_id),
         None => None
     };
-    println!("reduction circuit id: {:?}", reduction_circuit_id );
+    info!("reduction circuit id: {:?}", reduction_circuit_id );
     Ok(reduction_circuit_id)
 }
 

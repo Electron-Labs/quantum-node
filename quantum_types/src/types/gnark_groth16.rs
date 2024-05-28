@@ -1,10 +1,16 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
+use std::str::FromStr;
+
+use ark_bn254::g1::Config;
+use ark_ec::short_weierstrass::Affine;
 use borsh::{BorshSerialize, BorshDeserialize};
+use num_bigint::BigUint;
 use quantum_utils::file::{dump_object, read_file};
 use serde::{Serialize, Deserialize};
-use anyhow::Result as AnyhowResult;
+use anyhow::{anyhow, Result as AnyhowResult};
+use tracing::info;
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -79,6 +85,46 @@ pub struct GnarkGroth16Vkey {
 	PublicAndCommitmentCommitted: Vec<Vec<u32>>
 }
 
+impl GnarkGroth16Vkey {
+	pub fn validate_fq_point(fq: &Fq) -> AnyhowResult<()>{
+		let x = ark_bn254::Fq::from(BigUint::from_str(&fq.X)?); 
+		let y = ark_bn254::Fq::from(BigUint::from_str(&fq.Y)?); 
+		let p = ark_bn254::G1Affine::new_unchecked(x, y);
+		let is_valid = GnarkGroth16Vkey::check_if_g1_point_is_valid(&p);
+		if !is_valid {
+			info!("fq point not valid");
+			return Err(anyhow!("not valid point"));
+		}
+		Ok(())
+	}
+	
+	pub fn validate_fq2_points(fq2: &Fq2) -> AnyhowResult<()>{
+		let x1 = ark_bn254::Fq::from(BigUint::from_str(&fq2.X.A0)?); 
+		let x2 = ark_bn254::Fq::from(BigUint::from_str(&fq2.X.A1)?); 
+		let x = ark_bn254::Fq2::new(x1, x2);
+	
+		let y1 = ark_bn254::Fq::from(BigUint::from_str(&fq2.Y.A0)?); 
+		let y2 = ark_bn254::Fq::from(BigUint::from_str(&fq2.Y.A1)?); 
+		let y = ark_bn254::Fq2::new(y1, y2);
+	
+		let p = ark_bn254::G2Affine::new(x, y);
+		let is_valid = GnarkGroth16Vkey::check_if_g2_point_is_valid(&p);
+		if !is_valid {
+			info!("fq2 point not valid");
+			return Err(anyhow!("not valid point"));
+		}
+		Ok(())
+	}
+
+	pub fn check_if_g1_point_is_valid(p: &Affine<Config>) -> bool {
+		return p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve()
+	}
+	
+	pub fn check_if_g2_point_is_valid(p: &Affine<ark_bn254::g2::Config>) -> bool {
+		return p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve()
+	}
+}
+
 impl Vkey for GnarkGroth16Vkey {
 	fn serialize(&self) -> AnyhowResult<Vec<u8>> {
 		let mut buffer: Vec<u8> = Vec::new();
@@ -94,7 +140,6 @@ impl Vkey for GnarkGroth16Vkey {
 	fn dump_vk(&self, circuit_hash: &str, config_data: &ConfigData) -> AnyhowResult<String> {
 		let vk_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.user_data_path);
    		let vk_key_full_path = format!("{}/vkey.json", vk_path.as_str() );
-		// println!("{;]:?}")
     	dump_object(&self, vk_path.as_str(), "vkey.json")?;
 		Ok(vk_key_full_path)
 	}
@@ -103,6 +148,32 @@ impl Vkey for GnarkGroth16Vkey {
 		let json_data = read_file(full_path)?;
 		let gnark_vkey: GnarkGroth16Vkey = serde_json::from_str(&json_data)?;
 		Ok(gnark_vkey)
+	}
+
+	fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()> {
+		GnarkGroth16Vkey::validate_fq_point(&self.G1.Alpha)?;
+		for point in &self.G1.K {
+			GnarkGroth16Vkey::validate_fq_point(point)?;
+		}
+		GnarkGroth16Vkey::validate_fq2_points(&self.G2.Beta)?;
+		GnarkGroth16Vkey::validate_fq2_points(&self.G2.Delta)?;
+		GnarkGroth16Vkey::validate_fq2_points(&self.G2.Gamma)?;
+		GnarkGroth16Vkey::validate_fq2_points(&self.CommitmentKey.G)?;
+		GnarkGroth16Vkey::validate_fq2_points(&self.CommitmentKey.GRootSigmaNeg)?;
+		
+		if !(self.G1.K.len() as u8 == num_public_inputs+1 || self.G1.K.len() as u8 == num_public_inputs+2) {
+			return Err(anyhow!("not valid"));
+		}
+
+		if self.G1.K.len() as u8 == num_public_inputs +1 && self.PublicAndCommitmentCommitted.len() != 0{
+			return Err(anyhow!("not valid"));
+		}
+		if self.G1.K.len() as u8 == num_public_inputs + 2 && 
+			(self.PublicAndCommitmentCommitted.len() != 1 || self.PublicAndCommitmentCommitted[0].len() !=0){
+			return Err(anyhow!("not valid"));
+		}
+		info!("vkey validated");
+		Ok(())
 	}
 }
 
@@ -131,7 +202,6 @@ impl Proof for GnarkGroth16Proof {
 		let proof_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.proof_path);
 		let file_name = format!("proof_{}.json", proof_id);
    		let proof_key_full_path = format!("{}/{}", proof_path.as_str(),&file_name );
-		// println!("{;]:?}")
     	dump_object(&self, &proof_path, &file_name)?;
 		Ok(proof_key_full_path)
 	}
@@ -162,7 +232,6 @@ impl Pis for GnarkGroth16Pis {
 		let pis_path = format!("{}/{}{}", config_data.storage_folder_path, circuit_hash, config_data.public_inputs_path);
 		let file_name = format!("pis_{}.json", proof_id);
    		let pis_key_full_path = format!("{}/{}", pis_path.as_str(), &file_name);
-		// println!("{;]:?}")
     	dump_object(&self, &pis_path, &file_name)?;
 		Ok(pis_key_full_path)
 	}

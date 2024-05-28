@@ -1,7 +1,8 @@
 use quantum_types::{enums::{task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
-use sqlx::{mysql::MySqlRow, MySql, Pool};
+use sqlx::{mysql::MySqlRow, MySql, Pool, Execute};
 use sqlx::Row;
 use anyhow::{anyhow, Error, Result as AnyhowResult};
+use tracing::info;
 
 use crate::error::error::CustomError;
 // use crate::connection::get_pool;
@@ -10,7 +11,7 @@ pub async fn create_circuit_reduction_task(pool: &Pool<MySql>,user_circuit_hash:
     let query  = sqlx::query("INSERT into task(user_circuit_hash, task_type, task_status) VALUES(?,?,?)")
                 .bind(user_circuit_hash).bind(task_type.as_u8()).bind(task_status.as_u8());
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
@@ -25,7 +26,7 @@ pub async fn get_unpicked_task(pool: &Pool<MySql>) -> Result<Option<Task>, Error
     let query  = sqlx::query("SELECT * from task where task_status = ? order by id LIMIT 1")
                 .bind(TaskStatus::NotPicked.as_u8());
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let reduction_circuit = match query.fetch_optional(pool).await{
         Ok(t) => get_task_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
@@ -55,7 +56,7 @@ pub async fn update_task_status(pool: &Pool<MySql>, task_id: u64, task_status: T
     let query  = sqlx::query("UPDATE task set task_status = ? where id = ?")
                 .bind(task_status.as_u8()).bind(task_id);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
@@ -67,7 +68,7 @@ pub async fn get_aggregation_waiting_tasks_num(pool: &Pool<MySql>) -> Result<u64
     let query  = sqlx::query("SELECT Count(*) as reduced_proof_count from task where task_status = ? and task_type = ? ")
                 .bind(TaskStatus::Completed.as_u8()).bind(TaskType::ProofGeneration.as_u8());
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) =>{ 
             let id: u64 = t.try_get_unchecked("reduced_proof_count")?;
@@ -82,11 +83,11 @@ pub async fn create_proof_task(pool: &Pool<MySql>, user_circuit_hash: &str, task
     let query  = sqlx::query("INSERT into task(user_circuit_hash, task_type, task_status, proof_id) VALUES(?,?,?,?)")
                 .bind(user_circuit_hash).bind(task_type.as_u8()).bind(task_status.as_u8()).bind(proof_id);
 
-    // info!("{}", query.sql());
+    info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => {
-            println!("error in db: {:?}", e.to_string());
+            info!("error in db: {:?}", e.to_string());
             Err(anyhow!(CustomError::DB(e.to_string())))
         }
     };
