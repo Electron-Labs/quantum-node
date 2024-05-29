@@ -23,6 +23,7 @@ pub mod error;
 
 use anyhow::Result as AnyhowResult;
 use tracing::info;
+use types::auth::AuthToken;
 use types::circuit_registration_status::CircuitRegistrationStatusResponse;
 use types::proof_data::ProofDataResponse;
 use types::register_circuit::RegisterCircuitRequest;
@@ -40,12 +41,12 @@ fn index() -> &'static str {
 }
 
 #[get("/ping")]
-fn ping() -> &'static str {
+fn ping(_auth_token: AuthToken) -> &'static str {
     service::ping::ping()
 }
 
 #[post("/register_circuit", data = "<data>")]
-async fn register_circuit(data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
+async fn register_circuit(_auth_token: AuthToken, data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
     let response: AnyhowResult<RegisterCircuitResponse>; 
     if data.proof_type == ProvingSchemes::GnarkGroth16 {
         response = register_circuit_exec::<GnarkGroth16Vkey>(data, config_data).await;
@@ -61,7 +62,7 @@ async fn register_circuit(data: RegisterCircuitRequest, config_data: &State<Conf
 }
 
 #[get("/circuit/<circuit_id>/status")]
-async fn get_circuit_reduction_status(circuit_id: String) -> AnyhowResult<Json<CircuitRegistrationStatusResponse>, CustomError>{
+async fn get_circuit_reduction_status(_auth_token: AuthToken, circuit_id: String) -> AnyhowResult<Json<CircuitRegistrationStatusResponse>, CustomError>{
     let status = get_circuit_registration_status(circuit_id).await;
     match status {
         Ok(s) => Ok(Json(s)),
@@ -70,7 +71,7 @@ async fn get_circuit_reduction_status(circuit_id: String) -> AnyhowResult<Json<C
 }
 
 #[post("/proof", data = "<data>")]
-async fn submit_proof(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
+async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
     let response: AnyhowResult<SubmitProofResponse>; 
     if data.proof_type == ProvingSchemes::GnarkGroth16 {
         response = submit_proof_exec::<GnarkGroth16Proof, GnarkGroth16Pis>(data, config_data).await;
@@ -87,7 +88,7 @@ async fn submit_proof(data: SubmitProofRequest, config_data: &State<ConfigData>)
 }
 
 #[get("/proof/<proof_id>")]
-async fn get_proof_status(proof_id: String, config_data: &State<ConfigData>) -> AnyhowResult<Json<ProofDataResponse>, CustomError> {
+async fn get_proof_status(_auth_token: AuthToken, proof_id: String, config_data: &State<ConfigData>) -> AnyhowResult<Json<ProofDataResponse>, CustomError> {
     let response = get_proof_data_exec(proof_id, config_data).await;
     match response{
         Ok(r) => Ok(Json(r)),

@@ -1,0 +1,19 @@
+use sqlx::{MySql, Pool, Execute};
+use tracing::info;
+use anyhow::Result as AnyhowResult;
+
+pub async fn check_if_auth_token_registered(pool: &Pool<MySql>, auth_token: &str) -> AnyhowResult<bool> {
+     // oldest_entry(task_status: TaskStatus::NotPicked)
+     let query  = sqlx::query("SELECT * from auth where auth_token = ?")
+     .bind(auth_token);
+
+    info!("{}", query.sql());
+    let is_present = match query.fetch_optional(pool).await?{
+        Some(t) => {
+            println!("{:?}", t);
+            true
+        }
+        None => false,
+    };
+    Ok(is_present)
+}
