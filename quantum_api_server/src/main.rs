@@ -1,6 +1,7 @@
 use connection::get_pool;
 use dotenv::dotenv;
 use error::error::CustomError;
+use quantum_db::repository::protocol::get_protocol_by_auth_token;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
 use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
@@ -11,7 +12,7 @@ use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Vkey;
 use quantum_types::types::config::ConfigData;
 use quantum_utils::logger::initialize_logger;
 use rocket::State;
-use service::auth::generate_auth_token_for_protocol;
+use service::protocol::generate_auth_token_for_protocol;
 use service::proof::get_proof_data_exec;
 use service::proof::submit_proof_exec;
 use service::register_circuit::get_circuit_registration_status;
@@ -38,6 +39,7 @@ use types::submit_proof::SubmitProofResponse;
 
 #[macro_use] extern crate rocket;
 
+
 #[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
@@ -49,12 +51,32 @@ fn ping(_auth_token: AuthToken) -> &'static str {
 }
 
 #[post("/register_circuit", data = "<data>")]
-async fn register_circuit(_auth_token: AuthToken, data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
+async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
     let response: AnyhowResult<RegisterCircuitResponse>; 
+    let protocol = match get_protocol_by_auth_token(get_pool().await, &auth_token.0).await {
+        Ok(p) => Ok(p),
+        Err(_) => {
+            info!("error in db while fetching protocol");
+            Err(CustomError::Internal("error in db while fetching protocol".to_string()))
+        },
+    };
+    let protocol = protocol?;
+    info!("{:?}", protocol);
+    let protocol = match protocol {
+        Some(p) => Ok(p),
+        None => {
+            info!("No protocol against this auth token");
+            Err(CustomError::Internal("No protocol against this auth token".to_string()))
+        },
+    };
+    let protocol = protocol?;
+
+    info!("{:?}", protocol);
+
     if data.proof_type == ProvingSchemes::GnarkGroth16 {
-        response = register_circuit_exec::<GnarkGroth16Vkey>(data, config_data).await;
+        response = register_circuit_exec::<GnarkGroth16Vkey>(data, config_data, protocol).await;
     } else if data.proof_type == ProvingSchemes::Groth16 {
-        response = register_circuit_exec::<SnarkJSGroth16Vkey>(data, config_data).await;
+        response = register_circuit_exec::<SnarkJSGroth16Vkey>(data, config_data, protocol).await;
     } else {
         return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
     }

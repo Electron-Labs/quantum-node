@@ -19,6 +19,18 @@ CREATE TABLE IF NOT EXISTS reduction_circuit (
   KEY idx_pis_len (pis_len)
 );
 
+CREATE TABLE IF NOT EXISTS protocol (
+  protocol_name varchar(255),
+  auth_token varchar(255) DEFAULT NULL,
+  PRIMARY KEY (protocol_name)
+);
+
+CREATE TABLE IF NOT EXISTS auth (
+  auth_token varchar(255),
+  is_master INT DEFAULT 0,
+  PRIMARY KEY (auth_token)
+);
+
 CREATE TABLE IF NOT EXISTS user_circuit_data (
   circuit_hash VARCHAR(255) PRIMARY KEY,
   vk_path VARCHAR(255),
@@ -26,7 +38,9 @@ CREATE TABLE IF NOT EXISTS user_circuit_data (
   pis_len INT,
   proving_scheme VARCHAR(255),
   circuit_reduction_status INT,
-  FOREIGN KEY (reduction_circuit_id) REFERENCES reduction_circuit(circuit_id)
+  protocol_name VARCHAR(255),
+  FOREIGN KEY (reduction_circuit_id) REFERENCES reduction_circuit(circuit_id),
+  FOREIGN KEY (protocol_name) REFERENCES protocol(protocol_name)
 );
 
 CREATE TABLE IF NOT EXISTS task (
@@ -66,12 +80,6 @@ CREATE TABLE IF NOT EXISTS superproof (
   agg_time INT
 );
 
-CREATE TABLE IF NOT EXISTS auth (
-  protocol_name varchar(255) DEFAULT NULL,
-  id int NOT NULL AUTO_INCREMENT,
-  auth_token varchar(255) DEFAULT NULL,
-  is_master int DEFAULT '0',
-  PRIMARY KEY (id)
-)
+
 "
 

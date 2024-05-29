@@ -9,5 +9,6 @@ pub struct UserCircuitData{
     pub reduction_circuit_id: Option<String>,
     pub pis_len: u8,
     pub proving_scheme: ProvingSchemes,
-    pub circuit_reduction_status: CircuitReductionStatus
+    pub circuit_reduction_status: CircuitReductionStatus,
+    pub protocol_name: String
 }

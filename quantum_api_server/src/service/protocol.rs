@@ -1,4 +1,4 @@
-use quantum_db::repository::auth_repository::{check_if_protocol_already_registered, insert_protocol_auth_token};
+use quantum_db::repository::protocol::{check_if_protocol_already_registered, insert_protocol_auth_token};
 use quantum_utils::keccak::get_keccak_hash_of_string;
 
 use crate::{connection::get_pool, error::error::CustomError, types::generate_auth_token::{GenerateAuthTokenRequest, GenerateAuthTokenResponse}};

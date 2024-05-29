@@ -1,4 +1,5 @@
-use quantum_db::repository::auth_repository::{check_if_auth_token_registered, check_if_auth_token_registered_and_is_master};
+use quantum_db::repository::auth::check_if_auth_token_registered_and_is_master;
+use quantum_db::repository::protocol::get_protocol_by_auth_token;
 use rocket::http::Status;
 use rocket::request::{Request, FromRequest, Outcome};
 
@@ -24,13 +25,20 @@ impl<'r> FromRequest<'r> for AuthToken {
             if request.uri().path() == "/auth/protocol" {
                 is_present =  check_if_auth_token_registered_and_is_master(get_pool().await, auth_token).await;
             } else {
-                is_present = check_if_auth_token_registered(get_pool().await, auth_token).await;
+                is_present = match get_protocol_by_auth_token(get_pool().await, auth_token).await {
+                        Ok(p) => match p {
+                            Some(_) => Ok(true),
+                            None => Ok(false),
+                        },
+                        Err(e) => Err(e),
+                    };
             }
+            println!("{:?}", is_present);
             if is_present.is_err() {
                 return Outcome::Error((Status::InternalServerError, ()));
             }
             if is_present.is_ok_and(|x| x == true) {
-                return Outcome::Success(AuthToken(auth_header.to_string()));
+                return Outcome::Success(AuthToken(auth_token.to_string()));
             }
             Outcome::Error((Status::Unauthorized, ()))
         } else {
