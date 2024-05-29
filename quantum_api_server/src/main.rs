@@ -11,6 +11,7 @@ use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Vkey;
 use quantum_types::types::config::ConfigData;
 use quantum_utils::logger::initialize_logger;
 use rocket::State;
+use service::auth::generate_auth_token_for_protocol;
 use service::proof::get_proof_data_exec;
 use service::proof::submit_proof_exec;
 use service::register_circuit::get_circuit_registration_status;
@@ -25,6 +26,8 @@ use anyhow::Result as AnyhowResult;
 use tracing::info;
 use types::auth::AuthToken;
 use types::circuit_registration_status::CircuitRegistrationStatusResponse;
+use types::generate_auth_token::GenerateAuthTokenRequest;
+use types::generate_auth_token::GenerateAuthTokenResponse;
 use types::proof_data::ProofDataResponse;
 use types::register_circuit::RegisterCircuitRequest;
 use types::register_circuit::RegisterCircuitResponse;
@@ -96,11 +99,20 @@ async fn get_proof_status(_auth_token: AuthToken, proof_id: String, config_data:
     }
 }
 
+#[post["/auth/protocol", data = "<data>"]]
+async fn generate_auth_token(_auth_token: AuthToken, data: GenerateAuthTokenRequest) -> AnyhowResult<Json<GenerateAuthTokenResponse>, CustomError> {
+    let response = generate_auth_token_for_protocol(data).await;
+    match response{
+        Ok(r) => Ok(Json(r)),
+        Err(e) => Err(CustomError::Internal(e.to_string()))
+    }
+}
+
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
     let _guard = initialize_logger("qunatum_node_api.log");
     let config_data = ConfigData::new("./config.yaml");
     let _db_initialize = get_pool().await;
-    rocket::build().manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status])
+    rocket::build().manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token])
 }

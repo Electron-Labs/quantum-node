@@ -65,4 +65,13 @@ CREATE TABLE IF NOT EXISTS superproof (
   gas_cost DECIMAL(18,3) DEFAULT NULL,
   agg_time INT
 );
+
+CREATE TABLE IF NOT EXISTS auth (
+  protocol_name varchar(255) DEFAULT NULL,
+  id int NOT NULL AUTO_INCREMENT,
+  auth_token varchar(255) DEFAULT NULL,
+  is_master int DEFAULT '0',
+  PRIMARY KEY (id)
+)
 "
+
