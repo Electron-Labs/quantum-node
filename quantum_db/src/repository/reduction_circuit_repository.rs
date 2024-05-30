@@ -1,4 +1,4 @@
-use quantum_types::types::db::reduction_circuit::ReductionCircuit;
+use quantum_types::{enums::proving_schemes::ProvingSchemes, types::db::reduction_circuit::ReductionCircuit};
 use sqlx::{mysql::MySqlRow, Error, MySql, Pool, Row, Execute};
 
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -6,9 +6,9 @@ use tracing::info;
 
 use crate::error::error::CustomError;
 
-pub async fn get_reduction_circuit_by_pis_len(pool: &Pool<MySql>, num_public_inputs: u8) -> AnyhowResult<ReductionCircuit>{
-    let query  = sqlx::query("SELECT * from reduction_circuit where pis_len = ?")
-                .bind(num_public_inputs);
+pub async fn get_reduction_circuit_by_pis_len(pool: &Pool<MySql>, num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<ReductionCircuit>{
+    let query  = sqlx::query("SELECT * from reduction_circuit where pis_len = ? and proving_scheme = ?")
+                .bind(num_public_inputs).bind(proving_scheme.to_string());
 
     info!("{}", query.sql());
     let reduction_circuit = match query.fetch_one(pool).await{
@@ -18,8 +18,8 @@ pub async fn get_reduction_circuit_by_pis_len(pool: &Pool<MySql>, num_public_inp
     reduction_circuit
 }
 
-pub async fn check_if_pis_len_compatible_reduction_circuit_exist(pool: &Pool<MySql>, num_public_inputs: u8) -> Option<ReductionCircuit>{
-    let rc = get_reduction_circuit_by_pis_len(pool, num_public_inputs).await;
+pub async fn check_if_pis_len_compatible_reduction_circuit_exist(pool: &Pool<MySql>, num_public_inputs: u8, proving_scheme: ProvingSchemes) -> Option<ReductionCircuit>{
+    let rc = get_reduction_circuit_by_pis_len(pool, num_public_inputs, proving_scheme).await;
     match rc {
         Ok(rc) => Some(rc),
         Err(_) => None
@@ -27,19 +27,24 @@ pub async fn check_if_pis_len_compatible_reduction_circuit_exist(pool: &Pool<MyS
 }
 
 fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<ReductionCircuit>{
+    let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme")?) {
+        Ok(ps) => Ok(ps),
+        Err(e) => Err(anyhow!(CustomError::DB(e)))
+    };
     let reduction_circuit = ReductionCircuit {
         circuit_id: row.try_get_unchecked("circuit_id")?,
         proving_key_path: row.try_get_unchecked("proving_key_path")?,
         vk_path: row.try_get_unchecked("vk_path")?,
         pis_len: row.try_get_unchecked("pis_len")?,
+        proving_scheme: proving_scheme?
     };
     Ok(reduction_circuit)
 }
 
 // Sending ReductionCircuit type with reduction_circuit.id = None, return id
 pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: ReductionCircuit) -> AnyhowResult<u64, Error> {
-    let query  = sqlx::query("INSERT into reduction_circuit(circuit_id, proving_key_path, vk_path, pis_len) VALUES(?,?,?,?)")
-                .bind(reduction_circuit.circuit_id).bind(reduction_circuit.proving_key_path).bind(reduction_circuit.vk_path).bind(reduction_circuit.pis_len);
+    let query  = sqlx::query("INSERT into reduction_circuit(circuit_id, proving_key_path, vk_path, pis_len, proving_scheme) VALUES(?,?,?,?,?)")
+                .bind(reduction_circuit.circuit_id).bind(reduction_circuit.proving_key_path).bind(reduction_circuit.vk_path).bind(reduction_circuit.pis_len).bind(reduction_circuit.proving_scheme.to_string());
 
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {

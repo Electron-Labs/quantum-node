@@ -77,7 +77,7 @@ async fn create_circuit_reduction_task(reduction_circuit_id: Option<String>, cir
 async fn get_existing_compatible_reduction_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> Option<ReductionCircuit> {
     let mut reduction_circuit = None;
     if proving_scheme == ProvingSchemes::Groth16 || proving_scheme == ProvingSchemes::GnarkGroth16 {
-        reduction_circuit =  check_if_pis_len_compatible_reduction_circuit_exist(get_pool().await, num_public_inputs).await;
+        reduction_circuit =  check_if_pis_len_compatible_reduction_circuit_exist(get_pool().await, num_public_inputs, proving_scheme).await;
     }
     reduction_circuit
 }
