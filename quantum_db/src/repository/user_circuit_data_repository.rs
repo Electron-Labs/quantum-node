@@ -23,9 +23,11 @@ pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_h
     user_circuit_data
 }
 
-pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, reduction_circuit_id: Option<String>, pis_len: u8, proving_scheme: ProvingSchemes, circuit_reduction_status: CircuitReductionStatus) -> AnyhowResult<u64, Error>{
-    let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, reduction_circuit_id, pis_len, proving_scheme, circuit_reduction_status) VALUES(?,?,?,?,?,?)")
-                .bind(circuit_hash).bind(vk_path).bind(reduction_circuit_id).bind(pis_len).bind(proving_scheme.to_string()).bind(circuit_reduction_status.as_u8());
+pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, reduction_circuit_id: Option<String>, 
+    pis_len: u8, proving_scheme: ProvingSchemes, circuit_reduction_status: CircuitReductionStatus, protocol_name: &str) -> AnyhowResult<u64, Error>{
+    let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, reduction_circuit_id, pis_len, proving_scheme, circuit_reduction_status, protocol_name) VALUES(?,?,?,?,?,?,?)")
+                .bind(circuit_hash).bind(vk_path).bind(reduction_circuit_id).bind(pis_len).bind(proving_scheme.to_string())
+                .bind(circuit_reduction_status.as_u8()).bind(protocol_name);
 
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
@@ -49,7 +51,8 @@ fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircu
         reduction_circuit_id: row.try_get_unchecked("reduction_circuit_id")?,
         pis_len: row.try_get_unchecked("pis_len")?,
         proving_scheme: proving_scheme?,
-        circuit_reduction_status: circuit_status
+        circuit_reduction_status: circuit_status,
+        protocol_name: row.try_get_unchecked("protocol_name")?
     };
     Ok(user_circuit_data)
 }

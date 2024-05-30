@@ -1,5 +1,5 @@
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_proof}, superproof_repository::get_superproof_by_id, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::config::ConfigData};
 use quantum_utils::keccak::get_keccak_hash_from_bytes;
 use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};

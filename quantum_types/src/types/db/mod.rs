@@ -3,3 +3,4 @@ pub mod proof;
 pub mod reduction_circuit;
 pub mod superproof;
 pub mod task;
+pub mod protocol;

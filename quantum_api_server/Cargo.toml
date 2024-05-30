@@ -25,3 +25,4 @@ quantum_utils = {path = "../quantum_utils"}
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
 tracing-appender = "0.2.3"
+hex = "0.4.3"
