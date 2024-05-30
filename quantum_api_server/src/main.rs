@@ -133,8 +133,15 @@ async fn generate_auth_token(_auth_token: AuthToken, data: GenerateAuthTokenRequ
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
+
+    let cors = rocket_cors::CorsOptions {
+        ..Default::default()
+    }.to_cors().unwrap();
+
     let _guard = initialize_logger("qunatum_node_api.log");
     let config_data = ConfigData::new("./config.yaml");
     let _db_initialize = get_pool().await;
-    rocket::build().manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token])
+    
+    let t = rocket::Config::figment();
+    rocket::custom(t).manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token]).attach(cors)
 }
