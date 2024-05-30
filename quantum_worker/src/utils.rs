@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{Read, Write};
 use anyhow::Result as AnyhowResult;
-use quantum_reduction_circuits_ffi::circuit_builder::GnarkProof;
+use quantum_circuits_ffi::circuit_builder::GnarkProof;
 use quantum_types::types::config::ConfigData;
 use quantum_types::types::gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof};
 use quantum_utils::file::{create_dir, write_bytes_to_file};

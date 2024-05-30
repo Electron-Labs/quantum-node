@@ -5,7 +5,7 @@ use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType
 use quantum_utils::file::read_bytes_from_file;
 use sqlx::{MySql, Pool};
 use anyhow::{Ok, Result as AnyhowResult};
-use quantum_reduction_circuits_ffi::circuit_builder::{CircomProof, CircomVK, GnarkProof, GnarkVK, ProveResult};
+use quantum_circuits_ffi::circuit_builder::{CircomProof, CircomVK, GnarkProof, GnarkVK, ProveResult};
 use tokio::time::Instant;
 
 use crate::utils::dump_reduction_proof_data;

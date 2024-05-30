@@ -20,4 +20,4 @@ tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
 tracing-appender = "0.2.3"
 
 #[TODO] Change this to git repo
-quantum-reduction-circuits-ffi = {path = "../../quantum-reduction-circuits/quantum-reduction-circuits-ffi"}
+quantum_circuits_ffi = {path = "../../quantum-circuits/quantum_circuits_ffi"}

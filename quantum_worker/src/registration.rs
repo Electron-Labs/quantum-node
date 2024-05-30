@@ -4,7 +4,7 @@ use quantum_db::repository::{reduction_circuit_repository::add_reduction_circuit
 use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType}, types::{config::ConfigData, db::{reduction_circuit::{self, ReductionCircuit}, task::Task}}};
 use anyhow::{Ok, Result as AnyhowResult};
 use sqlx::{MySql, Pool};
-use quantum_reduction_circuits_ffi::circuit_builder::{BuildResult, CircomVK, GnarkVK};
+use quantum_circuits_ffi::circuit_builder::{BuildResult, CircomVK, GnarkVK};
 
 use crate::utils::dump_reduction_circuit_data;
 
