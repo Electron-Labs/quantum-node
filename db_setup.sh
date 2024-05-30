@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS reduction_circuit (
   proving_key_path VARCHAR(255),
   vk_path VARCHAR(255),
   pis_len INT,
+  proving_scheme VARCHAR(255)
   KEY idx_pis_len (pis_len)
 );
 
@@ -79,7 +80,5 @@ CREATE TABLE IF NOT EXISTS superproof (
   gas_cost DECIMAL(18,3) DEFAULT NULL,
   agg_time INT
 );
-
-
 "
 

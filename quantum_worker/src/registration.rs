@@ -51,6 +51,8 @@ pub async fn handle_registration_task(pool: &Pool<MySql>, registration_task: Tas
         proving_key_path: pk_path,
         vk_path: vk_path,
         pis_len: user_circuit_data.pis_len,
+        proving_scheme: user_circuit_data.proving_scheme
+
     };
     add_reduction_circuit_row(pool, reduction_circuit).await?;
     println!("Added reduction circuit data to DB");
