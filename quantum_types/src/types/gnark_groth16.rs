@@ -11,6 +11,7 @@ use quantum_utils::file::{dump_object, read_file};
 use serde::{Serialize, Deserialize};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
+use keccak_hash::keccak;
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -175,6 +176,48 @@ impl Vkey for GnarkGroth16Vkey {
 		info!("vkey validated");
 		Ok(())
 	}
+	
+	fn keccak_hash(&self) -> AnyhowResult<[u8;32]> {
+		let mut keccak_ip = Vec::<u8>::new();
+		// -- G1 --
+		// -- alpha --
+		keccak_ip.extend(self.G1.Alpha.X.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G1.Alpha.Y.as_bytes().iter().cloned());
+		// -- K -- 
+		for i in 0..self.G1.K.len() {
+			keccak_ip.extend(self.G1.K[i].X.as_bytes().iter().cloned());
+			keccak_ip.extend(self.G1.K[i].Y.as_bytes().iter().cloned());
+		}
+		// -- G2 --
+		// -- beta --
+		keccak_ip.extend(self.G2.Beta.X.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Beta.X.A1.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Beta.Y.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Beta.Y.A1.as_bytes().iter().cloned());
+		// -- gamma --
+		keccak_ip.extend(self.G2.Gamma.X.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Gamma.X.A1.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Gamma.Y.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Gamma.Y.A1.as_bytes().iter().cloned());
+		// -- delta --
+		keccak_ip.extend(self.G2.Delta.X.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Delta.X.A1.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Delta.Y.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.G2.Delta.Y.A1.as_bytes().iter().cloned());
+
+		// -- CommitmentKey --
+		keccak_ip.extend(self.CommitmentKey.G.X.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.CommitmentKey.G.X.A1.as_bytes().iter().cloned());
+		keccak_ip.extend(self.CommitmentKey.G.Y.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.CommitmentKey.G.Y.A1.as_bytes().iter().cloned());
+		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.X.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.X.A1.as_bytes().iter().cloned());
+		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.Y.A0.as_bytes().iter().cloned());
+		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.Y.A1.as_bytes().iter().cloned());
+
+		let vk_hash = keccak(keccak_ip).0;
+		Ok(vk_hash)
+	}
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -240,6 +283,15 @@ impl Pis for GnarkGroth16Pis {
 		let json_data = read_file(full_path)?;
 		let gnark_pis: GnarkGroth16Pis = serde_json::from_str(&json_data)?;
 		Ok(gnark_pis)
+	}
+
+	fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
+		let mut keccak_ip = Vec::<u8>::new();
+		for i in 0..self.0.len() {
+			keccak_ip.extend(self.0[i].as_bytes().iter().cloned());
+		}
+		let hash = keccak(keccak_ip).0;
+		Ok(hash)
 	}
 }
 

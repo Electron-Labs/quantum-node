@@ -1,4 +1,3 @@
-use keccak_hash::keccak;
 use quantum_db::repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::vkey::Vkey, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}}};
 use rocket::State;
@@ -22,7 +21,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
         },
     }?;
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
-    let circuit_hash_string = get_circuit_hash_from_vkey_bytes(vkey_bytes);
+    let circuit_hash_string = String::from_utf8(vkey.keccak_hash()?.to_vec())?;
 
     // Check if circuit is already registerd
     let is_circuit_already_registered = check_if_circuit_has_already_registered(circuit_hash_string.as_str()).await;
@@ -40,7 +39,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,CircuitReductionStatus::NotPicked, &protocol.protocol_name).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,if is_circuit_already_registered {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
 
     // Create a reduction task for Async worker to pick up later on
     create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
@@ -91,11 +90,4 @@ async fn check_if_circuit_has_already_registered(circuit_hash_string: &str) -> b
         Err(_) => false
     };
     is_circuit_already_registered
-}
-
-fn get_circuit_hash_from_vkey_bytes(vkey_bytes: Vec<u8>) -> String {
-    let mut keccak_ip = vkey_bytes.as_slice();
-    let hash = keccak(&mut keccak_ip);
-    let circuit_hash_string = format!("{:?}", hash);
-    circuit_hash_string
 }

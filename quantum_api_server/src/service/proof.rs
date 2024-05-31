@@ -1,20 +1,29 @@
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_proof}, superproof_repository::get_superproof_by_id, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::config::ConfigData};
-use quantum_utils::keccak::get_keccak_hash_from_bytes;
 use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
+use keccak_hash::keccak;
 
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
     
     let proof: T = T::deserialize(&mut data.proof.as_slice())?;
-    let proof_id = get_keccak_hash_from_bytes(data.proof.as_slice());
+
+    let pis: F = F::deserialize(&mut data.pis.as_slice())?;
+
+    let mut proof_id_ip = Vec::<u8>::new();
+    let pis_hash = pis.keccak_hash()?;
+    let circuit_hash = data.circuit_hash.as_bytes();
+    proof_id_ip.extend(circuit_hash.iter().cloned());
+    proof_id_ip.extend(pis_hash.iter().cloned());
+
+    let proof_id = format!("{}",keccak(proof_id_ip));
 
     check_if_proof_already_exist(&proof_id).await?;
 
-    let pis: F = F::deserialize(&mut data.pis.as_slice())?;
+
     
     let proof_full_path = proof.dump_proof(&data.circuit_hash, config_data, &proof_id)?;
     let pis_full_path = pis.dump_pis(&data.circuit_hash, config_data, &proof_id)?;

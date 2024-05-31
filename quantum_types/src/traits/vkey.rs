@@ -10,4 +10,5 @@ pub trait Vkey: Sized {
     fn dump_vk(&self, circuit_hash: &str, config: &ConfigData) -> AnyhowResult<String>;
     fn read_vk(full_path: &str) -> AnyhowResult<Self>;
     fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()>;
+    fn keccak_hash(&self) -> AnyhowResult<[u8;32]>;
 }

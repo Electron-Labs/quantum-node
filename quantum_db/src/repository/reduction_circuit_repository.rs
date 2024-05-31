@@ -3,12 +3,25 @@ use sqlx::{mysql::MySqlRow, Error, MySql, Pool, Row, Execute};
 
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
+use std::str::FromStr;
 
 use crate::error::error::CustomError;
 
 pub async fn get_reduction_circuit_by_pis_len(pool: &Pool<MySql>, num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<ReductionCircuit>{
     let query  = sqlx::query("SELECT * from reduction_circuit where pis_len = ? and proving_scheme = ?")
                 .bind(num_public_inputs).bind(proving_scheme.to_string());
+
+    info!("{}", query.sql());
+    let reduction_circuit = match query.fetch_one(pool).await{
+        Ok(t) => get_reduction_circuit_data_from_mysql_row(t),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    reduction_circuit
+}
+
+pub async fn get_reduction_circuit_for_user_circuit(pool: &Pool<MySql>, user_circuit_hash: &str) -> AnyhowResult<ReductionCircuit> {
+    let query  = sqlx::query("SELECT * from reduction_circuit where circuit_id = (select reduction_circuit_id from user_circuit_data where circuit_hash = ?)")
+                .bind(user_circuit_hash);
 
     info!("{}", query.sql());
     let reduction_circuit = match query.fetch_one(pool).await{
