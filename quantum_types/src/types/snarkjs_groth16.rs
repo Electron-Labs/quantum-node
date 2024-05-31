@@ -104,6 +104,10 @@ impl Vkey for SnarkJSGroth16Vkey {
         info!("vkey validated");
         Ok(())
     }
+	
+	fn keccak_hash(&self) -> AnyhowResult<[u8;32]> {
+		todo!()
+	}
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -170,6 +174,10 @@ impl Pis for SnarkJSGroth16Pis {
 		let gnark_pis: SnarkJSGroth16Pis = serde_json::from_str(&json_data)?;
 		Ok(gnark_pis)
 	}
+	
+	fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
+			todo!()
+		}
 }
 
 

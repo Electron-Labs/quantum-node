@@ -11,6 +11,7 @@ use quantum_utils::file::{dump_object, read_file};
 use serde::{Serialize, Deserialize};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
+use keccak_hash::keccak;
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -175,6 +176,10 @@ impl Vkey for GnarkGroth16Vkey {
 		info!("vkey validated");
 		Ok(())
 	}
+	
+	fn keccak_hash(&self) -> AnyhowResult<[u8;32]> {
+			todo!()
+		}
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -240,6 +245,10 @@ impl Pis for GnarkGroth16Pis {
 		let json_data = read_file(full_path)?;
 		let gnark_pis: GnarkGroth16Pis = serde_json::from_str(&json_data)?;
 		Ok(gnark_pis)
+	}
+
+	fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
+		todo!()
 	}
 }
 

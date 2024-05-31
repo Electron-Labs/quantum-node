@@ -3,6 +3,7 @@ use sqlx::{mysql::MySqlRow, Error, MySql, Pool, Row, Execute};
 
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
+use std::str::FromStr;
 
 use crate::error::error::CustomError;
 

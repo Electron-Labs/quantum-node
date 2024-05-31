@@ -18,9 +18,9 @@ pub mod utils;
 
 use std::{thread::sleep, time::Duration};
 use dotenv::dotenv;
-use quantum_db::repository::{proof_repository::update_proof_status, task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
+use quantum_db::repository::{proof_repository::{get_n_reduced_proofs, update_proof_status}, task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
 use anyhow::Result as AnyhowResult;
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, types::{config::ConfigData, db::task::Task}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, types::{config::ConfigData, db::{proof::Proof, task::Task}}};
 use sqlx::{MySql, Pool};
 use quantum_utils::logger::initialize_logger;
 use tracing::info;
@@ -60,6 +60,16 @@ pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, confi
     }
     Ok(())
 }
+
+pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowResult<()> {
+
+    // Update Proof Status to aggregating for all the proofs
+    for proof in proofs {
+        update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
+    }
+    Ok(())   
+}
+
 
 pub async fn generate_reduced_proof(pool: &Pool<MySql>, proof_generation_task: Task, config: &ConfigData) -> AnyhowResult<()> {
     let proof_hash = proof_generation_task.clone().proof_id.clone().unwrap();
@@ -106,9 +116,10 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
     let pool = connection::get_pool().await;
     loop {
         println!("Running worker loop");
-        let aggregation_awaiting_tasks = get_aggregation_waiting_tasks_num(pool).await?;
-        println!("Aggregation awaiting tasks {:?}", aggregation_awaiting_tasks);
-        if aggregation_awaiting_tasks >= BATCH_SIZE {
+        // let aggregation_awaiting_tasks = get_aggregation_waiting_tasks_num(pool).await?;
+        let aggregation_awaiting_proofs = get_n_reduced_proofs(pool, BATCH_SIZE).await?;
+        println!("Aggregation awaiting proofs {:?}", aggregation_awaiting_proofs.len());
+        if aggregation_awaiting_proofs.len() == BATCH_SIZE as usize {
             // TODO: Do aggregation and submit on ethereum
         }
 
