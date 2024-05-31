@@ -4,16 +4,27 @@ use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
+use keccak_hash::keccak;
 
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
     
     let proof: T = T::deserialize(&mut data.proof.as_slice())?;
-    let proof_id = String::from_utf8(proof.keccak_hash()?.to_vec())?;
+
+    let pis: F = F::deserialize(&mut data.pis.as_slice())?;
+
+    let mut proof_id_ip = Vec::<u8>::new();
+    let pis_hash = pis.keccak_hash()?;
+    let circuit_hash = data.circuit_hash.as_bytes();
+
+    proof_id_ip.extend(pis_hash.iter().cloned());
+    proof_id_ip.extend(circuit_hash.iter().cloned());
+
+    let proof_id = format!("{}",keccak(proof_id_ip));
 
     check_if_proof_already_exist(&proof_id).await?;
 
-    let pis: F = F::deserialize(&mut data.pis.as_slice())?;
+
     
     let proof_full_path = proof.dump_proof(&data.circuit_hash, config_data, &proof_id)?;
     let pis_full_path = pis.dump_pis(&data.circuit_hash, config_data, &proof_id)?;
