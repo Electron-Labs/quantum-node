@@ -1,4 +1,4 @@
-use quantum_db::repository::proof_repository::get_reduction_circuit_vkey_path;
+use quantum_db::repository::reduction_circuit_repository::get_reduction_circuit_for_user_circuit;
 use quantum_types::types::{aggregator::{AggregatorCircuitData, IMTLeaves, InnerCircuitData}, db::proof::Proof};
 use sqlx::{MySql, Pool};
 use anyhow::{Ok, Result as AnyhowResult};
@@ -10,8 +10,8 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<Proof>) -> Anyho
     for proof in proofs {
         let reduction_proof_path = proof.reduction_proof_path.clone().unwrap();// TODO: Replace these unwraps with proper checks
         let reduction_proof_pis_path = proof.reduction_proof_pis_path.clone().unwrap();
-        let reduction_circuit_vkey_path = get_reduction_circuit_vkey_path(pool, &proof.proof_hash).await?;
-        let inner_circuit_data = InnerCircuitData::construct_from_paths(&reduction_proof_path, &reduction_proof_pis_path, &reduction_circuit_vkey_path)?;
+        let reduction_circuit = get_reduction_circuit_for_user_circuit(pool, &proof.user_circuit_hash).await?;
+        let inner_circuit_data = InnerCircuitData::construct_from_paths(&reduction_proof_path, &reduction_proof_pis_path, &reduction_circuit.vk_path)?;
         inner_circuit_data_vec.push(inner_circuit_data);
     }
 

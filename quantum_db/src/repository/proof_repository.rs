@@ -39,7 +39,7 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
 
     info!("{}", query.sql());
     let proof = match query.fetch_one(pool).await{
-        Ok(t) => get_proof_from_mysql_row(t),
+        Ok(t) => get_proof_from_mysql_row(&t),
         Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
     };
     proof
@@ -70,14 +70,24 @@ pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction
 }
 
 pub async fn get_n_reduced_proofs(pool: &Pool<MySql>, n: u64) -> AnyhowResult<Vec<Proof>> {
-    todo!()
+    let query  = sqlx::query("SELECT * from proof where proof_status = ? order by id LIMIT ?")
+                .bind(ProofStatus::Reduced.as_u8()).bind(n);
+
+    info!("{}", query.sql());
+    let db_rows = match query.fetch_all(pool).await {
+        Ok(t) => Ok(t),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))  
+    };
+
+    let db_rows = db_rows?;
+    let mut proofs: Vec<Proof> = vec![];
+    for row in db_rows.iter()  {
+        proofs.push(get_proof_from_mysql_row(row)?);
+    }
+    Ok(proofs)
 }
 
-pub async fn get_reduction_circuit_vkey_path(pool: &Pool<MySql>, proof_hash: &str) -> AnyhowResult<String> {
-    todo!()
-}
-
-fn get_proof_from_mysql_row(row: MySqlRow) -> AnyhowResult<Proof>{
+fn get_proof_from_mysql_row(row: &MySqlRow) -> AnyhowResult<Proof>{
     let proof_status_as_u8: u8 = row.try_get_unchecked("proof_status")?;
     let proof_status =  ProofStatus::from(proof_status_as_u8);
     let proof = Proof {
