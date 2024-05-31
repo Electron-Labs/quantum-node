@@ -7,5 +7,4 @@ pub trait Proof: Sized {
     fn deserialize(bytes: &mut &[u8]) -> AnyhowResult<Self>;
     fn dump_proof(&self, circuit_hash: &str, config: &ConfigData, proof_id: &str) -> AnyhowResult<String>;
     fn read_proof(full_path: &str) -> AnyhowResult<Self>;
-    fn keccak_hash(&self) -> AnyhowResult<[u8; 32]>;
 }

@@ -186,10 +186,6 @@ impl Proof for SnarkJSGroth16Proof {
 		let gnark_vkey: SnarkJSGroth16Proof = serde_json::from_str(&json_data)?;
 		Ok(gnark_vkey)
 	}
-	
-	fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-			todo!()
-		}
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -222,8 +218,13 @@ impl Pis for SnarkJSGroth16Pis {
 	}
 	
 	fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-			todo!()
+		let mut keccak_ip = Vec::<u8>::new();
+		for i in 0..self.0.len() {
+			keccak_ip.extend(self.0[i].as_bytes().iter().cloned());
 		}
+		let hash = keccak(keccak_ip).0;
+		Ok(hash)
+	}
 }
 
 
