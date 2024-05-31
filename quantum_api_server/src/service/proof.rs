@@ -16,9 +16,8 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     let mut proof_id_ip = Vec::<u8>::new();
     let pis_hash = pis.keccak_hash()?;
     let circuit_hash = data.circuit_hash.as_bytes();
-
-    proof_id_ip.extend(pis_hash.iter().cloned());
     proof_id_ip.extend(circuit_hash.iter().cloned());
+    proof_id_ip.extend(pis_hash.iter().cloned());
 
     let proof_id = format!("{}",keccak(proof_id_ip));
 
