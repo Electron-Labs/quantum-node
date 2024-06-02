@@ -1,22 +1,21 @@
-use std::fs::File;
-use std::io::{Read, Write};
 use anyhow::Result as AnyhowResult;
-use quantum_circuits_ffi::circuit_builder::GnarkProof;
+use quantum_types::traits::vkey::Vkey;
 use quantum_types::types::config::ConfigData;
-use quantum_types::types::gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof};
+use quantum_types::types::gnark_groth16::GnarkGroth16Vkey;
 use quantum_utils::file::{create_dir, write_bytes_to_file};
 
 // Returns circuit_id, pk_path, vk_path
-pub fn dump_reduction_circuit_data(config: &ConfigData, pk_bytes_raw: &Vec<u8>, vk_bytes_raw: &Vec<u8>) -> AnyhowResult<(String, String, String)> {
+pub fn dump_reduction_circuit_data(config: &ConfigData, proving_key_bytes: &Vec<u8>, vkey: &GnarkGroth16Vkey) -> AnyhowResult<(String, String, String)> {
     // Reduction circuit id --> keccak256(vk_bytes_raw)
-    let circuit_id = "";//get_keccak_hash_from_bytes(vk_bytes_raw.as_slice());
+    let vkey_bytes = vkey.serialize()?;
+    let circuit_id = String::from_utf8(vkey.keccak_hash()?.to_vec())?;//get_keccak_hash_from_bytes(vk_bytes_raw.as_slice());
     let reduced_circuit_path = format!("{}{}/{}", config.storage_folder_path, config.reduced_circuit_path, circuit_id);
     create_dir(&reduced_circuit_path)?;
     let pk_path = format!("{}/{}", &reduced_circuit_path, "pk.bin");
     let vk_path = format!("{}/{}", &reduced_circuit_path, "vk.bin");
-    write_bytes_to_file(&pk_bytes_raw, &pk_path)?;
-    write_bytes_to_file(&vk_bytes_raw, &vk_path)?;
-    Ok((circuit_id.to_string(), pk_path.to_string(), vk_path.to_string()))
+    write_bytes_to_file(&proving_key_bytes, &pk_path)?;
+    write_bytes_to_file(&vkey_bytes, &vk_path)?;
+    Ok((circuit_id, pk_path.to_string(), vk_path.to_string()))
 }
 
 // Returns reduced_proof_path, reduced_pis_path
