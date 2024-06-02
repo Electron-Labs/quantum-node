@@ -1,7 +1,9 @@
 use anyhow::Result as AnyhowResult;
-use quantum_types::traits::vkey::Vkey;
+use quantum_types::traits::pis::Pis;
+use quantum_types::traits::proof::Proof;
+use quantum_types::{traits::vkey::Vkey, types::gnark_groth16::GnarkGroth16Proof};
 use quantum_types::types::config::ConfigData;
-use quantum_types::types::gnark_groth16::GnarkGroth16Vkey;
+use quantum_types::types::gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey};
 use quantum_utils::file::{create_dir, write_bytes_to_file};
 
 // Returns circuit_id, pk_path, vk_path
@@ -19,13 +21,15 @@ pub fn dump_reduction_circuit_data(config: &ConfigData, proving_key_bytes: &Vec<
 }
 
 // Returns reduced_proof_path, reduced_pis_path
-pub fn dump_reduction_proof_data(config: &ConfigData, circuit_hash: &str, proof_id: &str, proof_bytes: Vec<u8>, pis_bytes: Vec<u8>) -> AnyhowResult<(String, String)> {
+pub fn dump_reduction_proof_data(config: &ConfigData, circuit_hash: &str, proof_id: &str, proof:GnarkGroth16Proof, pis: GnarkGroth16Pis) -> AnyhowResult<(String, String)> {
     let reduced_proof_dir = format!("{}/{}{}",config.storage_folder_path, circuit_hash, config.reduced_proof_path);
     let reduced_pis_dir = format!("{}/{}{}",config.storage_folder_path, circuit_hash, config.reduced_pis_path);
     create_dir(&reduced_proof_dir)?;
     create_dir(&reduced_pis_dir)?;
     let proof_path = format!("{}/reduced_proof_{}.bin", reduced_proof_dir, proof_id);
     let pis_path = format!("{}/reduced_pis_{}.bin", reduced_pis_dir, proof_id);
+    let proof_bytes = proof.serialize()?;
+    let pis_bytes = pis.serialize()?;
     write_bytes_to_file(&proof_bytes, &proof_path)?;
     write_bytes_to_file(&pis_bytes, &pis_path)?;
     Ok((proof_path.to_string(), pis_path.to_string()))
