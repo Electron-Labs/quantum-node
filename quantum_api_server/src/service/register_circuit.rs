@@ -1,6 +1,6 @@
 use quantum_db::repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::vkey::Vkey, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}}};
-use quantum_utils::paths::get_user_vk_path;
+use quantum_utils::{keccak::encode_keccak_hash, paths::get_user_vk_path};
 use rocket::State;
 
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -21,8 +21,11 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
             Err(anyhow!(CustomError::Internal("vk is invalid".to_string())))
         },
     }?;
+    println!("validated");
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
-    let circuit_hash_string = String::from_utf8(vkey.keccak_hash()?.to_vec())?;
+    let circuit_hash = vkey.keccak_hash()?;
+    let circuit_hash_string = encode_keccak_hash(&circuit_hash)?;
+    println!("circuit_hash_string {:?}", circuit_hash_string);
 
     // Check if circuit is already registerd
     let is_circuit_already_registered = check_if_circuit_has_already_registered(circuit_hash_string.as_str()).await;
@@ -32,19 +35,23 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
             RegisterCircuitResponse{circuit_hash: circuit_hash_string}
         );
     }
-
+    println!("already registered {:?}", is_circuit_already_registered);
     // dump vkey
     let vkey_path = get_user_vk_path(&config_data.storage_folder_path, &config_data.user_data_path, &circuit_hash_string);
+    println!("User vkey path {:?}", vkey_path);
     vkey.dump_vk(&vkey_path)?;
+    println!("User vkey path dumped");
 
     // Get a reduction circuit id
     let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
+    println!("reduction_circuit_id {:?}", reduction_circuit_id);
 
     // Add user circuit data to DB
     insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,if is_circuit_already_registered {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
-
+    println!("insert_user_circuit_data DONE");
     // Create a reduction task for Async worker to pick up later on
     create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
+    println!("create_circuit_reduction_task DONE");
     Ok(
         RegisterCircuitResponse{ circuit_hash: circuit_hash_string }
     )

@@ -1,6 +1,6 @@
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_proof}, superproof_repository::get_superproof_by_id, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::config::ConfigData};
-use quantum_utils::paths::{get_user_pis_path, get_user_proof_path};
+use quantum_utils::{keccak::encode_keccak_hash, paths::{get_user_pis_path, get_user_proof_path}};
 use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
@@ -20,7 +20,9 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     proof_id_ip.extend(circuit_hash.iter().cloned());
     proof_id_ip.extend(pis_hash.iter().cloned());
 
-    let proof_id = format!("{}",keccak(proof_id_ip));
+    let proof_id_hash = keccak(proof_id_ip).0;
+
+    let proof_id = encode_keccak_hash(&proof_id_hash)?;
 
     check_if_proof_already_exist(&proof_id).await?;
 

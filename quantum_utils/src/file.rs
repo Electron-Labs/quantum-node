@@ -32,6 +32,11 @@ pub fn read_file(path: &str) -> AnyhowResult<String> {
 
 // Write bytes to file
 pub fn write_bytes_to_file(bytes: &Vec<u8>, path: &str) -> AnyhowResult<()> {
+    // Split the string into components separated by '/'
+    let components: Vec<&str> = path.split('/').collect();
+    // The directory path is everything except the last component
+    let dir_path = components[..components.len() - 1].join("/");
+    create_dir(&dir_path)?;
     let mut file = File::create(path)?;
     file.write_all(&bytes)?;
     Ok(())

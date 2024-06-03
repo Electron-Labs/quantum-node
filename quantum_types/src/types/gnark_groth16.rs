@@ -5,13 +5,14 @@ use std::str::FromStr;
 
 use ark_bn254::g1::Config;
 use ark_ec::short_weierstrass::Affine;
-use borsh::{BorshSerialize, BorshDeserialize};
+use borsh::{de, BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use quantum_utils::file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file};
 use serde::{Serialize, Deserialize};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 use keccak_hash::keccak;
+use hex::ToHex;
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -215,8 +216,8 @@ impl Vkey for GnarkGroth16Vkey {
 		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.Y.A0.as_bytes().iter().cloned());
 		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.Y.A1.as_bytes().iter().cloned());
 
-		let vk_hash = keccak(keccak_ip).0;
-		Ok(vk_hash)
+		let keccak_h = keccak(keccak_ip.clone());
+		Ok(keccak_h.0)
 	}
 }
 
@@ -286,8 +287,8 @@ impl Pis for GnarkGroth16Pis {
 		for i in 0..self.0.len() {
 			keccak_ip.extend(self.0[i].as_bytes().iter().cloned());
 		}
-		let hash = keccak(keccak_ip).0;
-		Ok(hash)
+		let hash = keccak(keccak_ip);
+		Ok(hash.0)
 	}
 }
 
