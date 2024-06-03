@@ -67,6 +67,10 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowR
     for proof in proofs {
         update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
     }
+
+    // Generate a new superproof row
+    // 1. Add all the proof ids to it
+    // 2. superproof_status -> InProgress
     Ok(())   
 }
 

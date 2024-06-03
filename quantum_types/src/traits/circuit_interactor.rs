@@ -32,5 +32,13 @@ pub trait CircuitInteractor {
     // Generate reduction circuit proof corresponding to inner snarkjs groth16 proof
     fn generate_snarkjs_groth16_reduced_proof(inner_proof: SnarkJSGroth16Proof, inner_vk: SnarkJSGroth16Vkey, inner_pis: SnarkJSGroth16Pis, outer_vk: GnarkGroth16Vkey, outer_pk_bytes: Vec<u8>)-> GenerateReductionProofResult;
     // Generate Aggregated Proof corresponding to bunch of reduced proofs
-    fn generate_aggregated_proof(reduced_proofs: Vec<GnarkGroth16Proof>, reduced_pis: Vec<GnarkGroth16Pis>, reduction_circuit_vkeys: Vec<GnarkGroth16Vkey>, aggregator_circuit_pkey: Vec<u8>, aggregator_circuit_vkey: GnarkGroth16Vkey) -> GenerateAggregatedProofResult;
+    fn generate_aggregated_proof(
+        reduced_proofs: Vec<GnarkGroth16Proof>, 
+        reduced_pis: Vec<GnarkGroth16Pis>, 
+        reduction_circuit_vkeys: Vec<GnarkGroth16Vkey>, 
+        old_root: Vec<u8>,
+        old_leaves: Vec<u8>,
+        aggregator_circuit_pkey: Vec<u8>, 
+        aggregator_circuit_vkey: GnarkGroth16Vkey
+    ) -> GenerateAggregatedProofResult;
 }
