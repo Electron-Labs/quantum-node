@@ -20,18 +20,16 @@ pub async fn handle_registration_task(pool: &Pool<MySql>, registration_task: Tas
     let user_vk_path = user_circuit_data.vk_path;
     
     // Load User Vkey
-    println!("Loading user vkey from path {:?}", user_vk_path);
-    let user_vk_data = fs::read_to_string(user_vk_path)?;
-
     let circuit_build_result: ReductionCircuitBuildResult;
 
     // Build reduction circuit
     println!("Calling gnark groth16 reduction circuit");
     if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
-        let inner_circuit_gnark_vkey = GnarkGroth16Vkey::read_vk(&user_vk_data)?;
+        let inner_circuit_gnark_vkey = GnarkGroth16Vkey::read_vk(&user_vk_path)?;
+        println!("vkey :: {:?}", inner_circuit_gnark_vkey);
         circuit_build_result = QuantumV2CircuitInteractor::build_gnark_groth16_circuit(inner_circuit_gnark_vkey, user_circuit_data.pis_len as usize);
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Groth16 { 
-        let inner_circuit_circom_vkey = SnarkJSGroth16Vkey::read_vk(&user_vk_data)?;
+        let inner_circuit_circom_vkey = SnarkJSGroth16Vkey::read_vk(&user_vk_path)?;
         circuit_build_result = QuantumV2CircuitInteractor::build_snarkjs_groth16_circuit(inner_circuit_circom_vkey);
     } else {
         println!("Unsupported Proving scheme");
