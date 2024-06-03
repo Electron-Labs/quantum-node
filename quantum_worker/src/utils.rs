@@ -4,13 +4,14 @@ use quantum_types::traits::proof::Proof;
 use quantum_types::{traits::vkey::Vkey, types::gnark_groth16::GnarkGroth16Proof};
 use quantum_types::types::config::ConfigData;
 use quantum_types::types::gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey};
-use quantum_utils::file::{create_dir, write_bytes_to_file};
+use quantum_utils::file::write_bytes_to_file;
+use quantum_utils::keccak::encode_keccak_hash;
 use quantum_utils::paths::{get_reduction_circuit_pis_path, get_reduction_circuit_proof_path, get_reduction_circuit_proving_key_path, get_reduction_circuit_verifying_key_path};
 
 // Returns circuit_id, pk_path, vk_path
 pub fn dump_reduction_circuit_data(config: &ConfigData, proving_key_bytes: &Vec<u8>, vkey: &GnarkGroth16Vkey) -> AnyhowResult<(String, String, String)> {
     // Calculate circuit id
-    let circuit_id = String::from_utf8(vkey.keccak_hash()?.to_vec())?;
+    let circuit_id = encode_keccak_hash(&vkey.keccak_hash()?)?;
 
     // Dump proving key bytes
     let pkey_path = get_reduction_circuit_proving_key_path(&config.storage_folder_path, &config.reduced_circuit_path, &circuit_id);
