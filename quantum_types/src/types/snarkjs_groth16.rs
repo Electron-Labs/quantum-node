@@ -13,7 +13,7 @@ use tracing::info;
 use keccak_hash::keccak;
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
-use super::config::ConfigData;
+use super::{config::ConfigData, gnark_groth16::GnarkGroth16Vkey};
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
@@ -64,6 +64,12 @@ impl SnarkJSGroth16Vkey {
     }
 }
 
+impl SnarkJSGroth16Vkey {
+	pub fn convert_to_gnark_vkey(&self) -> GnarkGroth16Vkey {
+		todo!()
+	}
+}
+
 impl Vkey for SnarkJSGroth16Vkey {
 	fn serialize_vkey(&self) -> AnyhowResult<Vec<u8>> {
 		let mut buffer: Vec<u8> = Vec::new();
@@ -105,49 +111,51 @@ impl Vkey for SnarkJSGroth16Vkey {
     }
 
 	fn keccak_hash(&self) -> AnyhowResult<[u8;32]> {
-		let mut keccak_ip = Vec::<u8>::new();
-		// vk_alpha_1
-		for i in 0..self.vk_alpha_1.len() {
-			keccak_ip.extend(self.vk_alpha_1[i].as_bytes().iter().cloned());
-		}
-		// vk_beta_2
-		for i in 0..self.vk_beta_2.len() {
-			for j in 0..self.vk_beta_2[i].len() {
-				keccak_ip.extend(self.vk_beta_2[i][j].as_bytes().iter().cloned());
-			}
-		}
-		// vk_gamma_2
-		for i in 0..self.vk_gamma_2.len() {
-			for j in 0..self.vk_gamma_2[i].len() {
-				keccak_ip.extend(self.vk_gamma_2[i][j].as_bytes().iter().cloned());
-			}
-		}
+		// let mut keccak_ip = Vec::<u8>::new();
+		// // vk_alpha_1
+		// for i in 0..self.vk_alpha_1.len() {
+		// 	keccak_ip.extend(self.vk_alpha_1[i].as_bytes().iter().cloned());
+		// }
+		// // vk_beta_2
+		// for i in 0..self.vk_beta_2.len() {
+		// 	for j in 0..self.vk_beta_2[i].len() {
+		// 		keccak_ip.extend(self.vk_beta_2[i][j].as_bytes().iter().cloned());
+		// 	}
+		// }
+		// // vk_gamma_2
+		// for i in 0..self.vk_gamma_2.len() {
+		// 	for j in 0..self.vk_gamma_2[i].len() {
+		// 		keccak_ip.extend(self.vk_gamma_2[i][j].as_bytes().iter().cloned());
+		// 	}
+		// }
 
-		// vk_delta_2
-		for i in 0..self.vk_delta_2.len() {
-			for j in 0..self.vk_delta_2[i].len() {
-				keccak_ip.extend(self.vk_delta_2[i][j].as_bytes().iter().cloned());
-			}
-		}
+		// // vk_delta_2
+		// for i in 0..self.vk_delta_2.len() {
+		// 	for j in 0..self.vk_delta_2[i].len() {
+		// 		keccak_ip.extend(self.vk_delta_2[i][j].as_bytes().iter().cloned());
+		// 	}
+		// }
 
-		// vk_alphabeta_12
-		for i in 0..self.vk_alphabeta_12.len() {
-			for j in 0..self.vk_alphabeta_12[i].len() {
-				for k in 0..self.vk_alphabeta_12[i][j].len() {
-					keccak_ip.extend(self.vk_alphabeta_12[i][j][k].as_bytes().iter().cloned());
-				}
-			}
-		}
+		// // vk_alphabeta_12
+		// for i in 0..self.vk_alphabeta_12.len() {
+		// 	for j in 0..self.vk_alphabeta_12[i].len() {
+		// 		for k in 0..self.vk_alphabeta_12[i][j].len() {
+		// 			keccak_ip.extend(self.vk_alphabeta_12[i][j][k].as_bytes().iter().cloned());
+		// 		}
+		// 	}
+		// }
 
-		// IP
-		for i in 0..self.IC.len() {
-			for j in 0..self.IC[i].len() {
-				keccak_ip.extend(self.IC[i][j].as_bytes().iter().cloned());
-			}
-		}
+		// // IP
+		// for i in 0..self.IC.len() {
+		// 	for j in 0..self.IC[i].len() {
+		// 		keccak_ip.extend(self.IC[i][j].as_bytes().iter().cloned());
+		// 	}
+		// }
 
-		let hash = keccak(keccak_ip).0;
-		Ok(hash)
+		// let hash = keccak(keccak_ip).0;
+		let gnark_converted_vkey = self.convert_to_gnark_vkey();
+
+		Ok(gnark_converted_vkey.keccak_hash()?)
 	}
 }
 
