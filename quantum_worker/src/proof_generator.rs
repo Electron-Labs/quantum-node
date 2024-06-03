@@ -1,8 +1,9 @@
-use std::fs;
+use std::{fs, str::FromStr};
 
+use num_bigint::BigUint;
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, update_reduction_data}, reduction_circuit_repository::get_reduction_circuit_data_by_id, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType}, traits::{circuit_interactor::{CircuitInteractor, GenerateReductionProofResult}, pis::Pis, proof::Proof, vkey::Vkey}, types::{config::ConfigData, db::{task::Task, user_circuit_data}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}}};
-use quantum_utils::file::read_bytes_from_file;
+use quantum_utils::{file::read_bytes_from_file, keccak::{self, convert_string_to_le_bytes}};
 use sqlx::{MySql, Pool};
 use anyhow::{Ok, Result as AnyhowResult};
 use quantum_circuits_ffi:: interactor::QuantumV2CircuitInteractor;
@@ -58,7 +59,25 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
         let gnark_inner_vk: GnarkGroth16Vkey = GnarkGroth16Vkey::read_vk(&inner_vk_path)?;
         let gnark_inner_pis: GnarkGroth16Pis = GnarkGroth16Pis::read_pis(&inner_pis_path)?;
         // 2.Call reduced proof generator for gnark inner proof
-        prove_result = QuantumV2CircuitInteractor::generate_gnark_groth16_reduced_proof(gnark_inner_proof, gnark_inner_vk, gnark_inner_pis, outer_vk, outer_pk_bytes);
+        prove_result = QuantumV2CircuitInteractor::generate_gnark_groth16_reduced_proof(gnark_inner_proof, gnark_inner_vk.clone(), gnark_inner_pis.clone(), outer_vk, outer_pk_bytes);
+
+        let mut keccak_ip = Vec::<u8>::new();
+        let vkey_hash = gnark_inner_vk.keccak_hash()?;
+        println!("vkey_hash {:?}", vkey_hash);
+        keccak_ip.extend(gnark_inner_vk.keccak_hash()?.to_vec().iter().cloned());
+        for i in 0..gnark_inner_pis.0.len() {
+            let pi = gnark_inner_pis.0[i].clone();
+            keccak_ip.extend(convert_string_to_le_bytes(&pi).to_vec().iter().cloned());
+        }
+        let hash = keccak_hash::keccak(keccak_ip).0;
+        let pis1 = BigUint::from_bytes_le(&hash[0..16]).to_string();
+        let pis2 = BigUint::from_bytes_le(&hash[16..32]).to_string();
+        println!("pis1 {:?}", pis1);
+        println!("pis2 {:?}", pis2);
+        println!("p1 {:?}", prove_result.reduced_pis.0[0]);
+        println!("p2 {:?}", prove_result.reduced_pis.0[1]);
+        assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+        assert_eq!(pis2, prove_result.reduced_pis.0[1]);
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Groth16 {
         // 1.Reconstruct inner proof
         let snarkjs_inner_proof: SnarkJSGroth16Proof = SnarkJSGroth16Proof::read_proof(&inner_proof_path)?;

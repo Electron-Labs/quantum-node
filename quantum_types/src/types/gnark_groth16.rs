@@ -7,7 +7,7 @@ use ark_bn254::g1::Config;
 use ark_ec::short_weierstrass::Affine;
 use borsh::{de, BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
-use quantum_utils::file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file};
+use quantum_utils::{file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_le_bytes};
 use serde::{Serialize, Deserialize};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
@@ -185,8 +185,8 @@ impl Vkey for GnarkGroth16Vkey {
 		// keccak_ip.extend(self.G1.Alpha.Y.as_bytes().iter().cloned());
 		// -- K --
 		for i in 0..self.G1.K.len() {
-			keccak_ip.extend(self.G1.K[i].X.as_bytes().iter().cloned());
-			keccak_ip.extend(self.G1.K[i].Y.as_bytes().iter().cloned());
+			keccak_ip.extend(convert_string_to_le_bytes(&self.G1.K[i].X).to_vec().iter().cloned());
+			keccak_ip.extend(convert_string_to_le_bytes(&self.G1.K[i].Y).to_vec().iter().cloned());
 		}
 		// -- G2 --
 		// -- beta --
@@ -206,14 +206,15 @@ impl Vkey for GnarkGroth16Vkey {
 		// keccak_ip.extend(self.G2.Delta.Y.A1.as_bytes().iter().cloned());
 
 		// -- CommitmentKey --
-		keccak_ip.extend(self.CommitmentKey.G.X.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.CommitmentKey.G.X.A1.as_bytes().iter().cloned());
-		keccak_ip.extend(self.CommitmentKey.G.Y.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.CommitmentKey.G.Y.A1.as_bytes().iter().cloned());
-		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.X.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.X.A1.as_bytes().iter().cloned());
-		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.Y.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.CommitmentKey.GRootSigmaNeg.Y.A1.as_bytes().iter().cloned());
+		keccak_ip.extend(convert_string_to_le_bytes(&self.CommitmentKey.G.X.A0).to_vec().iter().cloned());
+		keccak_ip.extend(convert_string_to_le_bytes(&self.CommitmentKey.G.X.A1).to_vec().iter().cloned());
+		keccak_ip.extend(convert_string_to_le_bytes(&self.CommitmentKey.G.Y.A0).to_vec().iter().cloned());
+		keccak_ip.extend(convert_string_to_le_bytes(&self.CommitmentKey.G.Y.A1).to_vec().iter().cloned());
+
+		keccak_ip.extend(convert_string_to_le_bytes(&self.CommitmentKey.GRootSigmaNeg.X.A0).to_vec().iter().cloned());
+		keccak_ip.extend(convert_string_to_le_bytes(&self.CommitmentKey.GRootSigmaNeg.X.A1).to_vec().iter().cloned());
+		keccak_ip.extend(convert_string_to_le_bytes(&self.CommitmentKey.GRootSigmaNeg.Y.A0).to_vec().iter().cloned());
+		keccak_ip.extend(convert_string_to_le_bytes(&self.CommitmentKey.GRootSigmaNeg.Y.A1).to_vec().iter().cloned());
 
 		let keccak_h = keccak(keccak_ip.clone());
 		Ok(keccak_h.0)
