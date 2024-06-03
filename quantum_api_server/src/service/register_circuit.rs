@@ -1,5 +1,6 @@
 use quantum_db::repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::vkey::Vkey, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}}};
+use quantum_utils::paths::get_user_vk_path;
 use rocket::State;
 
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -12,7 +13,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     let vkey_bytes: Vec<u8> = data.vkey.clone();
 
     // Borsh deserialise to corresponding vkey struct 
-    let vkey: T = T::deserialize(&mut vkey_bytes.as_slice())?;
+    let vkey: T = T::deserialize_vkey(&mut vkey_bytes.as_slice())?;
     let _ = match vkey.validate(data.num_public_inputs) {
         Ok(_) => Ok(()),
         Err(_) => {
@@ -33,7 +34,8 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     }
 
     // dump vkey
-    let vkey_path = vkey.dump_vk(&circuit_hash_string, &config_data)?;
+    let vkey_path = get_user_vk_path(&config_data.storage_folder_path, &config_data.user_data_path, &circuit_hash_string);
+    vkey.dump_vk(&vkey_path)?;
 
     // Get a reduction circuit id
     let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
