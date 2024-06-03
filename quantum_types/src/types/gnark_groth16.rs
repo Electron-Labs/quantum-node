@@ -84,7 +84,7 @@ pub struct GnarkGroth16Vkey {
 	pub G2: G2Struct,
 	pub CommitmentKey: PedersenCommitmentKey,
 	// We wont support gnark proofs which have PublicAndCommitmentCommitted non-empty
-	pub PublicAndCommitmentCommitted: Vec<String>
+	pub PublicAndCommitmentCommitted: Vec<Vec<u32>>
 }
 
 impl GnarkGroth16Vkey {
@@ -169,11 +169,9 @@ impl Vkey for GnarkGroth16Vkey {
 		if self.G1.K.len() as u8 == num_public_inputs +1 && self.PublicAndCommitmentCommitted.len() != 0{
 			return Err(anyhow!("not valid"));
 		}
-		// TODO: ?
-		// if self.G1.K.len() as u8 == num_public_inputs + 2 &&
-		// 	(self.PublicAndCommitmentCommitted.len() != 1 || self.PublicAndCommitmentCommitted[0].len() !=0){
-		// 	return Err(anyhow!("not valid"));
-		// }
+		if self.G1.K.len() as u8 == num_public_inputs + 2 && (self.PublicAndCommitmentCommitted.len() != 1 || self.PublicAndCommitmentCommitted[0].len() !=0){
+			return Err(anyhow!("not valid"));
+		}
 		info!("vkey validated");
 		Ok(())
 	}
