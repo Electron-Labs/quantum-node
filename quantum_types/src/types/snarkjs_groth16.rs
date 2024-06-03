@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 use keccak_hash::keccak;
-use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
+use crate::{traits::{pis::Pis, proof::Proof, vkey::Vkey}, types::gnark_groth16::{Fq, Fq2, Fq_2, G1Struct, G2Struct, PedersenCommitmentKey}};
 
 use super::{config::ConfigData, gnark_groth16::GnarkGroth16Vkey};
 
@@ -66,7 +66,90 @@ impl SnarkJSGroth16Vkey {
 
 impl SnarkJSGroth16Vkey {
 	pub fn convert_to_gnark_vkey(&self) -> GnarkGroth16Vkey {
-		todo!()
+		let mut k: Vec<Fq> = Vec::new();
+		let ic = self.IC.clone();
+		for i in 0..ic.len() {
+			let fq = Fq {
+				X: ic[i][0].clone(),
+				Y: ic[1][1].clone(),
+			};
+			k.push(fq);
+		}
+		let gnark_converted_vkey = GnarkGroth16Vkey {
+			G1: G1Struct {
+					Alpha: Fq {
+						X: self.vk_alpha_1[0].clone(),
+						Y: self.vk_alpha_1[1].clone(),
+					},
+					// putting dummy data in Beta
+					Beta: Fq {
+						X: self.vk_alpha_1[0].clone(),
+						Y: self.vk_alpha_1[1].clone(),
+					},
+					// putting dummy data in Beta
+					Delta: Fq {
+						X: self.vk_alpha_1[0].clone(),
+						Y: self.vk_alpha_1[1].clone(),
+					},
+					K: k,
+				},
+			G2: G2Struct {
+					Beta: Fq2 {
+						X: Fq_2 {
+							A0: self.vk_beta_2[0][0].clone(),
+							A1: self.vk_beta_2[0][1].clone(),
+						},
+						Y: Fq_2 {
+							A0: self.vk_beta_2[1][0].clone(),
+							A1: self.vk_beta_2[1][1].clone(),
+						},
+					},
+					Delta: Fq2 {
+						X: Fq_2 {
+							A0: self.vk_delta_2[0][0].clone(),
+							A1: self.vk_delta_2[0][1].clone(),
+						},
+						Y: Fq_2 {
+							A0: self.vk_delta_2[1][0].clone(),
+							A1: self.vk_delta_2[1][1].clone(),
+						},
+					},
+					Gamma: Fq2 {
+						X: Fq_2 {
+							A0: self.vk_gamma_2[0][0].clone(),
+							A1: self.vk_gamma_2[0][1].clone(),
+						},
+						Y: Fq_2 {
+							A0: self.vk_gamma_2[1][0].clone(),
+							A1: self.vk_gamma_2[1][1].clone(),
+						},
+					},
+				},
+			CommitmentKey: PedersenCommitmentKey {
+				G: Fq2 {
+					X: Fq_2 {
+						A0: String::from("0"),
+						A1: String::from("0"),
+					},
+					Y: Fq_2 {
+						A0: String::from("0"),
+						A1: String::from("0"),
+					},
+				},
+				GRootSigmaNeg: Fq2 {
+					X: Fq_2 {
+						A0: String::from("0"),
+						A1: String::from("0"),
+					},
+					Y: Fq_2 {
+						A0: String::from("0"),
+						A1: String::from("0"),
+					},
+				},
+			},
+			PublicAndCommitmentCommitted: vec![],
+		};
+		gnark_converted_vkey
 	}
 }
 
@@ -111,48 +194,6 @@ impl Vkey for SnarkJSGroth16Vkey {
     }
 
 	fn keccak_hash(&self) -> AnyhowResult<[u8;32]> {
-		// let mut keccak_ip = Vec::<u8>::new();
-		// // vk_alpha_1
-		// for i in 0..self.vk_alpha_1.len() {
-		// 	keccak_ip.extend(self.vk_alpha_1[i].as_bytes().iter().cloned());
-		// }
-		// // vk_beta_2
-		// for i in 0..self.vk_beta_2.len() {
-		// 	for j in 0..self.vk_beta_2[i].len() {
-		// 		keccak_ip.extend(self.vk_beta_2[i][j].as_bytes().iter().cloned());
-		// 	}
-		// }
-		// // vk_gamma_2
-		// for i in 0..self.vk_gamma_2.len() {
-		// 	for j in 0..self.vk_gamma_2[i].len() {
-		// 		keccak_ip.extend(self.vk_gamma_2[i][j].as_bytes().iter().cloned());
-		// 	}
-		// }
-
-		// // vk_delta_2
-		// for i in 0..self.vk_delta_2.len() {
-		// 	for j in 0..self.vk_delta_2[i].len() {
-		// 		keccak_ip.extend(self.vk_delta_2[i][j].as_bytes().iter().cloned());
-		// 	}
-		// }
-
-		// // vk_alphabeta_12
-		// for i in 0..self.vk_alphabeta_12.len() {
-		// 	for j in 0..self.vk_alphabeta_12[i].len() {
-		// 		for k in 0..self.vk_alphabeta_12[i][j].len() {
-		// 			keccak_ip.extend(self.vk_alphabeta_12[i][j][k].as_bytes().iter().cloned());
-		// 		}
-		// 	}
-		// }
-
-		// // IP
-		// for i in 0..self.IC.len() {
-		// 	for j in 0..self.IC[i].len() {
-		// 		keccak_ip.extend(self.IC[i][j].as_bytes().iter().cloned());
-		// 	}
-		// }
-
-		// let hash = keccak(keccak_ip).0;
 		let gnark_converted_vkey = self.convert_to_gnark_vkey();
 
 		Ok(gnark_converted_vkey.keccak_hash()?)

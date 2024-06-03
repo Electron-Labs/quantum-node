@@ -176,12 +176,13 @@ impl Vkey for GnarkGroth16Vkey {
 		Ok(())
 	}
 
+	// TODO: Calculate E and GammaNeg and DeltaNeg and calculate hash
 	fn keccak_hash(&self) -> AnyhowResult<[u8;32]> {
 		let mut keccak_ip = Vec::<u8>::new();
 		// -- G1 --
 		// -- alpha --
-		keccak_ip.extend(self.G1.Alpha.X.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G1.Alpha.Y.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G1.Alpha.X.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G1.Alpha.Y.as_bytes().iter().cloned());
 		// -- K --
 		for i in 0..self.G1.K.len() {
 			keccak_ip.extend(self.G1.K[i].X.as_bytes().iter().cloned());
@@ -189,20 +190,20 @@ impl Vkey for GnarkGroth16Vkey {
 		}
 		// -- G2 --
 		// -- beta --
-		keccak_ip.extend(self.G2.Beta.X.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Beta.X.A1.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Beta.Y.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Beta.Y.A1.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Beta.X.A0.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Beta.X.A1.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Beta.Y.A0.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Beta.Y.A1.as_bytes().iter().cloned());
 		// -- gamma --
-		keccak_ip.extend(self.G2.Gamma.X.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Gamma.X.A1.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Gamma.Y.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Gamma.Y.A1.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Gamma.X.A0.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Gamma.X.A1.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Gamma.Y.A0.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Gamma.Y.A1.as_bytes().iter().cloned());
 		// -- delta --
-		keccak_ip.extend(self.G2.Delta.X.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Delta.X.A1.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Delta.Y.A0.as_bytes().iter().cloned());
-		keccak_ip.extend(self.G2.Delta.Y.A1.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Delta.X.A0.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Delta.X.A1.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Delta.Y.A0.as_bytes().iter().cloned());
+		// keccak_ip.extend(self.G2.Delta.Y.A1.as_bytes().iter().cloned());
 
 		// -- CommitmentKey --
 		keccak_ip.extend(self.CommitmentKey.G.X.A0.as_bytes().iter().cloned());
