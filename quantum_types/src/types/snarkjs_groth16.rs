@@ -17,15 +17,15 @@ use super::config::ConfigData;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
-	protocol: String,
-	curve: String,
-    nPublic: u32,
-    vk_alpha_1: Vec<String>,
-    vk_beta_2: Vec<Vec<String>>,
-    vk_gamma_2: Vec<Vec<String>>,
-    vk_delta_2: Vec<Vec<String>>,
-    vk_alphabeta_12: Vec<Vec<Vec<String>>>,
-    IC: Vec<Vec<String>>
+		pub protocol: String,
+		pub curve: String,
+    pub nPublic: u32,
+    pub vk_alpha_1: Vec<String>,
+    pub vk_beta_2: Vec<Vec<String>>,
+    pub vk_gamma_2: Vec<Vec<String>>,
+    pub vk_delta_2: Vec<Vec<String>>,
+    pub vk_alphabeta_12: Vec<Vec<Vec<String>>>,
+    pub IC: Vec<Vec<String>>
 }
 
 impl SnarkJSGroth16Vkey {
@@ -88,7 +88,7 @@ impl Vkey for SnarkJSGroth16Vkey {
 		let gnark_vkey: SnarkJSGroth16Vkey = serde_json::from_str(&json_data)?;
 		Ok(gnark_vkey)
 	}
-    
+
     fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()> {
         if self.IC.len() as u8 != num_public_inputs+1 {
             return Err(anyhow!("not valid"));
@@ -104,7 +104,7 @@ impl Vkey for SnarkJSGroth16Vkey {
         info!("vkey validated");
         Ok(())
     }
-	
+
 	fn keccak_hash(&self) -> AnyhowResult<[u8;32]> {
 		let mut keccak_ip = Vec::<u8>::new();
 		// vk_alpha_1
@@ -216,7 +216,7 @@ impl Pis for SnarkJSGroth16Pis {
 		let gnark_pis: SnarkJSGroth16Pis = serde_json::from_str(&json_data)?;
 		Ok(gnark_pis)
 	}
-	
+
 	fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
 		let mut keccak_ip = Vec::<u8>::new();
 		for i in 0..self.0.len() {
@@ -246,7 +246,7 @@ use super::SnarkJSGroth16Vkey;
 		println!("serialised vkey {:?}", buffer);
 
 		let re_snarkjs_vkey = SnarkJSGroth16Vkey::deserialize(&mut &buffer[..]).unwrap();
-		
+
 		assert_eq!(snarkjs_vkey, re_snarkjs_vkey);
     }
 }

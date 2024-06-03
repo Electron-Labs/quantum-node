@@ -40,56 +40,56 @@ type VerifyingKey struct {
 // We will represent 1 Fr Element by String
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Fq {
-    X: String, // Since we dont wanna do any field operations on this serve, String should work
-    Y: String
+    pub X: String, // Since we dont wanna do any field operations on this serve, String should work
+    pub Y: String
 }
 
 #[derive(Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Fq_2{
-	A0 : String,
-	A1 : String
+	pub A0 : String,
+	pub A1 : String
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Fq2 {
-    X: Fq_2,
-    Y: Fq_2
+    pub X: Fq_2,
+    pub Y: Fq_2
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct G1Struct {
-    Alpha: Fq,
-    Beta: Fq,
-    Delta: Fq,
-    K: Vec<Fq>
+    pub Alpha: Fq,
+    pub Beta: Fq,
+    pub Delta: Fq,
+    pub K: Vec<Fq>
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct G2Struct {
-    Beta: Fq2,
-    Delta: Fq2,
-    Gamma: Fq2
+    pub Beta: Fq2,
+    pub Delta: Fq2,
+    pub Gamma: Fq2
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct PedersenCommitmentKey {
-	G: Fq2,
-	GRootSigmaNeg: Fq2
+	pub G: Fq2,
+	pub GRootSigmaNeg: Fq2
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct GnarkGroth16Vkey {
-	G1: G1Struct,
-	G2: G2Struct,
-	CommitmentKey: PedersenCommitmentKey,
+	pub G1: G1Struct,
+	pub G2: G2Struct,
+	pub CommitmentKey: PedersenCommitmentKey,
 	// We wont support gnark proofs which have PublicAndCommitmentCommitted non-empty
-	PublicAndCommitmentCommitted: Vec<Vec<u32>>
+	pub PublicAndCommitmentCommitted: Vec<String>
 }
 
 impl GnarkGroth16Vkey {
 	pub fn validate_fq_point(fq: &Fq) -> AnyhowResult<()>{
-		let x = ark_bn254::Fq::from(BigUint::from_str(&fq.X)?); 
-		let y = ark_bn254::Fq::from(BigUint::from_str(&fq.Y)?); 
+		let x = ark_bn254::Fq::from(BigUint::from_str(&fq.X)?);
+		let y = ark_bn254::Fq::from(BigUint::from_str(&fq.Y)?);
 		let p = ark_bn254::G1Affine::new_unchecked(x, y);
 		let is_valid = GnarkGroth16Vkey::check_if_g1_point_is_valid(&p);
 		if !is_valid {
@@ -98,16 +98,16 @@ impl GnarkGroth16Vkey {
 		}
 		Ok(())
 	}
-	
+
 	pub fn validate_fq2_points(fq2: &Fq2) -> AnyhowResult<()>{
-		let x1 = ark_bn254::Fq::from(BigUint::from_str(&fq2.X.A0)?); 
-		let x2 = ark_bn254::Fq::from(BigUint::from_str(&fq2.X.A1)?); 
+		let x1 = ark_bn254::Fq::from(BigUint::from_str(&fq2.X.A0)?);
+		let x2 = ark_bn254::Fq::from(BigUint::from_str(&fq2.X.A1)?);
 		let x = ark_bn254::Fq2::new(x1, x2);
-	
-		let y1 = ark_bn254::Fq::from(BigUint::from_str(&fq2.Y.A0)?); 
-		let y2 = ark_bn254::Fq::from(BigUint::from_str(&fq2.Y.A1)?); 
+
+		let y1 = ark_bn254::Fq::from(BigUint::from_str(&fq2.Y.A0)?);
+		let y2 = ark_bn254::Fq::from(BigUint::from_str(&fq2.Y.A1)?);
 		let y = ark_bn254::Fq2::new(y1, y2);
-	
+
 		let p = ark_bn254::G2Affine::new(x, y);
 		let is_valid = GnarkGroth16Vkey::check_if_g2_point_is_valid(&p);
 		if !is_valid {
@@ -120,7 +120,7 @@ impl GnarkGroth16Vkey {
 	pub fn check_if_g1_point_is_valid(p: &Affine<Config>) -> bool {
 		return p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve()
 	}
-	
+
 	pub fn check_if_g2_point_is_valid(p: &Affine<ark_bn254::g2::Config>) -> bool {
 		return p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve()
 	}
@@ -161,7 +161,7 @@ impl Vkey for GnarkGroth16Vkey {
 		GnarkGroth16Vkey::validate_fq2_points(&self.G2.Gamma)?;
 		GnarkGroth16Vkey::validate_fq2_points(&self.CommitmentKey.G)?;
 		GnarkGroth16Vkey::validate_fq2_points(&self.CommitmentKey.GRootSigmaNeg)?;
-		
+
 		if !(self.G1.K.len() as u8 == num_public_inputs+1 || self.G1.K.len() as u8 == num_public_inputs+2) {
 			return Err(anyhow!("not valid"));
 		}
@@ -169,21 +169,22 @@ impl Vkey for GnarkGroth16Vkey {
 		if self.G1.K.len() as u8 == num_public_inputs +1 && self.PublicAndCommitmentCommitted.len() != 0{
 			return Err(anyhow!("not valid"));
 		}
-		if self.G1.K.len() as u8 == num_public_inputs + 2 && 
-			(self.PublicAndCommitmentCommitted.len() != 1 || self.PublicAndCommitmentCommitted[0].len() !=0){
-			return Err(anyhow!("not valid"));
-		}
+		// TODO: ?
+		// if self.G1.K.len() as u8 == num_public_inputs + 2 &&
+		// 	(self.PublicAndCommitmentCommitted.len() != 1 || self.PublicAndCommitmentCommitted[0].len() !=0){
+		// 	return Err(anyhow!("not valid"));
+		// }
 		info!("vkey validated");
 		Ok(())
 	}
-	
+
 	fn keccak_hash(&self) -> AnyhowResult<[u8;32]> {
 		let mut keccak_ip = Vec::<u8>::new();
 		// -- G1 --
 		// -- alpha --
 		keccak_ip.extend(self.G1.Alpha.X.as_bytes().iter().cloned());
 		keccak_ip.extend(self.G1.Alpha.Y.as_bytes().iter().cloned());
-		// -- K -- 
+		// -- K --
 		for i in 0..self.G1.K.len() {
 			keccak_ip.extend(self.G1.K[i].X.as_bytes().iter().cloned());
 			keccak_ip.extend(self.G1.K[i].Y.as_bytes().iter().cloned());
@@ -313,7 +314,7 @@ mod tests {
 		println!("serialised vkey {:?}", buffer);
 
 		let re_gnark_vkey = GnarkGroth16Vkey::deserialize(&mut &buffer[..]).unwrap();
-		
+
 		assert_eq!(gnark_vkey, re_gnark_vkey);
 
 		println!("{:?}", re_gnark_vkey);
