@@ -26,7 +26,7 @@ use sqlx::{MySql, Pool};
 use quantum_utils::logger::initialize_logger;
 use tracing::info;
 
-pub const BATCH_SIZE: u64 = 20; // Number of proofs to be included in 1 batch
+pub const BATCH_SIZE: u64 = 10; // Number of proofs to be included in 1 batch
 pub const WORKER_SLEEP_SECS: u64 = 10;
 
 pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, config: &ConfigData) -> AnyhowResult<()> {
@@ -63,17 +63,6 @@ pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, confi
 }
 
 pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowResult<()> {
-
-    // Update Proof Status to aggregating for all the proofs
-    for proof in &proofs {
-        update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
-    }
-    // TODO: ADD 2 columns to superproof:
-    // 1. superproof_root
-    // 2. superproof_leaves path
-
-    // 1. Generate a new superproof row
-    // 2. Add all the proof_ids to superproof row
     let mut proof_ids: Vec<u64> = vec![];
     for proof in &proofs {
         let proof_id = match proof.id {
@@ -85,15 +74,20 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowR
     }
 
     let proof_json_string = serde_json::to_string(&proof_ids)?;
+
+    for proof in &proofs {
+        update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
+    }
+
     let superproof_id = insert_new_superproof(pool, &proof_json_string, SuperproofStatus::InProgress).await?;
-    // 3. Add superproof id to all the the proofs
+
     for proof in &proofs {
         update_superproof_id_in_proof(pool, &proof.proof_hash, superproof_id).await?;
     }
 
     // 4. superproof_status -> (0: Not Started, 1: IN_PROGRESS, 2: PROVING_DONE, 3: SUBMITTED_ONCHAIN, 4: FAILED)
 
-    let aggregation_request = handle_aggregation(pool, proofs.clone()).await;
+    let aggregation_request = handle_aggregation(pool, proofs.clone(), proof_ids, superproof_id).await;
 
     match aggregation_request {
         Ok(_) => {
@@ -166,7 +160,6 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
         let aggregation_awaiting_proofs = get_n_reduced_proofs(pool, BATCH_SIZE).await?;
         println!("Aggregation awaiting proofs {:?}", aggregation_awaiting_proofs.len());
         if aggregation_awaiting_proofs.len() == BATCH_SIZE as usize {
-            // TODO: Do aggregation and submit on ethereum
             aggregate_proofs(pool, aggregation_awaiting_proofs).await?;
         }
 
