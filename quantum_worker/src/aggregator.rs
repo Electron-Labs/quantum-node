@@ -4,5 +4,6 @@ use sqlx::{MySql, Pool};
 use anyhow::{Ok, Result as AnyhowResult};
 
 pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowResult<()> {
+    
     Ok(())
 }

@@ -17,6 +17,7 @@ pub mod proof_generator;
 pub mod utils;
 
 use std::{thread::sleep, time::Duration};
+use aggregator::handle_aggregation;
 use dotenv::dotenv;
 use quantum_db::repository::{proof_repository::{get_n_reduced_proofs, update_proof_status}, task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
 use anyhow::Result as AnyhowResult;
@@ -64,13 +65,33 @@ pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, confi
 pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowResult<()> {
 
     // Update Proof Status to aggregating for all the proofs
-    for proof in proofs {
+    for proof in &proofs {
         update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
     }
+    // TODO: ADD 2 columns to superproof:
+    // 1. superproof_root
+    // 2. superproof_leaves path
 
-    // Generate a new superproof row
-    // 1. Add all the proof ids to it
-    // 2. superproof_status -> InProgress
+    // 1. Generate a new superproof row
+    // 2. Add all the proof_ids to superproof row
+    // 3. Add superproof id to all the the proofs
+    // 4. superproof_status -> (0: Not Started, 1: IN_PROGRESS, 2: PROVING_DONE, 3: SUBMITTED_ONCHAIN, 4: FAILED)
+
+    let aggregation_request = handle_aggregation(pool, proofs.clone()).await;
+
+    match aggregation_request {
+        Ok(_) => {
+            // Update Proof Status to aggregated for all the proofs
+            for proof in proofs {
+                update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregated).await?;
+            }
+            // Superproof status to PROVING_DONE
+        },  
+        Err(e) => {
+            // Change proof_generation status to FAILED
+        }
+    }
+
     Ok(())   
 }
 
@@ -125,6 +146,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
         println!("Aggregation awaiting proofs {:?}", aggregation_awaiting_proofs.len());
         if aggregation_awaiting_proofs.len() == BATCH_SIZE as usize {
             // TODO: Do aggregation and submit on ethereum
+            aggregate_proofs(pool, aggregation_awaiting_proofs).await?;
         }
 
         let unpicked_task = get_unpicked_task(pool).await?;
