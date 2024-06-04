@@ -22,7 +22,7 @@ pub struct GenerateAggregatedProofResult {
     pub new_leaves: Vec<QuantumLeaf>
 }
 
-pub struct KeccakHashOut ([u8; 32]);
+pub struct KeccakHashOut (pub [u8; 32]);
 
 pub struct QuantumLeaf {
     pub value: KeccakHashOut,
