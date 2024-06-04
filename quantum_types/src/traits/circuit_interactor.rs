@@ -1,3 +1,7 @@
+use borsh::{BorshDeserialize, BorshSerialize};
+use quantum_utils::file::{read_bytes_from_file, write_bytes_to_file};
+use serde::{Deserialize, Serialize};
+use anyhow::Result as AnyhowResult;
 use crate::types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}};
 
 #[derive(Clone, Debug)]
@@ -25,14 +29,44 @@ pub struct GenerateAggregatedProofResult {
     pub new_leaves: Vec<QuantumLeaf>
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct KeccakHashOut (pub [u8; 32]);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct QuantumLeaf {
     pub value: KeccakHashOut,
     pub next_value: KeccakHashOut,
     pub next_idx: [u8; 8]
+}
+
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub struct IMT_Tree {
+    pub leafs: Vec<QuantumLeaf>
+}
+
+impl IMT_Tree {
+    pub fn serialise_imt_tree(&self) -> AnyhowResult<Vec<u8>> {
+        let mut buffer: Vec<u8> = Vec::new();
+		BorshSerialize::serialize(&self,&mut buffer)?;
+		Ok(buffer)
+    }
+
+    pub fn deserialise_imt_tree(bytes: &mut &[u8]) -> AnyhowResult<Self> {
+        let imt_tree: IMT_Tree = BorshDeserialize::deserialize(bytes)?;
+        Ok(imt_tree)
+    }
+
+    pub fn dump_tree(&self, path: &str) -> AnyhowResult<()> {
+        let imt_bytes = self.serialise_imt_tree()?;
+        write_bytes_to_file(&imt_bytes, path)?;
+        Ok(())
+    }
+
+    pub fn read_tree(path: &str) -> AnyhowResult<Self> {
+        let imt_bytes = read_bytes_from_file(path)?;
+        let imt_tree = IMT_Tree::deserialise_imt_tree(&mut imt_bytes.as_slice())?;
+        Ok(imt_tree)
+    }
 }
 
 pub trait CircuitInteractor {

@@ -62,7 +62,7 @@ pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, confi
     Ok(())
 }
 
-pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowResult<()> {
+pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>, config: &ConfigData) -> AnyhowResult<()> {
     let mut proof_ids: Vec<u64> = vec![];
     for proof in &proofs {
         let proof_id = match proof.id {
@@ -79,7 +79,8 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowR
         update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
     }
 
-    let superproof_id = insert_new_superproof(pool, &proof_json_string, SuperproofStatus::InProgress).await?;
+    let superproof_id = 0;
+    insert_new_superproof(pool, &proof_json_string, SuperproofStatus::InProgress).await?;
 
     for proof in &proofs {
         update_superproof_id_in_proof(pool, &proof.proof_hash, superproof_id).await?;
@@ -87,7 +88,7 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowR
 
     // 4. superproof_status -> (0: Not Started, 1: IN_PROGRESS, 2: PROVING_DONE, 3: SUBMITTED_ONCHAIN, 4: FAILED)
 
-    let aggregation_request = handle_aggregation(pool, proofs.clone(), proof_ids, superproof_id).await;
+    let aggregation_request = handle_aggregation(pool, proofs.clone(), superproof_id, config).await;
 
     match aggregation_request {
         Ok(_) => {
@@ -160,7 +161,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
         let aggregation_awaiting_proofs = get_n_reduced_proofs(pool, BATCH_SIZE).await?;
         println!("Aggregation awaiting proofs {:?}", aggregation_awaiting_proofs.len());
         if aggregation_awaiting_proofs.len() == BATCH_SIZE as usize {
-            aggregate_proofs(pool, aggregation_awaiting_proofs).await?;
+            aggregate_proofs(pool, aggregation_awaiting_proofs, config_data).await?;
         }
 
         let unpicked_task = get_unpicked_task(pool).await?;

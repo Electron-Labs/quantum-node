@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use ark_bn254::g1::Config;
 use ark_ec::short_weierstrass::Affine;
-use borsh::{de, BorshDeserialize, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use quantum_utils::{file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_le_bytes};
 use serde::{Serialize, Deserialize};
