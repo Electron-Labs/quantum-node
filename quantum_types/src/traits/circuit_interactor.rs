@@ -1,5 +1,6 @@
 use crate::types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}};
 
+#[derive(Clone, Debug)]
 pub struct ReductionCircuitBuildResult {
     pub success: bool,
     pub msg: String,
@@ -7,6 +8,7 @@ pub struct ReductionCircuitBuildResult {
     pub verification_key: GnarkGroth16Vkey  
 }
 
+#[derive(Clone, Debug)]
 pub struct GenerateReductionProofResult {
     pub success: bool,
     pub msg: String,
@@ -14,6 +16,7 @@ pub struct GenerateReductionProofResult {
     pub reduced_pis: GnarkGroth16Pis
 }
 
+#[derive(Clone, Debug)]
 pub struct GenerateAggregatedProofResult {
     pub success: bool,
     pub msg: String,
@@ -22,8 +25,10 @@ pub struct GenerateAggregatedProofResult {
     pub new_leaves: Vec<QuantumLeaf>
 }
 
+#[derive(Clone, Debug)]
 pub struct KeccakHashOut (pub [u8; 32]);
 
+#[derive(Clone, Debug)]
 pub struct QuantumLeaf {
     pub value: KeccakHashOut,
     pub next_value: KeccakHashOut,
