@@ -81,7 +81,8 @@ CREATE TABLE IF NOT EXISTS superproof (
   agg_time INT,
   status INT,
   superproof_root VARCHAR(255),
-  superproof_leaves_path VARCHAR(255)
+  superproof_leaves_path VARCHAR(255),
+  onchain_submission_time datetime DEFAULT NULL
 );
 "
 

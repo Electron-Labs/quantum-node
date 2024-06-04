@@ -1,5 +1,6 @@
 use std::task::Poll;
 
+use chrono::NaiveDateTime;
 use quantum_types::{enums::superproof_status::SuperproofStatus, types::db::superproof::Superproof};
 use sqlx::{mysql::MySqlRow, Error, Execute, MySql, Pool, Row};
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -133,6 +134,18 @@ pub async fn update_superproof_proof_path(pool: &Pool<MySql>, superproof_proof_p
     row_affected
 }
 
+pub async fn update_superproof_oncall_submission_time(pool: &Pool<MySql>, oncall_submission_time: NaiveDateTime, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set oncall_submission_time = ? where id = ?")
+                .bind(oncall_submission_time).bind(superproof_id);
+
+    info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    row_affected
+}
+
 fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
     let superproof_status_as_u8: u8 = row.try_get_unchecked("status")?;
     let superproof_status =  SuperproofStatus::from(superproof_status_as_u8);
@@ -146,7 +159,8 @@ fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
         agg_time: row.try_get_unchecked("agg_time")?,
         status: superproof_status,
         superproof_root: row.try_get_unchecked("superproof_root")?,
-        superproof_leaves_path: row.try_get_unchecked("superproof_leaves_path")?
+        superproof_leaves_path: row.try_get_unchecked("superproof_leaves_path")?,
+        onchain_submission_time: row.try_get_unchecked("onchain_submission_time")?,
     };
 
     Ok(superproof)

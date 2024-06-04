@@ -23,3 +23,4 @@ tracing-appender = "0.2.3"
 quantum_circuits_ffi = {path = "/home/ubuntu/quantum/quantum-circuits/quantum_circuits_ffi"}
 num-bigint = "0.4.5"
 keccak-hash = "0.10.0"
+chrono = { version = "0.4.38", features = ["serde"] }
