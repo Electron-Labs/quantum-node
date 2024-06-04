@@ -18,8 +18,16 @@ pub struct GenerateAggregatedProofResult {
     pub success: bool,
     pub msg: String,
     pub aggregated_proof: GnarkGroth16Proof,
-    pub new_root: Vec<u8>,
-    pub new_leaves: Vec<u8>
+    pub new_root: KeccakHashOut,
+    pub new_leaves: Vec<QuantumLeaf>
+}
+
+pub struct KeccakHashOut ([u8; 32]);
+
+pub struct QuantumLeaf {
+    pub value: KeccakHashOut,
+    pub next_value: KeccakHashOut,
+    pub next_idx: [u8; 8]
 }
 
 pub trait CircuitInteractor {
@@ -36,8 +44,8 @@ pub trait CircuitInteractor {
         reduced_proofs: Vec<GnarkGroth16Proof>, 
         reduced_pis: Vec<GnarkGroth16Pis>, 
         reduction_circuit_vkeys: Vec<GnarkGroth16Vkey>, 
-        old_root: Vec<u8>,
-        old_leaves: Vec<u8>,
+        old_root: KeccakHashOut,
+        old_leaves: Vec<QuantumLeaf>,
         aggregator_circuit_pkey: Vec<u8>, 
         aggregator_circuit_vkey: GnarkGroth16Vkey
     ) -> GenerateAggregatedProofResult;
