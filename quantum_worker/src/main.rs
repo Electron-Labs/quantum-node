@@ -19,9 +19,9 @@ pub mod utils;
 use std::{thread::sleep, time::Duration};
 use aggregator::handle_aggregation;
 use dotenv::dotenv;
-use quantum_db::repository::{proof_repository::{get_n_reduced_proofs, update_proof_status}, task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status};
-use anyhow::Result as AnyhowResult;
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, types::{config::ConfigData, db::{proof::Proof, task::Task}}};
+use quantum_db::{error::error::CustomError, repository::{proof_repository::{get_n_reduced_proofs, update_proof_status, update_superproof_id_in_proof}, superproof_repository::{insert_new_superproof, update_superproof_status}, task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status}};
+use anyhow::{anyhow, Result as AnyhowResult};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, superproof_status::SuperproofStatus, task_status::TaskStatus, task_type::TaskType}, types::{config::ConfigData, db::{proof::Proof, superproof::Superproof, task::Task}}};
 use sqlx::{MySql, Pool};
 use quantum_utils::logger::initialize_logger;
 use tracing::info;
@@ -74,7 +74,23 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowR
 
     // 1. Generate a new superproof row
     // 2. Add all the proof_ids to superproof row
+    let mut proof_ids: Vec<u64> = vec![];
+    for proof in &proofs {
+        let proof_id = match proof.id {
+            Some(id) => Ok(id),
+            None => Err(anyhow!("not able to find proofId")),
+        };
+        let proof_id = proof_id?;
+        proof_ids.push(proof_id);
+    }
+
+    let proof_json_string = serde_json::to_string(&proof_ids)?;
+    let superproof_id = insert_new_superproof(pool, &proof_json_string, SuperproofStatus::InProgress).await?;
     // 3. Add superproof id to all the the proofs
+    for proof in &proofs {
+        update_superproof_id_in_proof(pool, &proof.proof_hash, superproof_id).await?;
+    }
+
     // 4. superproof_status -> (0: Not Started, 1: IN_PROGRESS, 2: PROVING_DONE, 3: SUBMITTED_ONCHAIN, 4: FAILED)
 
     let aggregation_request = handle_aggregation(pool, proofs.clone()).await;
@@ -86,9 +102,14 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>) -> AnyhowR
                 update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregated).await?;
             }
             // Superproof status to PROVING_DONE
+            info!("changing the superproof status to proving done");
+            update_superproof_status(pool, SuperproofStatus::ProvingDone, superproof_id).await?;
         },  
         Err(e) => {
             // Change proof_generation status to FAILED
+            info!("changing the superproof status to failed");
+            update_superproof_status(pool, SuperproofStatus::Failed, superproof_id).await?;
+            return Err(e);
         }
     }
 
