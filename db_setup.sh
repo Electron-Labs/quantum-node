@@ -79,9 +79,9 @@ CREATE TABLE IF NOT EXISTS superproof (
   transaction_hash VARCHAR(255),
   gas_cost DECIMAL(18,3) DEFAULT NULL,
   agg_time INT,
-  status: INT,
-  superproof_root: VARCHAR(255),
-  superproof_leaves_path: VARCHAR(255)
+  status INT,
+  superproof_root VARCHAR(255),
+  superproof_leaves_path VARCHAR(255)
 );
 "
 
