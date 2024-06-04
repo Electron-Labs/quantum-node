@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use quantum_circuits_ffi::interactor::{get_init_tree_data, QuantumV2CircuitInteractor};
 use quantum_db::repository::{reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::get_last_superproof};
 use quantum_types::{traits::{circuit_interactor::{CircuitInteractor, IMT_Tree, KeccakHashOut, QuantumLeaf}, pis::Pis, proof::Proof, vkey::Vkey}, types::{aggregator::{AggregatorCircuitData, IMTLeaves, InnerCircuitData}, config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}}};
@@ -43,6 +45,7 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
     let aggregator_circuit_pkey = read_bytes_from_file(&aggregator_pkey_path)?;
     let aggregator_circuit_vkey = GnarkGroth16Vkey::read_vk(&aggregator_vkey_path)?;
 
+    let aggregation_start = Instant::now();
 
     let aggregation_result = QuantumV2CircuitInteractor::generate_aggregated_proof(
         reduced_proofs, 
@@ -54,7 +57,8 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
         aggregator_circuit_vkey
     );
 
-    println!("aggregation_result {:?}", aggregation_result);
+    let aggregation_time = aggregation_start.elapsed();
+    println!("aggregation_result {:?} in {:?}", aggregation_result.msg, aggregation_time);
 
     Ok(())
 }

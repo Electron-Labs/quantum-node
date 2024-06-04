@@ -76,14 +76,14 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>, config: &C
     let proof_json_string = serde_json::to_string(&proof_ids)?;
 
     for proof in &proofs {
-        update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
+        // update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
     }
 
     let superproof_id = 0;
-    insert_new_superproof(pool, &proof_json_string, SuperproofStatus::InProgress).await?;
+    // insert_new_superproof(pool, &proof_json_string, SuperproofStatus::InProgress).await?;
 
     for proof in &proofs {
-        update_superproof_id_in_proof(pool, &proof.proof_hash, superproof_id).await?;
+        // update_superproof_id_in_proof(pool, &proof.proof_hash, superproof_id).await?;
     }
 
     // 4. superproof_status -> (0: Not Started, 1: IN_PROGRESS, 2: PROVING_DONE, 3: SUBMITTED_ONCHAIN, 4: FAILED)
@@ -93,18 +93,18 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>, config: &C
     match aggregation_request {
         Ok(_) => {
             // Update Proof Status to aggregated for all the proofs
-            for proof in proofs {
-                update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregated).await?;
-            }
-            // Superproof status to PROVING_DONE
-            info!("changing the superproof status to proving done");
-            update_superproof_status(pool, SuperproofStatus::ProvingDone, superproof_id).await?;
+            // for proof in proofs {
+            //     update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregated).await?;
+            // }
+            // // Superproof status to PROVING_DONE
+            println!("changing the superproof status to proving done");
+            // update_superproof_status(pool, SuperproofStatus::ProvingDone, superproof_id).await?;
         },  
         Err(e) => {
             // Change proof_generation status to FAILED
-            info!("changing the superproof status to failed");
-            update_superproof_status(pool, SuperproofStatus::Failed, superproof_id).await?;
-            return Err(e);
+            println!("changing the superproof status to failed");
+            // update_superproof_status(pool, SuperproofStatus::Failed, superproof_id).await?;
+            // return Err(e);
         }
     }
 
