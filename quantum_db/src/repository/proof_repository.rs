@@ -69,6 +69,18 @@ pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction
     row_affected
 }
 
+pub async fn update_superproof_id_in_proof(pool: &Pool<MySql>, proof_hash: &str, superproof_id: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE proof set superproof_id = ? where proof_hash = ?")
+                .bind(superproof_id).bind(proof_hash);
+
+    info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    row_affected
+}
+
 pub async fn get_n_reduced_proofs(pool: &Pool<MySql>, n: u64) -> AnyhowResult<Vec<Proof>> {
     let query  = sqlx::query("SELECT * from proof where proof_status = ? order by id LIMIT ?")
                 .bind(ProofStatus::Reduced.as_u8()).bind(n);

@@ -3,3 +3,4 @@ Cargo.lock
 /vkey
 /storage
 /log
+/aggregated_circuit_data

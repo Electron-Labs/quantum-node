@@ -1,5 +1,6 @@
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_proof}, superproof_repository::get_superproof_by_id, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::config::ConfigData};
+use quantum_utils::{keccak::encode_keccak_hash, paths::{get_user_pis_path, get_user_proof_path}};
 use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
@@ -9,9 +10,9 @@ use keccak_hash::keccak;
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
     
-    let proof: T = T::deserialize(&mut data.proof.as_slice())?;
+    let proof: T = T::deserialize_proof(&mut data.proof.as_slice())?;
 
-    let pis: F = F::deserialize(&mut data.pis.as_slice())?;
+    let pis: F = F::deserialize_pis(&mut data.pis.as_slice())?;
 
     let mut proof_id_ip = Vec::<u8>::new();
     let pis_hash = pis.keccak_hash()?;
@@ -19,14 +20,17 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     proof_id_ip.extend(circuit_hash.iter().cloned());
     proof_id_ip.extend(pis_hash.iter().cloned());
 
-    let proof_id = format!("{}",keccak(proof_id_ip));
+    let proof_id_hash = keccak(proof_id_ip).0;
+
+    let proof_id = encode_keccak_hash(&proof_id_hash)?;
 
     check_if_proof_already_exist(&proof_id).await?;
 
-
-    
-    let proof_full_path = proof.dump_proof(&data.circuit_hash, config_data, &proof_id)?;
-    let pis_full_path = pis.dump_pis(&data.circuit_hash, config_data, &proof_id)?;
+    // Dump proof and pis binaries
+    let proof_full_path = get_user_proof_path(&config_data.storage_folder_path, &config_data.proof_path, &data.circuit_hash, &proof_id);
+    let pis_full_path = get_user_pis_path(&config_data.storage_folder_path, &config_data.public_inputs_path, &data.circuit_hash, &proof_id);
+    proof.dump_proof(&proof_full_path)?;
+    pis.dump_pis(&pis_full_path)?;
 
     insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash).await?;
     create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await?;
