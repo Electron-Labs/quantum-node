@@ -159,8 +159,8 @@ fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
         agg_time: row.try_get_unchecked("agg_time")?,
         status: superproof_status,
         superproof_root: row.try_get_unchecked("superproof_root")?,
-        superproof_leaves_path: row.try_get_unchecked("superproof_leaves_path")?,
-        onchain_submission_time: row.try_get_unchecked("onchain_submission_time")?,
+        superproof_leaves_path: row.try_get_unchecked("superproof_leaves_path")?
+        // onchain_submission_time: row.try_get_unchecked("onchain_submission_time")?,
     };
 
     Ok(superproof)

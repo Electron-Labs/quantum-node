@@ -14,6 +14,6 @@ pub struct Superproof {
     pub agg_time: Option<u64>,
     pub status: SuperproofStatus,
     pub superproof_root: Option<String>,
-    pub superproof_leaves_path: Option<String>,
-    pub onchain_submission_time: Option<NaiveDateTime>
+    pub superproof_leaves_path: Option<String>
+    // pub onchain_submission_time: Option<NaiveDateTime>
 }
