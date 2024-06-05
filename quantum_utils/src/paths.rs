@@ -50,3 +50,11 @@ pub fn get_aggregation_circuit_vkey_path(aggregated_circuit_data_path: &str) -> 
     format!("{}/vkey.bin", aggregated_circuit_data_path)
 }
 
+pub fn get_superproof_proof_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
+    format!("{}{}/{}/proof.bin", storage_folder_path, superproof_path, superproof_id)
+}
+
+pub fn get_superproof_leaves_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
+    format!("{}{}/{}/leaves.bin", storage_folder_path, superproof_path, superproof_id)
+}
+

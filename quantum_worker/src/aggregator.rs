@@ -1,9 +1,9 @@
 use std::time::Instant;
 
 use quantum_circuits_ffi::interactor::{get_init_tree_data, QuantumV2CircuitInteractor};
-use quantum_db::repository::{reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::get_last_superproof};
+use quantum_db::repository::{reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_superproof, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_proof_path, update_superproof_root}};
 use quantum_types::{traits::{circuit_interactor::{CircuitInteractor, IMT_Tree, KeccakHashOut, QuantumLeaf}, pis::Pis, proof::Proof, vkey::Vkey}, types::{aggregator::{AggregatorCircuitData, IMTLeaves, InnerCircuitData}, config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}}};
-use quantum_utils::{file::read_bytes_from_file, keccak::decode_keccak_hex, paths::{get_aggregation_circuit_proving_key_path, get_aggregation_circuit_vkey_path}};
+use quantum_utils::{file::read_bytes_from_file, keccak::{decode_keccak_hex, encode_keccak_hash}, paths::{get_aggregation_circuit_proving_key_path, get_aggregation_circuit_vkey_path, get_superproof_leaves_path, get_superproof_proof_path}};
 use sqlx::{MySql, Pool};
 use anyhow::{Ok, Result as AnyhowResult};
 
@@ -25,14 +25,23 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
         let reduced_vkey = GnarkGroth16Vkey::read_vk(&reduced_circuit_vkey_path)?;
         reduced_circuit_vkeys.push(reduced_vkey);
     }
-
+    println!("superproof_id {:?}", superproof_id);
     let last_updated_superproof = get_last_superproof(pool).await?;
+    println!("last updated superproof {:?}", last_updated_superproof.clone().unwrap());
     let last_root: KeccakHashOut;
     let last_leaves: IMT_Tree;
     if last_updated_superproof.is_some() {
         let last_superproof = last_updated_superproof.unwrap();
-        last_root = KeccakHashOut(decode_keccak_hex(&last_superproof.superproof_root.unwrap())?);
-        last_leaves = IMT_Tree::read_tree(&last_superproof.superproof_leaves_path.unwrap())?;
+        if last_superproof.id.unwrap() == superproof_id {
+            println!("here");
+            let (zero_leaves, zero_root) = get_init_tree_data(IMT_DEPTH as u8);
+            last_root = zero_root;
+            last_leaves = IMT_Tree{ leafs: zero_leaves };
+        }
+        else {
+            last_root = KeccakHashOut(decode_keccak_hex(&last_superproof.superproof_root.unwrap())?);
+            last_leaves = IMT_Tree::read_tree(&last_superproof.superproof_leaves_path.unwrap())?;
+        }
     } else {
         let (zero_leaves, zero_root) = get_init_tree_data(IMT_DEPTH as u8);
         last_root = zero_root;
@@ -47,6 +56,8 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
 
     let aggregation_start = Instant::now();
 
+    println!("{:?}", last_leaves.leafs.len());
+
     let aggregation_result = QuantumV2CircuitInteractor::generate_aggregated_proof(
         reduced_proofs, 
         reduced_pis_vec, 
@@ -60,5 +71,24 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
     let aggregation_time = aggregation_start.elapsed();
     println!("aggregation_result {:?} in {:?}", aggregation_result.msg, aggregation_time);
 
+    if !aggregation_result.success {
+        return Err(anyhow::Error::msg(aggregation_result.msg));
+    }
+
+    // Dump superproof_proof and add to the DB
+    let superproof_proof = aggregation_result.aggregated_proof;
+    let superproof_proof_path = get_superproof_proof_path(&config.storage_folder_path, &config.supperproof_path, superproof_id);
+    superproof_proof.dump_proof(&superproof_proof_path)?;
+    update_superproof_proof_path(pool, &superproof_proof_path, superproof_id).await?;
+    // Dump superproof_leaves and add to the DB
+    let superproof_leaves = IMT_Tree{leafs: aggregation_result.new_leaves};
+    let superproof_leaves_path = get_superproof_leaves_path(&config.storage_folder_path, &config.supperproof_path, superproof_id);
+    superproof_leaves.dump_tree(&superproof_leaves_path)?;
+    update_superproof_leaves_path(pool, &superproof_leaves_path, superproof_id).await?;
+    // Add agg_time to the db
+    update_superproof_agg_time(pool, aggregation_time.as_secs(), superproof_id).await?;
+    // Add superproof root to the db
+    let new_root = encode_keccak_hash(&aggregation_result.new_root.0)?;
+    update_superproof_root(pool, &new_root, superproof_id).await?;
     Ok(())
 }
