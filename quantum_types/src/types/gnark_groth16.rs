@@ -290,6 +290,10 @@ impl Pis for GnarkGroth16Pis {
 		let hash = keccak(keccak_ip);
 		Ok(hash.0)
 	}
+	
+	fn get_data(&self) -> AnyhowResult<Vec<String>> {
+			Ok(self.0.clone())
+	}
 }
 
 

@@ -157,3 +157,20 @@ pub trait CircuitInteractor {
         aggregator_circuit_vkey: GnarkGroth16Vkey
     ) -> GenerateAggregatedProofResult;
 }
+
+#[cfg(test)]
+mod tests {
+    use quantum_utils::keccak::encode_keccak_hash;
+
+    use super::IMT_Tree;
+
+    #[test]
+    pub fn test() {
+        let tree = IMT_Tree::read_tree("/home/ubuntu/quantum/quantum-node/storage/superproofs/6/leaves.bin").unwrap();
+        println!("{:?}", tree.leafs[1]);
+
+        let val: [u8; 32] = tree.leafs[1].next_value.0;
+        let proof_hash = encode_keccak_hash(&val).unwrap();
+        println!("{:?}", proof_hash);
+    }
+}

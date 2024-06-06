@@ -269,6 +269,10 @@ impl Pis for SnarkJSGroth16Pis {
 		let hash = keccak(keccak_ip).0;
 		Ok(hash)
 	}
+	
+	fn get_data(&self) -> AnyhowResult<Vec<String>> {
+			Ok(self.0.clone())
+		}
 }
 
 
