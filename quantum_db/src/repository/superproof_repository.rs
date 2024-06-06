@@ -214,3 +214,15 @@ pub async fn get_first_non_submitted_superproof(pool: &Pool<MySql>) -> AnyhowRes
     };
     Ok(superproof)
 }
+
+pub async fn update_superproof_fields_after_onchain_submission(pool: &Pool<MySql>, transaction_hash: &str, gas_cost: f64, eth_price: f64, status: SuperproofStatus, superproof_id: u64) -> AnyhowResult<()> {
+    let query = sqlx::query("UPDATE superproof SET transaction_hash = ?, status = ?, gas_cost = ?, eth_price = ? WHERE id = ?")
+            .bind(transaction_hash).bind(status.as_u8()).bind(gas_cost).bind(eth_price).bind(superproof_id);
+
+    info!("{}", query.sql());
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+    };
+    row_affected
+}
