@@ -1,8 +1,21 @@
 use borsh::{BorshDeserialize, BorshSerialize};
+use keccak_hash::keccak;
 use quantum_utils::file::{read_bytes_from_file, write_bytes_to_file};
 use serde::{Deserialize, Serialize};
 use anyhow::Result as AnyhowResult;
 use crate::types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}};
+use tiny_merkle::{proof::Position, Hasher, MerkleTree};
+
+#[derive(Clone, Debug)]
+pub struct KeccakHasher;
+
+impl tiny_merkle::Hasher for KeccakHasher {
+    type Hash = [u8; 32];
+
+    fn hash(value: &[u8]) -> Self::Hash {
+        keccak(value).0
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct ReductionCircuitBuildResult {
@@ -29,14 +42,24 @@ pub struct GenerateAggregatedProofResult {
     pub new_leaves: Vec<QuantumLeaf>
 }
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq)]
 pub struct KeccakHashOut (pub [u8; 32]);
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq)]
 pub struct QuantumLeaf {
     pub value: KeccakHashOut,
     pub next_value: KeccakHashOut,
     pub next_idx: [u8; 8]
+}
+
+impl QuantumLeaf {
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut serialized = vec![];
+        serialized.extend(self.value.clone().0);
+        serialized.extend(self.next_value.clone().0);
+        serialized.extend(self.next_idx.clone());
+        serialized
+    }
 }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -67,6 +90,51 @@ impl IMT_Tree {
         let imt_tree = IMT_Tree::deserialise_imt_tree(&mut imt_bytes.as_slice())?;
         Ok(imt_tree)
     }
+
+    pub fn get_mtree(&self) -> MerkleTree<KeccakHasher> {
+        let leaves_structs = self.leafs.clone();
+        let leaves = leaves_structs
+                                        .iter()
+                                        .map(|leaf_struct| keccak(&leaf_struct.serialize()).0 )
+                                        .collect::<Vec<[u8; 32]>>();
+        MerkleTree::<KeccakHasher>::from_leaves(leaves, None)
+    }
+
+    pub fn get_imt_proof(&self, leaf_val: KeccakHashOut) -> AnyhowResult<(Vec<Vec<u8>>, Vec<u8>)>{
+        let leafs = self.leafs.clone();
+        let mut leaf_asked: Option<QuantumLeaf> = None;
+        for leaf in leafs {
+            if leaf.value == leaf_val {
+                leaf_asked = Some(leaf.clone());
+                break;
+            }
+        }
+        if leaf_asked.is_none() {
+            return Err(anyhow::Error::msg("Couldnt find a value in leaves"));
+        }
+        let leaf = leaf_asked.unwrap();
+        let mtree = self.get_mtree();
+        let imt_proof = mtree.proof(keccak(&leaf.serialize()).0);
+        if imt_proof.is_none() {
+            return Err(anyhow::Error::msg("Couldnt find a valid merkle proof"));
+        }
+        let mut proof = Vec::<Vec<u8>>::new();
+        let mut proof_helper = Vec::<u8>::new();
+        proof.push(leaf.next_value.0.to_vec());
+        proof.push(leaf.next_idx.to_vec());
+
+        imt_proof.unwrap().proofs.iter().for_each(|elm| {
+            proof.push(elm.data.to_vec());
+            let posn = &elm.position;
+            match posn {
+                Position::Left => proof_helper.push(0),
+                Position::Right => proof_helper.push(1),
+            }
+        });
+
+        // return proof = ([next_leaf_val, next_idx, merkle_proof ...], merkle_proof_helper)
+        Ok((proof, proof_helper))
+    }
 }
 
 pub trait CircuitInteractor {
@@ -88,4 +156,21 @@ pub trait CircuitInteractor {
         aggregator_circuit_pkey: Vec<u8>, 
         aggregator_circuit_vkey: GnarkGroth16Vkey
     ) -> GenerateAggregatedProofResult;
+}
+
+#[cfg(test)]
+mod tests {
+    use quantum_utils::keccak::encode_keccak_hash;
+
+    use super::IMT_Tree;
+
+    #[test]
+    pub fn test() {
+        let tree = IMT_Tree::read_tree("/home/ubuntu/quantum/quantum-node/storage/superproofs/6/leaves.bin").unwrap();
+        println!("{:?}", tree.leafs[1]);
+
+        let val: [u8; 32] = tree.leafs[1].next_value.0;
+        let proof_hash = encode_keccak_hash(&val).unwrap();
+        println!("{:?}", proof_hash);
+    }
 }
