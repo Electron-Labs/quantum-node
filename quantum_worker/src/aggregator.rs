@@ -92,3 +92,20 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
     update_superproof_root(pool, &new_root, superproof_id).await?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use quantum_circuits_ffi::interactor::get_init_tree_data;
+    use quantum_utils::keccak::{decode_keccak_hex, encode_keccak_hash};
+
+    use crate::aggregator::IMT_DEPTH;
+
+    #[test]
+    pub fn yo() {
+        let (x, y) = get_init_tree_data(IMT_DEPTH as u8);
+        let h = encode_keccak_hash(&y.0).unwrap();
+        let a = decode_keccak_hex(&h).unwrap();
+        assert_eq!(y.0, a);
+        println!("h {:?}", h);
+    }
+}

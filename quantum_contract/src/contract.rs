@@ -45,11 +45,15 @@ pub async fn update_quantum_contract_state(
     new_state: &str,
     gnark_proof: &GnarkGroth16Proof
 ) -> AnyhowResult<Option<TransactionReceipt>> {
+    // println!("new state {:?}".)
 
     let new_state_bytes = get_bytes_from_hex_string(new_state)?;
-    let new_state_bytes: [u8;32] = new_state_bytes.as_slice()[..32].try_into()?;
+
+    println!("new_state_bytes {:?}", new_state_bytes);
 
     let proof = get_proof_from_gnark_groth16_proof(&gnark_proof)?;
+
+    println!("making call to eth");
 
     let receipt = contract
         .update_quantum_state(new_state_bytes, proof)
@@ -58,9 +62,10 @@ pub async fn update_quantum_contract_state(
 }
 
 pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<Proof> {
+    println!("gmarl+[ {:?}", gnark_proof);
 
-    let arx = U256::from_dec_str(&gnark_proof.Ar.X)?;
-    let arx1 = U256::from_str(&gnark_proof.Ar.X)?;
+    let arx = U256::from_dec_str(&gnark_proof.Ar.X).expect("arx");
+    let arx1 = U256::from_dec_str(&gnark_proof.Ar.X).expect("arx1");
     info!("arx from using form _dec_string: {:?}", arx);
     info!("arx from using from_string: {:?}",arx1 );
     
@@ -72,6 +77,8 @@ pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &GnarkGroth16Proof) -> An
     let krsx = U256::from_dec_str(&gnark_proof.Krs.X)?;
     let krsy = U256::from_dec_str(&gnark_proof.Krs.Y)?;
 
+    println!("inputs {:?}", [&gnark_proof.Ar.X, &gnark_proof.Ar.Y,&gnark_proof.Bs.X.A1, &gnark_proof.Bs.X.A0, &gnark_proof.Bs.Y.A1, &gnark_proof.Bs.Y.A0, &gnark_proof.Krs.X, &gnark_proof.Krs.Y]);
+
 
     let commitments_x = U256::from_dec_str(&gnark_proof.Commitments[0].X)?;
     let commitments_y = U256::from_dec_str(&gnark_proof.Commitments[0].Y)?;
@@ -80,8 +87,16 @@ pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &GnarkGroth16Proof) -> An
     let commitment_pok_y =  U256::from_dec_str(&gnark_proof.CommitmentPok.Y)?;
 
     let proof = [arx, ary, bsx2, bsx1, bsy2, bsy1, krsx, krsy];
+    println!("proof {:?}", proof);
     let commitments = [commitments_x, commitments_y];
     let commitment_pok = [commitment_pok_x, commitment_pok_y];
+
+    println!("proof ->  {:?}", Proof {
+        proof,
+        commitments,
+        commitment_pok
+    });
+
 
     Ok(Proof {
         proof,

@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result as AnyhowResult};
+use quantum_utils::keccak::decode_keccak_hex;
 use tracing::{info, error};
 
 pub fn get_f64_from_json_value_object(json_value: serde_json::Value) -> Option<f64> {
@@ -51,6 +52,6 @@ pub async fn get_eth_price() -> AnyhowResult<f64> {
     Ok(usd_price)
 }
 
-pub fn get_bytes_from_hex_string(value: &str) ->AnyhowResult<Vec<u8>> {
-    return Ok(hex::decode(value)?);
+pub fn get_bytes_from_hex_string(value: &str) ->AnyhowResult<[u8; 32]> {
+    Ok(decode_keccak_hex(value)?)
 }
