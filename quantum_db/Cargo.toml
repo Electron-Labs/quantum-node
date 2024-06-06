@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 sqlx = { version = "0.7", features = [ "runtime-tokio", "mysql", "chrono", "macros" ] }
+sqlx-mysql = {version = "0.7.4", features = ["rust_decimal"]}
 quantum_types = {path = "../quantum_types"}
 anyhow = "1.0.83"
 tracing = "0.1.40"

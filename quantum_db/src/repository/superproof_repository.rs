@@ -140,7 +140,7 @@ fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
         proof_ids: row.try_get_unchecked("proof_ids")?,
         superproof_proof_path: row.try_get_unchecked("superproof_proof_path")?,
         transaction_hash: row.try_get_unchecked("transaction_hash")?,
-        gas_cost: row.try_get_unchecked("gas_cost")?,
+        gas_cost: row.try_get("gas_cost")?,
         agg_time: row.try_get_unchecked("agg_time")?,
         status: superproof_status,
         superproof_root: row.try_get_unchecked("superproof_root")?,
