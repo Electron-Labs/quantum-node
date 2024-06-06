@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS superproof (
   superproof_pis_path VARCHAR(255),
   transaction_hash VARCHAR(255),
   gas_cost DECIMAL(18,3) DEFAULT NULL,
+  eth_price DECIMAL(18,3) DEFAULT NULL,
   agg_time INT,
   status INT,
   superproof_root VARCHAR(255),

@@ -146,6 +146,7 @@ fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
         superproof_root: row.try_get_unchecked("superproof_root")?,
         superproof_leaves_path: row.try_get_unchecked("superproof_leaves_path")?,
         onchain_submission_time: row.try_get_unchecked("onchain_submission_time")?,
+        eth_price: row.try_get_unchecked("eth_price")?,
     };
 
     Ok(superproof)

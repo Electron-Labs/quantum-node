@@ -1,5 +1,5 @@
 pub mod connection;
-// use std::{thread, time::{Duration, Instant}};
+pub mod contract;
 
 use chrono::{DateTime, Utc};
 use connection::get_pool;
@@ -11,6 +11,9 @@ use anyhow::{anyhow, Ok, Result as AnyhowResult};
 use sqlx::types::chrono::NaiveDateTime;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info};
+
+use crate::contract::{get_eth_price, get_gas_cost};
+
 
 const SUPERPROOF_SUBMISSION_DURATION: u64 = 60*60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 5*60;
@@ -64,11 +67,11 @@ async fn initialize_superproof_submission_loop(superproof_submission_duration: D
         let current_time = get_current_time();
         update_superproof_onchain_submission_time(get_pool().await, current_time, new_superproof_id).await?;
         
-        // let gas_cost = get_gas_cost().await.unwrap();
-        // let eth_price = get_eth_price().await.unwrap();
+        let gas_cost = get_gas_cost().await.unwrap();
+        let eth_price = get_eth_price().await.unwrap();
         //make smart contract call here
 
-        // update the transaction hash and gas cost
+        // update the transaction_hash, gas_cost, eth_price and gas cost
 
 
         info!("Sleeping for {:?}", superproof_submission_duration);
@@ -85,8 +88,9 @@ fn get_current_time() -> NaiveDateTime{
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    println!(" --- Starting worker --- ");
-    let _guard = initialize_logger("qunatum_contract.log");
+    println!(" --- Starting quantum contract --- ");
+    let _guard = initialize_logger("quantum_contract.log");
+    let _db_pool = get_pool().await;
     let superproof_submission_duration = Duration::from_secs(SUPERPROOF_SUBMISSION_DURATION);
     let error = initialize_superproof_submission_loop(superproof_submission_duration).await;
     let err = error.expect_err("No error should not return");
