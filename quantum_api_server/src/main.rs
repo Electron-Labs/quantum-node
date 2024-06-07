@@ -1,7 +1,10 @@
 use connection::get_pool;
 use dotenv::dotenv;
 use error::error::CustomError;
+use quantum_db::repository::proof_repository::get_proof_by_proof_hash;
 use quantum_db::repository::protocol::get_protocol_by_auth_token;
+use quantum_db::repository::reduction_circuit_repository::get_reduction_circuit_for_user_circuit;
+use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
 use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
@@ -12,6 +15,7 @@ use quantum_types::types::snarkjs_groth16::SnarkJSGroth16Vkey;
 use quantum_types::types::config::ConfigData;
 use quantum_utils::logger::initialize_logger;
 use rocket::State;
+use service::proof::get_protocol_proof_exec;
 use service::protocol::generate_auth_token_for_protocol;
 use service::proof::get_proof_data_exec;
 use service::proof::submit_proof_exec;
@@ -32,6 +36,7 @@ use types::generate_auth_token::GenerateAuthTokenResponse;
 use types::proof_data::ProofDataResponse;
 use types::register_circuit::RegisterCircuitRequest;
 use types::register_circuit::RegisterCircuitResponse;
+use types::protocol_proof::ProtocolProofResponse;
 
 use quantum_types;
 use types::submit_proof::SubmitProofRequest;
@@ -130,6 +135,22 @@ async fn generate_auth_token(_auth_token: AuthToken, data: GenerateAuthTokenRequ
     }
 }
 
+#[get["/protocol_proof/merkle/<proof_id>"]]
+async fn get_protocol_proof(_auth_token: AuthToken, proof_id: String) -> AnyhowResult<Json<ProtocolProofResponse>, CustomError> {
+    // Hash(reduction_circuit_hash||proof_id)
+    // latest_verified_superproof --> Leaves Path
+
+    let response = match get_protocol_proof_exec(&proof_id).await {
+        Ok(r) => Ok(Json(r)),
+        Err(e) => {
+            let erro_string  = format!("some error occured in getting protocol proof : {:?}", e);
+            Err(CustomError::Internal(erro_string))
+        },
+    };
+
+    return response
+}
+
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
@@ -143,5 +164,5 @@ async fn rocket() -> _ {
     let _db_initialize = get_pool().await;
     
     let t = rocket::Config::figment();
-    rocket::custom(t).manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token]).attach(cors)
+    rocket::custom(t).manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token, get_protocol_proof]).attach(cors)
 }
