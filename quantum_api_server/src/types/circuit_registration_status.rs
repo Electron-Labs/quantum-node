@@ -6,4 +6,5 @@ use serde::Serialize;
 
 pub struct CircuitRegistrationStatusResponse {
     pub circuit_registration_status: String,
+    pub reduction_circuit_hash: Option<String>
 }
