@@ -56,7 +56,7 @@ pub async fn get_proof_hash_by_superproof_id(pool: &Pool<MySql>, superproof_id: 
     }?;
     let mut proof_ids = vec![];
     for row in rows {
-        let id: String = row.try_get_unchecked("id")?;
+        let id: String = row.try_get_unchecked("proof_hash")?;
         proof_ids.push(id);
     }
 

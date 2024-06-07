@@ -27,7 +27,6 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
     }
     println!("superproof_id {:?}", superproof_id);
     let last_updated_superproof = get_last_verified_superproof(pool).await?;
-    println!("last updated superproof {:?}", last_updated_superproof.clone().unwrap());
     let last_root: KeccakHashOut;
     let last_leaves: IMT_Tree;
     if last_updated_superproof.is_some() {
