@@ -2,5 +2,5 @@
 
 members = [
     "quantum_api_server", "quantum_worker", "quantum_types", "quantum_db"
-, "quantum_utils"]
+, "quantum_utils", "quantum_contract"]
 resolver = "2"

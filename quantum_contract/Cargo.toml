@@ -1,0 +1,26 @@
+[package]
+name = "quantum_contract"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.12.0", features = ["full"] }
+quantum_types = {path = "../quantum_types"}
+quantum_db = {path = "../quantum_db"}
+quantum_utils = {path = "../quantum_utils"}
+
+sqlx = { version = "0.7", features = [ "runtime-tokio", "mysql", "chrono", "macros" ] }
+lazy_static = "1.4.0"
+anyhow = "1.0.83"
+chrono = { version = "0.4.38", features = ["serde"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
+tracing-appender = "0.2.3"
+dotenv = "0.15.0"
+serde_json = "1.0.117"
+reqwest = { version = "0.11", features = ["json"] }
+ethers = "2.0.14"
+hex = "0.4.3"
+rust_decimal = "1.25.0"
