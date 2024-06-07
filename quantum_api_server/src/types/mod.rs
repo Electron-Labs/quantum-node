@@ -5,4 +5,3 @@ pub mod proof_data;
 pub mod auth;
 pub mod generate_auth_token;
 pub mod protocol_proof;
-pub mod reduction_cirucit_hash;

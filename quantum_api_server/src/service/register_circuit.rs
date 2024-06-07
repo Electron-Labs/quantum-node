@@ -6,7 +6,7 @@ use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 
-use crate::{connection::get_pool, error::error::CustomError, get_reduction_circuit_hash, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
+use crate::{connection::get_pool, error::error::CustomError, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
 pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: Protocol) -> AnyhowResult<RegisterCircuitResponse> {
     // Retreive verification key bytes
