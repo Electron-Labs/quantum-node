@@ -8,8 +8,8 @@ use connection::get_pool;
 use dotenv::dotenv;
 use ethers::utils::hex::ToHexExt;
 // use ethers::utils::hex::traits::ToHex;
-use quantum_db::repository::superproof_repository::{get_first_non_submitted_superproof, get_last_verified_superproof, update_superproof_fields_after_onchain_submission, update_superproof_onchain_submission_time};
-use quantum_types::{enums::superproof_status::SuperproofStatus, traits::proof::Proof, types::gnark_groth16::GnarkGroth16Proof};
+use quantum_db::repository::{proof_repository::{get_proof_hash_by_superproof_id, update_proof_status}, superproof_repository::{get_first_non_submitted_superproof, get_last_verified_superproof, update_superproof_fields_after_onchain_submission, update_superproof_onchain_submission_time}};
+use quantum_types::{enums::{proof_status::ProofStatus, superproof_status::SuperproofStatus}, traits::proof::Proof, types::gnark_groth16::GnarkGroth16Proof};
 use quantum_utils::logger::initialize_logger;
 
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -99,6 +99,11 @@ async fn initialize_superproof_submission_loop(superproof_submission_duration: D
         // update the transaction_hash, gas_cost, eth_price and gas cost
         let transaction_hash = receipt.transaction_hash.encode_hex();
         let transaction_hash = String::from("0x") + &transaction_hash;
+
+        let proof_hashs = get_proof_hash_by_superproof_id(get_pool().await, new_superproof_id).await?;
+        for proof_hash in proof_hashs {
+            update_proof_status(get_pool().await, &proof_hash, ProofStatus::Verified).await?;
+        }
 
         update_superproof_fields_after_onchain_submission(get_pool().await, &transaction_hash, gas_cost, eth_price, SuperproofStatus::SubmittedOnchain, new_superproof_id).await?;
 
