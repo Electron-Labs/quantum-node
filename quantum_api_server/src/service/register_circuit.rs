@@ -1,4 +1,4 @@
-use quantum_db::repository::{reduction_circuit_repository::check_if_pis_len_compatible_reduction_circuit_exist, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
+use quantum_db::repository::{reduction_circuit_repository::{check_if_pis_len_compatible_reduction_circuit_exist, get_reduction_circuit_for_user_circuit}, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::vkey::Vkey, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}}};
 use quantum_utils::{keccak::encode_keccak_hash, paths::get_user_vk_path};
 use rocket::State;
@@ -61,9 +61,17 @@ pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResu
     let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash.as_str()).await?;
     let status = user_circuit.circuit_reduction_status;
     return Ok(CircuitRegistrationStatusResponse {
-        circuit_registration_status: status.to_string()
+        circuit_registration_status: status.to_string(),
+        reduction_circuit_hash: user_circuit.reduction_circuit_id
     })
 }
+
+// pub async fn get_reduction_circuit_hash_exec(circuit_hash: String) -> AnyhowResult<> {
+//     let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, &circuit_hash).await?;
+//     return GetReductionCircuitHash {
+//         reduction_circuit_hash: user_circuit.reduction_circuit_id
+//     }
+// }
 
 async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<Option<String>>{
     let reduction_circuit = get_existing_compatible_reduction_circuit(num_public_inputs, proving_scheme).await;
@@ -100,3 +108,4 @@ async fn check_if_circuit_has_already_registered(circuit_hash_string: &str) -> b
     };
     is_circuit_already_registered
 }
+
