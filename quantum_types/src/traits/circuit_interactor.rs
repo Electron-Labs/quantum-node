@@ -100,7 +100,7 @@ impl IMT_Tree {
         MerkleTree::<KeccakHasher>::from_leaves(leaves, None)
     }
 
-    pub fn get_imt_proof(&self, leaf_val: KeccakHashOut) -> AnyhowResult<(Vec<Vec<u8>>, Vec<u8>)>{
+    pub fn get_imt_proof(&self, leaf_val: KeccakHashOut) -> AnyhowResult<(Vec<Vec<u8>>, Vec<u8>, QuantumLeaf)>{
         let leafs = self.leafs.clone();
         let mut leaf_asked: Option<QuantumLeaf> = None;
         for leaf in leafs {
@@ -133,7 +133,7 @@ impl IMT_Tree {
         });
 
         // return proof = ([next_leaf_val, next_idx, merkle_proof ...], merkle_proof_helper)
-        Ok((proof, proof_helper))
+        Ok((proof, proof_helper, leaf))
     }
 }
 
