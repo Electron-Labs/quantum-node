@@ -137,12 +137,23 @@ pub async fn get_protocol_proof_exec(proof_id: &str) -> AnyhowResult<ProtocolPro
     keccak_ip.extend([0u8; 16].to_vec().iter().cloned());
     let leaf_val = keccak_hash::keccak(keccak_ip).0;
     let mt_proof = imt_tree.get_imt_proof(KeccakHashOut(leaf_val))?;
+    
+    let mt_proof_encoded = mt_proof.0.iter().map(|x| encode_keccak_hash(x.as_slice()[0..32].try_into().unwrap()).unwrap()).collect::<Vec<String>>();
+
+    let mut merkle_proof_position: u64 = 0;
+    for i in 0..mt_proof.1.len() {
+        merkle_proof_position += (mt_proof.1[i] as u64) * 2u64.pow(i as u32);
+    }
+
+    let leaf_next_index_str = hex::encode(&mt_proof.2.next_idx);
+
     Ok(ProtocolProofResponse {
         protocol_vkey_hash: proof.user_circuit_hash,
         reduction_vkey_hash: reduction_circuit_hash,
-        merkle_proof_position: mt_proof.1,
-        merkle_proof: mt_proof.0,
+        merkle_proof_position: merkle_proof_position,
+        merkle_proof: mt_proof_encoded,
         leaf_next_value: encode_keccak_hash(&mt_proof.2.next_value.0)?,
-        leaf_next_index: mt_proof.2.next_idx.to_vec(),
+        leaf_next_index: leaf_next_index_str,
+        superproof_root: latest_verififed_superproof.superproof_root.unwrap()
     })
 }
