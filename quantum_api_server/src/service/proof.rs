@@ -145,7 +145,7 @@ pub async fn get_protocol_proof_exec(proof_id: &str) -> AnyhowResult<ProtocolPro
         merkle_proof_position += (mt_proof.1[i] as u64) * 2u64.pow(i as u32);
     }
 
-    let leaf_next_index_str = hex::encode(&mt_proof.2.next_idx);
+    let leaf_next_index_str = format!("0x{}", hex::encode(&mt_proof.2.next_idx));
 
     Ok(ProtocolProofResponse {
         protocol_vkey_hash: proof.user_circuit_hash,
