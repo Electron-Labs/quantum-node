@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use keccak_hash::keccak;
-use quantum_utils::file::{read_bytes_from_file, write_bytes_to_file};
+use quantum_utils::{file::{read_bytes_from_file, write_bytes_to_file}, keccak::encode_keccak_hash};
 use serde::{Deserialize, Serialize};
 use anyhow::Result as AnyhowResult;
 use crate::types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}};
@@ -120,8 +120,6 @@ impl IMT_Tree {
         }
         let mut proof = Vec::<Vec<u8>>::new();
         let mut proof_helper = Vec::<u8>::new();
-        proof.push(leaf.next_value.0.to_vec());
-        proof.push(leaf.next_idx.to_vec());
 
         imt_proof.unwrap().proofs.iter().for_each(|elm| {
             proof.push(elm.data.to_vec());
