@@ -3,28 +3,22 @@ use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, pr
 use quantum_utils::{keccak::encode_keccak_hash, paths::get_user_vk_path};
 use rocket::State;
 
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::{anyhow, Context, Result as AnyhowResult};
 use tracing::info;
 
 use crate::{connection::get_pool, error::error::CustomError, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
-pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: Protocol) -> AnyhowResult<RegisterCircuitResponse> {
+pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: Protocol) -> AnyhowResult<RegisterCircuitResponse, anyhow::Error> {
     // Retreive verification key bytes
     let vkey_bytes: Vec<u8> = data.vkey.clone();
 
     // Borsh deserialise to corresponding vkey struct 
     let vkey: T = T::deserialize_vkey(&mut vkey_bytes.as_slice())?;
-    let _ = match vkey.validate(data.num_public_inputs) {
-        Ok(_) => Ok(()),
-        Err(_) => {
-            info!("vk is not valid");
-            Err(anyhow!(CustomError::Internal("vk is invalid".to_string())))
-        },
-    }?;
+    vkey.validate(data.num_public_inputs).with_context(|| format!("vkey is invalid: {} on line: {}", file!(), line!()))?;
     println!("validated");
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
-    let circuit_hash = vkey.keccak_hash()?;
-    let circuit_hash_string = encode_keccak_hash(&circuit_hash)?;
+    let circuit_hash = vkey.keccak_hash().with_context(|| format!("cannot take keccak hash of vkey: {} on line: {}", file!(), line!()))?;
+    let circuit_hash_string = encode_keccak_hash(&circuit_hash).with_context(|| format!("cannot encode circuit keccak hash in file: {} on line: {}", file!(), line!()))?;
     println!("circuit_hash_string {:?}", circuit_hash_string);
 
     // Check if circuit is already registerd
@@ -39,18 +33,18 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     // dump vkey
     let vkey_path = get_user_vk_path(&config_data.storage_folder_path, &config_data.user_data_path, &circuit_hash_string);
     println!("User vkey path {:?}", vkey_path);
-    vkey.dump_vk(&vkey_path)?;
+    vkey.dump_vk(&vkey_path).with_context(|| format!("cannot dump vkey in file: {} on line: {}", file!(), line!()))?;
     println!("User vkey path dumped");
 
     // Get a reduction circuit id
-    let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
+    let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await.with_context(|| format!("cannot handle reduce circuit in file: {} on line: {}", file!(), line!()))?;
     println!("reduction_circuit_id {:?}", reduction_circuit_id);
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,if reduction_circuit_id.is_some() {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,if reduction_circuit_id.is_some() {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await.with_context(|| format!("cannot insert user circuit data in file: {} on line: {}", file!(), line!()))?;
     println!("insert_user_circuit_data DONE");
     // Create a reduction task for Async worker to pick up later on
-    create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
+    create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await.with_context(|| format!("cannot create circuit reduction task in file: {} on line: {}", file!(), line!()))?;
     println!("create_circuit_reduction_task DONE");
     Ok(
         RegisterCircuitResponse{ circuit_hash: circuit_hash_string }
@@ -58,7 +52,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
 }
 
 pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResult<CircuitRegistrationStatusResponse> {
-    let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash.as_str()).await?;
+    let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash.as_str()).await.with_context(|| format!("cannot get user circuit data by circuit hash in file: {} on line: {}", file!(), line!()))?;
     let status = user_circuit.circuit_reduction_status;
     return Ok(CircuitRegistrationStatusResponse {
         circuit_registration_status: status.to_string(),
@@ -85,7 +79,7 @@ async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSch
 
 async fn create_circuit_reduction_task(reduction_circuit_id: Option<String>, circuit_hash: &str) -> AnyhowResult<()> {
     if reduction_circuit_id.is_none() {
-        task_repository::create_circuit_reduction_task(get_pool().await, circuit_hash, TaskType::CircuitReduction , TaskStatus::NotPicked).await?;
+        task_repository::create_circuit_reduction_task(get_pool().await, circuit_hash, TaskType::CircuitReduction , TaskStatus::NotPicked).await.with_context(|| format!("cannot create circuit reduction task in file: {} on line: {}", file!(), line!()))?;
     }
     Ok(())
 }

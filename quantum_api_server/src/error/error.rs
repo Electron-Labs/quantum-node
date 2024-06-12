@@ -8,6 +8,7 @@ use rocket::http::ContentType;
 
 #[derive(Serialize)]
 pub struct ErrorResponse {
+    pub error_type: String,
     pub message: String,
 }
 
@@ -45,8 +46,14 @@ impl std::error::Error for CustomError {}
 impl<'r> Responder<'r, 'static> for CustomError {
     fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
         // serialize struct into json string
+        let error_message = match &self{
+            Self::Internal(str) | Self::BadRequest(str) | Self::NotFound(str) => str
+        };
+
         let err_response = serde_json::to_string(&ErrorResponse{
-            message: self.to_string()
+            error_type: self.to_string(),
+            message: error_message.to_string(),
+            
         }).unwrap();
 
         Response::build()

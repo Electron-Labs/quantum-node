@@ -2,7 +2,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use keccak_hash::keccak;
 use quantum_utils::{file::{read_bytes_from_file, write_bytes_to_file}, keccak::encode_keccak_hash};
 use serde::{Deserialize, Serialize};
-use anyhow::Result as AnyhowResult;
+use anyhow::{Context, Result as AnyhowResult};
 use crate::types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}};
 use tiny_merkle::{proof::Position, Hasher, MerkleTree};
 
@@ -75,7 +75,7 @@ impl IMT_Tree {
     }
 
     pub fn deserialise_imt_tree(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let imt_tree: IMT_Tree = BorshDeserialize::deserialize(bytes)?;
+        let imt_tree: IMT_Tree = BorshDeserialize::deserialize(bytes).with_context(|| format!("Unable to deserialize imt_tree in file: {} on line: {}", file!(), line!()))?;
         Ok(imt_tree)
     }
 

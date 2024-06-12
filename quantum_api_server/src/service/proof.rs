@@ -2,22 +2,22 @@ use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{circuit_interactor::{IMT_Tree, KeccakHashOut}, pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis}};
 use quantum_utils::{keccak::{convert_string_to_le_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path}};
 use rocket::State;
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::{anyhow, Context, Result as AnyhowResult};
 use tracing::info;
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, protocol_proof::ProtocolProofResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 use keccak_hash::keccak;
 
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
-    validate_circuit_data_in_submit_proof_request(&data).await?;
+    validate_circuit_data_in_submit_proof_request(&data).await.with_context(|| format!("Cannot validate circuit data in circuit_proof_request in file: {} on line: {}", file!(), line!()))?;
     
-    let proof: T = T::deserialize_proof(&mut data.proof.as_slice())?;
+    let proof: T = T::deserialize_proof(&mut data.proof.as_slice()).with_context(|| format!("Unable to deserialize proof in file: {} on line: {}", file!(), line!()))?;
 
-    let pis: F = F::deserialize_pis(&mut data.pis.as_slice())?;
+    let pis: F = F::deserialize_pis(&mut data.pis.as_slice()).with_context(|| format!("Unable to deserialize pis in file: {} on line: {}", file!(), line!()))?;
 
     let mut proof_id_ip = Vec::<u8>::new();
-    let vkey_hash = decode_keccak_hex(&data.circuit_hash)?;
+    let vkey_hash = decode_keccak_hex(&data.circuit_hash).with_context(|| format!("Invalid keccak hash in file: {} on line: {}", file!(), line!()))?;
     proof_id_ip.extend(vkey_hash.to_vec().iter().cloned());
-    let pis_data = pis.get_data()?;
+    let pis_data = pis.get_data().with_context(|| format!("Unable to retrieve pis data in file: {} on line: {}", file!(), line!()))?;
     for i in 0..pis_data.len() {
         let pi = pis_data[i].clone();
         proof_id_ip.extend(convert_string_to_le_bytes(&pi).to_vec().iter().cloned());
@@ -27,7 +27,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
 
     let proof_id = encode_keccak_hash(&proof_id_hash)?;
 
-    check_if_proof_already_exist(&proof_id).await?;
+    check_if_proof_already_exist(&proof_id).await.with_context(|| format!("Unable to check proof existence in file: {} on line: {}", file!(), line!()))?;
 
     // Dump proof and pis binaries
     let proof_full_path = get_user_proof_path(&config_data.storage_folder_path, &config_data.proof_path, &data.circuit_hash, &proof_id);
@@ -35,8 +35,8 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     proof.dump_proof(&proof_full_path)?;
     pis.dump_pis(&pis_full_path)?;
 
-    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash).await?;
-    create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await?;
+    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash).await.with_context(|| format!("Unable to insert proof in file: {} on line: {}", file!(), line!()))?;
+    create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await.with_context(|| format!("Unable to create proof task in file: {} on line: {}", file!(), line!()))?;
 
     Ok(SubmitProofResponse {
         proof_id
@@ -65,7 +65,7 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
             Err(e) => {
                 info!("err in superproof fetch");
                 let error_msg = format!("superproof not found in db: {}", e.to_string());
-                Err(anyhow!(CustomError::Internal(error_msg)))
+                Err(anyhow!(CustomError::Internal(error_msg))).with_context(|| format!("{} in file: {} on line: {}", file!(), line!(),e.to_string()))
             }
         };
         let superproof = superproof?;
@@ -83,18 +83,18 @@ async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest
         Ok(cd) => Ok(cd),
         Err(_) => {
             info!("circuit has not been registered");
-            Err(anyhow!(CustomError::BadRequest("circuit hash not found".to_string())))
+            Err(anyhow!(CustomError::BadRequest("circuit hash not found".to_string()))).with_context(|| format!("Circuit hash not found in file: {} on line: {}", file!(), line!()))
         }
     };
 
     let circuit_data = circuit_data?;
     if circuit_data.circuit_reduction_status != CircuitReductionStatus::Completed {
         info!("circuit reduction not completed");
-        return Err(anyhow!(CustomError::BadRequest("circuit reduction not completed".to_string())));
+        return Err(anyhow!(CustomError::BadRequest("circuit reduction not completed".to_string()))).with_context(|| format!("Circuit Reduction not completed in file: {} on line: {}", file!(), line!()));
     }
     if data.proof_type != circuit_data.proving_scheme {
         info!("prove type is not correct");
-        return Err(anyhow!(CustomError::BadRequest("prove type is not correct".to_string())));
+        return Err(anyhow!(CustomError::BadRequest("prove type is not correct".to_string()))).with_context(|| format!("Proof Type is not completed in file: {} on line: {}", file!(), line!()));
     }
     
     Ok(())
@@ -114,14 +114,14 @@ pub async fn check_if_proof_already_exist(proof_id: &str) -> AnyhowResult<()> {
 }
 
 pub async fn get_protocol_proof_exec(proof_id: &str) -> AnyhowResult<ProtocolProofResponse> {
-    let proof = get_proof_by_proof_hash(get_pool().await, proof_id).await?;
+    let proof = get_proof_by_proof_hash(get_pool().await, proof_id).await.with_context(|| format!("Unable to retrieve proof from proof hash in file: {} on line: {}", file!(), line!()))?;
     if proof.proof_status != ProofStatus::Verified {
         return Err(anyhow!(CustomError::Internal("proof is not verified".to_string())))
     }
-    let reduction_circuit = get_reduction_circuit_for_user_circuit(get_pool().await, &proof.user_circuit_hash).await?;
+    let reduction_circuit = get_reduction_circuit_for_user_circuit(get_pool().await, &proof.user_circuit_hash).await.with_context(|| format!("Cannot generate reduction circuit for user circuit in file: {} on line: {}", file!(), line!()))?;
     let proof_hash = proof_id;
     let reduction_circuit_hash = reduction_circuit.circuit_id;
-    let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await).await? {
+    let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await).await.with_context(|| format!("Cannot get last verified superproof in file: {} on line: {}", file!(), line!()))? {
         Some(superproof) => Ok(superproof),
         None => Err(anyhow!(CustomError::Internal("last super proof verified not found".to_string()))),
     }?;

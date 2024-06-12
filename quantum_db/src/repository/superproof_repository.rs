@@ -3,7 +3,7 @@ use std::task::Poll;
 use chrono::NaiveDateTime;
 use quantum_types::{enums::superproof_status::SuperproofStatus, types::db::superproof::Superproof};
 use sqlx::{mysql::MySqlRow, Error, Execute, MySql, Pool, Row};
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::{anyhow, Context, Result as AnyhowResult};
 use tracing::info;
 
 use crate::error::error::CustomError;
@@ -14,10 +14,10 @@ pub async fn get_superproof_by_id(pool: &Pool<MySql>, id: u64) -> AnyhowResult<S
 
     info!("{}", query.sql());
     let superproof = match query.fetch_one(pool).await{
-        Ok(t) => get_superproof_from_row(t),
+        Ok(t) => get_superproof_from_row(t).with_context(|| format!("Unable to fetch superproof from row in file: {} on line: {}", file!(), line!())),
         Err(e) => {
             info!("error in super proof fetch");
-            Err(anyhow!(CustomError::DB(e.to_string())))
+            Err(anyhow!(CustomError::DB(e.to_string()))).with_context(|| format!("Unable to fetch proof in file: {} on line: {}", file!(), line!()))
         }
     };
     superproof

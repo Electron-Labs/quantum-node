@@ -9,9 +9,9 @@ use tracing::info;
 
 // use crate::connection::get_pool;
 use crate::error::error::CustomError;
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::{anyhow, Context, Result as AnyhowResult, Error as AnyhowError};
 
-pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: &str) -> AnyhowResult<UserCircuitData>{
+pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: &str) -> AnyhowResult<UserCircuitData, AnyhowError>{
     let query  = sqlx::query("SELECT * from user_circuit_data where circuit_hash = ?")
                 .bind(circuit_hash);
 
@@ -32,27 +32,31 @@ pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
-        Err(e) => Err(e)
+        //start from here by printing   
+        Err(e) => {
+            println!("insert user error: {:?}", e);
+            Err(e)
+        }
     };
     row_affected
 }
 
 
-fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircuitData>{
-    let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme")?) {
+fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircuitData, AnyhowError>{
+    let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme").with_context(|| format!("Error: no column named proving_scheme in mysql row in file: {} on line: {}", file!(), line!()))?) {
         Ok(ps) => Ok(ps),
         Err(e) => Err(anyhow!(CustomError::DB(e)))
     };
-    let circuit_status_as_u8: u8 = row.try_get_unchecked("circuit_reduction_status")?;
+    let circuit_status_as_u8: u8 = row.try_get_unchecked("circuit_reduction_status").with_context(|| format!("Error: no column named circuit_reduction_status in mysql row in file: {} on line: {}", file!(), line!()))?;
     let circuit_status =  CircuitReductionStatus::from(circuit_status_as_u8);
     let user_circuit_data = UserCircuitData {
-        circuit_hash : row.try_get_unchecked("circuit_hash")?,
-        vk_path: row.try_get_unchecked("vk_path")?,
-        reduction_circuit_id: row.try_get_unchecked("reduction_circuit_id")?,
-        pis_len: row.try_get_unchecked("pis_len")?,
+        circuit_hash : row.try_get_unchecked("circuit_hash").with_context(|| format!("Error: no column named circuit_hash in mysql row in file: {} on line: {}", file!(), line!()))?,
+        vk_path: row.try_get_unchecked("vk_path").with_context(|| format!("Error: no column named vk_path in mysql row in file: {} on line: {}", file!(), line!()))?,
+        reduction_circuit_id: row.try_get_unchecked("reduction_circuit_id").with_context(|| format!("Error: no column named reduction_circuit_id in mysql row in file: {} on line: {}", file!(), line!()))?,
+        pis_len: row.try_get_unchecked("pis_len").with_context(|| format!("Error: no column named pis_len in mysql row in file: {} on line: {}", file!(), line!()))?,
         proving_scheme: proving_scheme?,
         circuit_reduction_status: circuit_status,
-        protocol_name: row.try_get_unchecked("protocol_name")?
+        protocol_name: row.try_get_unchecked("protocol_name").with_context(|| format!("Error: no column named protocol_name in mysql row in file: {} on line: {}", file!(), line!()))?
     };
     Ok(user_circuit_data)
 }

@@ -2,7 +2,7 @@ use std::{fs::{self, File}, io::{BufWriter, Read, Write}};
 
 use serde::Serialize;
 
-use anyhow::Result as AnyhowResult;
+use anyhow::{Context, Result as AnyhowResult};
 
 pub fn dump_json_file<T: Serialize>(file_path: &str, file_name: &str, value: T) -> AnyhowResult<()>{
     let file = File::create(
@@ -45,7 +45,7 @@ pub fn write_bytes_to_file(bytes: &Vec<u8>, path: &str) -> AnyhowResult<()> {
 // Read bytes from file
 pub fn read_bytes_from_file(path: &str) -> AnyhowResult<Vec<u8>> {
     let mut buffer = Vec::<u8>::new();
-    let mut file = File::open(path)?;
-    file.read_to_end(&mut buffer)?;
+    let mut file = File::open(path).with_context(|| format!("Cannot open file at path: {} in file: {} on line: {}", path, file!(), line!()))?;
+    file.read_to_end(&mut buffer).with_context(|| format!("Unable to parse file to the end in file: {} on line: {}", file!(), line!()))?;
     Ok(buffer)
 }

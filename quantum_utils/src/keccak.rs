@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use hex::ToHex;
 use keccak_hash::{keccak, H256};
-use anyhow::{Ok, Result as AnyhowResult};
+use anyhow::{Context, Ok, Result as AnyhowResult};
 use num_bigint::BigUint;
 
 pub fn get_keccak_hash_of_string(value: &str) -> [u8; 32]{
@@ -17,7 +17,7 @@ pub fn encode_keccak_hash(keccak_bytes: &[u8; 32]) -> AnyhowResult<String> {
 
 pub fn decode_keccak_hex(keccak_hex: &str) -> AnyhowResult<[u8; 32]> {
     let mut decoded  = [0; 32];
-    hex::decode_to_slice(&keccak_hex[2..], &mut decoded)?;
+    hex::decode_to_slice(&keccak_hex[2..], &mut decoded).with_context(|| format!("Unable to decode keccak hash to slice in file: {} on line: {}", file!(), line!()))?;
     Ok(decoded)
 }
 
