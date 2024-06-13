@@ -71,7 +71,7 @@ impl SnarkJSGroth16Vkey {
 		for i in 0..ic.len() {
 			let fq = Fq {
 				X: ic[i][0].clone(),
-				Y: ic[1][1].clone(),
+				Y: ic[i][1].clone(),
 			};
 			k.push(fq);
 		}
