@@ -1,7 +1,7 @@
-use quantum_types::types::db::protocol::Protocol;
-use sqlx::{mysql::MySqlRow, Error, Execute, MySql, Pool, Row};
+use quantum_types::{types::db::protocol::Protocol, error_line};
+use sqlx::{mysql::MySqlRow, Execute, MySql, Pool, Row};
 use tracing::info;
-use anyhow::{Context, Result as AnyhowResult};
+use anyhow::{anyhow, Result as AnyhowResult};
 
 pub async fn get_protocol_by_auth_token(pool: &Pool<MySql>, auth_token: &str) -> AnyhowResult<Option<Protocol>> {
      // oldest_entry(task_status: TaskStatus::NotPicked)
@@ -9,8 +9,8 @@ pub async fn get_protocol_by_auth_token(pool: &Pool<MySql>, auth_token: &str) ->
      .bind(auth_token);
     
     info!("{}", query.sql());
-    let protocol = match query.fetch_optional(pool).await.with_context(|| format!("Error: unable to fetch query in file: {} on line: {}", file!(), line!()))? {
-        Some(r) => Some(get_protocol_from_row(r).with_context(|| format!("Error: cannot get protocol from row in file: {} on line: {}", file!(), line!()))?),
+    let protocol = match query.fetch_optional(pool).await.map_err(|err| anyhow!(error_line!(err)))? {
+        Some(r) => Some(get_protocol_from_row(r)?),
         None => None,
     };
     Ok(protocol)
@@ -20,8 +20,8 @@ pub fn get_protocol_from_row(row: MySqlRow) -> AnyhowResult<Protocol>{
     println!("{:?}", row);
     Ok( 
         Protocol {
-            protocol_name: row.try_get_unchecked("protocol_name").with_context(|| format!("Error: no column named protocol in mysql row in file: {} on line: {}", file!(), line!()))?,
-            auth_token: row.try_get_unchecked("auth_token").with_context(|| format!("Error: no column named auth_token in mysql row in file: {} on line: {}", file!(), line!()))?,
+            protocol_name: row.try_get_unchecked("protocol_name").map_err(|err| anyhow!(error_line!(err)))?,
+            auth_token: row.try_get_unchecked("auth_token").map_err(|err| anyhow!(error_line!(err)))?,
         }
     )
 }
@@ -32,7 +32,7 @@ pub async fn check_if_protocol_already_registered(pool: &Pool<MySql>, protocol_n
         .bind(protocol_name);
 
    info!("{}", query.sql());
-   let is_present = match query.fetch_optional(pool).await.with_context(|| format!("Error: cannot verify if protocol is registered in file: {} on line: {}", file!(), line!()))?{
+   let is_present = match query.fetch_optional(pool).await.map_err(|err| anyhow!(error_line!(err)))?{
        Some(t) => {
            println!("{:?}", t);
            true
@@ -47,9 +47,9 @@ pub async fn insert_protocol_auth_token(pool: &Pool<MySql>, protocol_name: &str,
         .bind(protocol_name).bind(auth_token);
 
     info!("{}", query.sql());
-    let row_affected = match query.execute(pool).await.with_context(|| format!("Error: cannot get affected mysql rows in file: {} on line: {}", file!(), line!())) {
+    let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
-        Err(e) => Err(e)
+        Err(e) => Err(anyhow!(error_line!(e)))
     };
     row_affected
 }

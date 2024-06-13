@@ -2,7 +2,9 @@ use std::{fs::{self, File}, io::{BufWriter, Read, Write}};
 
 use serde::Serialize;
 
-use anyhow::{Context, Result as AnyhowResult};
+use anyhow::{anyhow,Context, Result as AnyhowResult};
+
+use crate::error_line;
 
 pub fn dump_json_file<T: Serialize>(file_path: &str, file_name: &str, value: T) -> AnyhowResult<()>{
     let file = File::create(
@@ -15,7 +17,7 @@ pub fn dump_json_file<T: Serialize>(file_path: &str, file_name: &str, value: T) 
 }
 
 pub fn create_dir(full_path: &str) -> AnyhowResult<()>{
-    let res = fs::create_dir_all(full_path)?;
+    let res = fs::create_dir_all(full_path).map_err(|err| anyhow!(error_line!(err)))?;
     Ok(res)
 }
 
@@ -37,15 +39,15 @@ pub fn write_bytes_to_file(bytes: &Vec<u8>, path: &str) -> AnyhowResult<()> {
     // The directory path is everything except the last component
     let dir_path = components[..components.len() - 1].join("/");
     create_dir(&dir_path)?;
-    let mut file = File::create(path)?;
-    file.write_all(&bytes)?;
+    let mut file = File::create(path).map_err(|err| anyhow!(error_line!(err)))?;
+    file.write_all(&bytes).map_err(|err| anyhow!(error_line!(err)))?;
     Ok(())
 }
 
 // Read bytes from file
 pub fn read_bytes_from_file(path: &str) -> AnyhowResult<Vec<u8>> {
     let mut buffer = Vec::<u8>::new();
-    let mut file = File::open(path).with_context(|| format!("Cannot open file at path: {} in file: {} on line: {}", path, file!(), line!()))?;
-    file.read_to_end(&mut buffer).with_context(|| format!("Unable to parse file to the end in file: {} on line: {}", file!(), line!()))?;
+    let mut file = File::open(path).map_err(|err| anyhow!(error_line!(err)))?;
+    file.read_to_end(&mut buffer).map_err(|err| anyhow!(error_line!(err)))?;
     Ok(buffer)
 }

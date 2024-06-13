@@ -1,9 +1,7 @@
-use std::task::Poll;
-
 use chrono::NaiveDateTime;
-use quantum_types::{enums::superproof_status::SuperproofStatus, types::db::superproof::Superproof};
-use sqlx::{mysql::MySqlRow, Error, Execute, MySql, Pool, Row};
-use anyhow::{anyhow, Context, Result as AnyhowResult};
+use quantum_types::{enums::superproof_status::SuperproofStatus, error_line, types::db::superproof::Superproof};
+use sqlx::{mysql::MySqlRow , Execute, MySql, Pool, Row};
+use anyhow::{anyhow, Error as AnyhowError, Result as AnyhowResult};
 use tracing::info;
 
 use crate::error::error::CustomError;
@@ -14,23 +12,23 @@ pub async fn get_superproof_by_id(pool: &Pool<MySql>, id: u64) -> AnyhowResult<S
 
     info!("{}", query.sql());
     let superproof = match query.fetch_one(pool).await{
-        Ok(t) => get_superproof_from_row(t).with_context(|| format!("Unable to fetch superproof from row in file: {} on line: {}", file!(), line!())),
+        Ok(t) => get_superproof_from_row(t).map_err(|err| anyhow!(error_line!(err))),
         Err(e) => {
             info!("error in super proof fetch");
-            Err(anyhow!(CustomError::DB(e.to_string()))).with_context(|| format!("Unable to fetch proof in file: {} on line: {}", file!(), line!()))
+            Err(anyhow!(CustomError::DB(error_line!(e))))
         }
     };
     superproof
 }
 
-pub async fn insert_new_superproof(pool: &Pool<MySql>, proof_ids_string: &str, superproof_status: SuperproofStatus) -> AnyhowResult<u64, Error> {
+pub async fn insert_new_superproof(pool: &Pool<MySql>, proof_ids_string: &str, superproof_status: SuperproofStatus) -> AnyhowResult<u64, AnyhowError> {
     let query  = sqlx::query("INSERT into superproof(proof_ids, status) VALUES(?,?)")
         .bind(proof_ids_string).bind(superproof_status.as_u8());
 
     info!("{}", query.sql());
     let superproof_id = match query.execute(pool).await {
         Ok(t) => Ok(t.last_insert_id()),
-        Err(e) => Err(e)
+        Err(e) => Err(anyhow!(error_line!(e)))
     };
     superproof_id
 }
@@ -42,7 +40,7 @@ pub async fn update_superproof_status(pool: &Pool<MySql>, superproof_status: Sup
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -54,7 +52,7 @@ pub async fn update_superproof_leaves_path(pool: &Pool<MySql>, superproof_leaves
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -66,7 +64,7 @@ pub async fn update_superproof_root(pool: &Pool<MySql>, superproof_root: &str, s
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -78,7 +76,7 @@ pub async fn update_superproof_agg_time(pool: &Pool<MySql>, agg_time: u64, super
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -90,7 +88,7 @@ pub async fn update_superproof_gas_cost(pool: &Pool<MySql>, gas_cost: f64, super
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -103,7 +101,7 @@ pub async fn update_transaction_hash(pool: &Pool<MySql>, transaction_hash: &str,
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -115,7 +113,7 @@ pub async fn update_superproof_proof_path(pool: &Pool<MySql>, superproof_proof_p
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -127,7 +125,7 @@ pub async fn update_superproof_onchain_submission_time(pool: &Pool<MySql>, oncha
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -161,7 +159,7 @@ pub async fn get_last_superproof(pool: &Pool<MySql>) -> AnyhowResult<Option<Supe
         Ok(t) => Ok(t),
         Err(e) => {
             info!("error in super proof fetch");
-            Err(anyhow!(CustomError::DB(e.to_string())))
+            Err(anyhow!(CustomError::DB(error_line!(e))))
         }
     };
     let superproof = superproof?;
@@ -182,7 +180,7 @@ pub async fn get_last_verified_superproof(pool: &Pool<MySql>) -> AnyhowResult<Op
         Ok(t) => Ok(t),
         Err(e) => {
             info!("error in super proof fetch");
-            Err(anyhow!(CustomError::DB(e.to_string())))
+            Err(anyhow!(CustomError::DB(error_line!(e))))
         }
     };
     let superproof = superproof?;
@@ -203,7 +201,7 @@ pub async fn get_first_non_submitted_superproof(pool: &Pool<MySql>) -> AnyhowRes
         Ok(t) => Ok(t),
         Err(e) => {
             info!("error in super proof fetch");
-            Err(anyhow!(CustomError::DB(e.to_string())))
+            Err(anyhow!(CustomError::DB(error_line!(e))))
         }
     };
     let superproof = superproof?;
@@ -222,7 +220,7 @@ pub async fn update_superproof_fields_after_onchain_submission(pool: &Pool<MySql
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }

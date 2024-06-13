@@ -37,7 +37,10 @@ impl CustomError {
 
 impl std::fmt::Display for CustomError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "Error {}.", self.get_http_status())
+        let error_message = match &self{
+            Self::Internal(str) | Self::BadRequest(str) | Self::NotFound(str) => str
+        };
+        write!(fmt, "{}", error_message)
     }
 }
 
@@ -46,14 +49,10 @@ impl std::error::Error for CustomError {}
 impl<'r> Responder<'r, 'static> for CustomError {
     fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
         // serialize struct into json string
-        let error_message = match &self{
-            Self::Internal(str) | Self::BadRequest(str) | Self::NotFound(str) => str
-        };
-
+        
         let err_response = serde_json::to_string(&ErrorResponse{
-            error_type: self.to_string(),
-            message: error_message.to_string(),
-            
+            error_type: self.get_http_status().to_string(),
+            message: self.to_string(), 
         }).unwrap();
 
         Response::build()
