@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use quantum_types::enums::circuit_reduction_status::CircuitReductionStatus;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
-use quantum_types::error_line;
+use quantum_utils::error_line;
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use sqlx::mysql::MySqlRow;
 use sqlx::{Error, MySql, Pool, Row, Execute};
@@ -12,7 +12,7 @@ use tracing::info;
 use crate::error::error::CustomError;
 use anyhow::{anyhow, Context, Result as AnyhowResult, Error as AnyhowError};
 
-pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: &str) -> AnyhowResult<UserCircuitData, AnyhowError>{
+pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: &str) -> AnyhowResult<UserCircuitData>{
     let query  = sqlx::query("SELECT * from user_circuit_data where circuit_hash = ?")
                 .bind(circuit_hash);
 
@@ -44,7 +44,7 @@ pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk
 
 
 fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircuitData, AnyhowError>{
-    let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme").with_context(|| format!("Error: no column named proving_scheme in mysql row in file: {} on line: {}", file!(), line!()))?) {
+    let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme").map_err(|err| anyhow!(error_line!(err)))?) {
         Ok(ps) => Ok(ps),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };

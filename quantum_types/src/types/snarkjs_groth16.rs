@@ -5,13 +5,13 @@ use std::{path, str::FromStr};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
-use quantum_utils::file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file};
+use quantum_utils::{file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, error_line};
 use serde::{Deserialize, Serialize};
 
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 use keccak_hash::keccak;
-use crate::{error_line, traits::{pis::Pis, proof::Proof, vkey::Vkey}, types::gnark_groth16::{Fq, Fq2, Fq_2, G1Struct, G2Struct, PedersenCommitmentKey}};
+use crate::{traits::{pis::Pis, proof::Proof, vkey::Vkey}, types::gnark_groth16::{Fq, Fq2, Fq_2, G1Struct, G2Struct, PedersenCommitmentKey}};
 
 use super::{config::ConfigData, gnark_groth16::GnarkGroth16Vkey};
 

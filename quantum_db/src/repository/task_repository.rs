@@ -1,4 +1,5 @@
-use quantum_types::{enums::{task_status::TaskStatus, task_type::TaskType}, error_line, types::db::task::Task};
+use quantum_types::{enums::{task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
+use quantum_utils::error_line;
 use sqlx::{mysql::MySqlRow, MySql, Pool, Execute};
 use sqlx::Row;
 use anyhow::{anyhow, Error, Result as AnyhowResult};

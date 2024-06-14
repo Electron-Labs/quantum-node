@@ -1,4 +1,5 @@
-use quantum_types::{enums::proving_schemes::ProvingSchemes, error_line, types::db::reduction_circuit::ReductionCircuit};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, types::db::reduction_circuit::ReductionCircuit};
+use quantum_utils::error_line;
 use sqlx::{mysql::MySqlRow, Error, MySql, Pool, Row, Execute};
 
 use anyhow::{anyhow, Result as AnyhowResult};

@@ -1,4 +1,5 @@
-use quantum_types::{types::db::protocol::Protocol, error_line};
+use quantum_types::{types::db::protocol::Protocol};
+use quantum_utils::error_line;
 use sqlx::{mysql::MySqlRow, Execute, MySql, Pool, Row};
 use tracing::info;
 use anyhow::{anyhow, Result as AnyhowResult};

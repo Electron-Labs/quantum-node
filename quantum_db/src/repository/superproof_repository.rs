@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
-use quantum_types::{enums::superproof_status::SuperproofStatus, error_line, types::db::superproof::Superproof};
+use quantum_types::{enums::superproof_status::SuperproofStatus, types::db::superproof::Superproof};
+use quantum_utils::error_line;
 use sqlx::{mysql::MySqlRow , Execute, MySql, Pool, Row};
 use anyhow::{anyhow, Error as AnyhowError, Result as AnyhowResult};
 use tracing::info;

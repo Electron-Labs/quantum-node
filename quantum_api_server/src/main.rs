@@ -6,7 +6,7 @@ use quantum_db::repository::protocol::get_protocol_by_auth_token;
 use quantum_db::repository::reduction_circuit_repository::get_reduction_circuit_for_user_circuit;
 use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
-use quantum_types::error_line;
+use quantum_utils::error_line;
 use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
 use quantum_types::types::gnark_groth16::GnarkGroth16Vkey;
@@ -176,7 +176,7 @@ async fn rocket() -> _ {
     }.to_cors().unwrap();
 
     let _guard = initialize_logger("qunatum_node_api.log");
-    let config_data = ConfigData::new("D:/office-work/quantum-node/config.yaml");
+    let config_data = ConfigData::new("./config.yaml");
     let _db_initialize = get_pool().await;
     
     let t = rocket::Config::figment();

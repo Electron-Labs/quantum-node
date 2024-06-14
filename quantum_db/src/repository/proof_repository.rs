@@ -1,6 +1,6 @@
-use quantum_types::{enums::proof_status::ProofStatus, error_line, types::db::proof::Proof};
+use quantum_types::{enums::proof_status::ProofStatus, types::db::proof::Proof};
 use sqlx::{mysql::MySqlRow, Execute, MySql, Pool, Row};
-
+use quantum_utils::error_line;
 use anyhow::{anyhow, Error, Result as AnyhowResult};
 use tracing::info;
 

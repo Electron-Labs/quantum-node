@@ -1,6 +1,6 @@
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, error_line, traits::{circuit_interactor::{IMT_Tree, KeccakHashOut}, pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis}};
-use quantum_utils::{keccak::{convert_string_to_le_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{circuit_interactor::{IMT_Tree, KeccakHashOut}, pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis}};
+use quantum_utils::{keccak::{convert_string_to_le_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
 use rocket::State;
 use anyhow::{anyhow, Context, Result as AnyhowResult};
 use tracing::info;
@@ -64,7 +64,8 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
             Ok(sp) => Ok(sp),
             Err(e) => {
                 info!("err in superproof fetch");
-                Err(anyhow!(CustomError::Internal(e.to_string())))
+                let error_msg = format!("superproof not found in db: {}", e.to_string());
+                Err(anyhow!(CustomError::Internal(error_msg)))
             }
         };
         let superproof = superproof?;
@@ -82,7 +83,7 @@ async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest
         Ok(cd) => Ok(cd),
         Err(e) => {
             info!("circuit has not been registered");
-            Err(anyhow!(CustomError::BadRequest(error_line!(e))))
+            Err(anyhow!(CustomError::BadRequest(error_line!(format!("circuit hash not found. {}", e.to_string())))))
         }
     };
 

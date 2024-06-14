@@ -1,9 +1,9 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use keccak_hash::keccak;
-use quantum_utils::{file::{read_bytes_from_file, write_bytes_to_file}, keccak::encode_keccak_hash};
+use quantum_utils::{file::{read_bytes_from_file, write_bytes_to_file}, keccak::encode_keccak_hash, error_line};
 use serde::{Deserialize, Serialize};
 use anyhow::{anyhow, Result as AnyhowResult};
-use crate::{error_line, types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}}};
+use crate::{types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}}};
 use tiny_merkle::{proof::Position, Hasher, MerkleTree};
 
 #[derive(Clone, Debug)]

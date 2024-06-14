@@ -7,14 +7,14 @@ use ark_bn254::g1::Config;
 use ark_ec::short_weierstrass::Affine;
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
-use quantum_utils::{file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_le_bytes};
+use quantum_utils::{file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_le_bytes, error_line};
 use serde::{Serialize, Deserialize};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 use keccak_hash::keccak;
 use hex::ToHex;
 
-use crate::{error_line, traits::{pis::Pis, proof::Proof, vkey::Vkey}};
+use crate::{traits::{pis::Pis, proof::Proof, vkey::Vkey}};
 
 use super::config::ConfigData;
 /*
