@@ -90,7 +90,7 @@ async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, c
         Ok(resp)  => Ok(Json(resp)),
         Err(e) => {
             info!("Error in /register_circuit: {:?}", e);
-            Err(CustomError::Internal(e.to_string()))
+            Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
 }
@@ -102,7 +102,7 @@ async fn get_circuit_reduction_status(_auth_token: AuthToken, circuit_id: String
         Ok(s) => Ok(Json(s)),
         Err(e) => {
             info!("Error in /circuit/<circuit_id>/status: {:?}",e);
-            Err(CustomError::Internal(e.to_string()))
+            Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
 }
@@ -122,7 +122,7 @@ async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, config_d
         Ok(resp)  => Ok(Json(resp)),
         Err(e) => {
             info!("Error in /proof: {:?}",e);
-            Err(CustomError::Internal(e.to_string()))
+            Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
 }
@@ -134,7 +134,7 @@ async fn get_proof_status(_auth_token: AuthToken, proof_id: String, config_data:
         Ok(r) => Ok(Json(r)),
         Err(e) => {
             info!("Error in /proof/<proof_id>: {:?}",e);
-            Err(CustomError::Internal(e.to_string()))
+            Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
 }
@@ -146,7 +146,7 @@ async fn generate_auth_token(_auth_token: AuthToken, data: GenerateAuthTokenRequ
         Ok(r) => Ok(Json(r)),
         Err(e) => {
             info!("Error in auth/protocol: {:?}", e);
-            Err(CustomError::Internal(e.to_string()))
+            Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
 }
@@ -160,7 +160,7 @@ async fn get_protocol_proof(_auth_token: AuthToken, proof_id: String) -> AnyhowR
         Ok(r) => Ok(Json(r)),
         Err(e) => {
             info!("Error in /protocol_proof/merkle/<proof_id>: {:?}", e);
-            Err(CustomError::Internal(e.to_string()))
+            Err(CustomError::Internal(e.root_cause().to_string()))
         },
     };
 
