@@ -7,7 +7,7 @@ use rocket::State;
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 
-use crate::{connection::get_pool, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
+use crate::{connection::get_pool, error::error::CustomError, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
 pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: Protocol) -> AnyhowResult<RegisterCircuitResponse> {
     // Retreive verification key bytes
@@ -15,7 +15,13 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
 
     // Borsh deserialise to corresponding vkey struct 
     let vkey: T = T::deserialize_vkey(&mut vkey_bytes.as_slice())?;
-    vkey.validate(data.num_public_inputs)?;
+    let _ = match vkey.validate(data.num_public_inputs) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            info!("vk is not valid");
+            Err(anyhow!(CustomError::Internal(format!("vk is invalid. {}",e))))
+        },
+    }?;
     println!("validated");
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
     let circuit_hash = vkey.keccak_hash()?;
