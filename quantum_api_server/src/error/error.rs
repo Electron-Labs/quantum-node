@@ -38,7 +38,10 @@ impl CustomError {
 impl std::fmt::Display for CustomError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let error_message = match &self{
-            Self::Internal(str) | Self::BadRequest(str) | Self::NotFound(str) => str
+            Self::Internal(str) | Self::BadRequest(str) | Self::NotFound(str) => {
+                info!("Error is: {}", str);
+                str
+            }
         };
         write!(fmt, "{}", error_message)
     }

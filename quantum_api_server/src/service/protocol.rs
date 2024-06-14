@@ -10,7 +10,7 @@ pub async fn generate_auth_token_for_protocol(data: GenerateAuthTokenRequest) ->
     let is_present = check_if_protocol_already_registered(get_pool().await, &data.protocol_name).await;
     let is_present = match is_present {
         Ok(t) => Ok(t) ,
-        Err(e) => Err(anyhow!(CustomError::Internal(e.to_string()))),
+        Err(e) => Err(anyhow!(CustomError::Internal(e.root_cause().to_string()))),
     };
 
     let is_present = is_present?;

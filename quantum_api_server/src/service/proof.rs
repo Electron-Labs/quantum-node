@@ -64,7 +64,7 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
             Ok(sp) => Ok(sp),
             Err(e) => {
                 info!("err in superproof fetch");
-                let error_msg = format!("superproof not found in db: {}", e.to_string());
+                let error_msg = format!("superproof not found in db: {}", e.root_cause().to_string());
                 Err(anyhow!(CustomError::Internal(error_msg)))
             }
         };
@@ -83,7 +83,7 @@ async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest
         Ok(cd) => Ok(cd),
         Err(e) => {
             info!("circuit has not been registered");
-            Err(anyhow!(CustomError::BadRequest(error_line!(format!("circuit hash not found. {}", e.to_string())))))
+            Err(anyhow!(CustomError::BadRequest(error_line!(format!("circuit hash not found. {}", e.root_cause().to_string())))))
         }
     };
 
