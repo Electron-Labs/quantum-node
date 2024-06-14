@@ -7,14 +7,14 @@ use ark_bn254::g1::Config;
 use ark_ec::short_weierstrass::Affine;
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
-use quantum_utils::{file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_le_bytes};
+use quantum_utils::{file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_le_bytes, error_line};
 use serde::{Serialize, Deserialize};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 use keccak_hash::keccak;
 use hex::ToHex;
 
-use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
+use crate::{traits::{pis::Pis, proof::Proof, vkey::Vkey}};
 
 use super::config::ConfigData;
 /*
@@ -95,7 +95,7 @@ impl GnarkGroth16Vkey {
 		let is_valid = GnarkGroth16Vkey::check_if_g1_point_is_valid(&p);
 		if !is_valid {
 			info!("fq point not valid");
-			return Err(anyhow!("not valid point"));
+			return Err(anyhow!(error_line!("fq point is not valid")));
 		}
 		Ok(())
 	}
@@ -113,7 +113,7 @@ impl GnarkGroth16Vkey {
 		let is_valid = GnarkGroth16Vkey::check_if_g2_point_is_valid(&p);
 		if !is_valid {
 			info!("fq2 point not valid");
-			return Err(anyhow!("not valid point"));
+			return Err(anyhow!(error_line!("fq point is not valid")));
 		}
 		Ok(())
 	}
@@ -130,12 +130,12 @@ impl GnarkGroth16Vkey {
 impl Vkey for GnarkGroth16Vkey {
 	fn serialize_vkey(&self) -> AnyhowResult<Vec<u8>> {
 		let mut buffer: Vec<u8> = Vec::new();
-		BorshSerialize::serialize(&self,&mut buffer)?;
+		BorshSerialize::serialize(&self,&mut buffer).map_err(|err| anyhow!(error_line!(err)))?;
 		Ok(buffer)
 	}
 
 	fn deserialize_vkey(bytes: &mut &[u8]) -> AnyhowResult<Self>{
-		let key: GnarkGroth16Vkey = BorshDeserialize::deserialize(bytes)?;
+		let key: GnarkGroth16Vkey = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
 		Ok(key)
 	}
 
@@ -163,14 +163,14 @@ impl Vkey for GnarkGroth16Vkey {
 		GnarkGroth16Vkey::validate_fq2_points(&self.CommitmentKey.GRootSigmaNeg)?;
 
 		if !(self.G1.K.len() as u8 == num_public_inputs+1 || self.G1.K.len() as u8 == num_public_inputs+2) {
-			return Err(anyhow!("not valid"));
+			return Err(anyhow!(error_line!("Vkey not valid")));
 		}
 
 		if self.G1.K.len() as u8 == num_public_inputs +1 && self.PublicAndCommitmentCommitted.len() != 0{
-			return Err(anyhow!("not valid"));
+			return Err(anyhow!(error_line!("Vkey not valid")));
 		}
 		if self.G1.K.len() as u8 == num_public_inputs + 2 && (self.PublicAndCommitmentCommitted.len() != 1 || self.PublicAndCommitmentCommitted[0].len() !=0){
-			return Err(anyhow!("not valid"));
+			return Err(anyhow!(error_line!("Vkey not valid")));
 		}
 		info!("vkey validated");
 		Ok(())
@@ -238,7 +238,7 @@ impl Proof for GnarkGroth16Proof {
 	}
 
 	fn deserialize_proof(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-		let key: GnarkGroth16Proof = BorshDeserialize::deserialize(bytes)?;
+		let key: GnarkGroth16Proof = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
 		Ok(key)
 	}
 
@@ -266,7 +266,7 @@ impl Pis for GnarkGroth16Pis {
 	}
 
 	fn deserialize_pis(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-		let key: GnarkGroth16Pis = BorshDeserialize::deserialize(bytes)?;
+		let key: GnarkGroth16Pis = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
 		Ok(key)
 	}
 

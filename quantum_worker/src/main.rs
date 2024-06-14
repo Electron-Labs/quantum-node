@@ -56,7 +56,7 @@ pub async fn regsiter_circuit(pool: &Pool<MySql>, registration_task: Task, confi
 
             // Set Task Status to failed
             update_task_status(pool, registration_task.id.unwrap(), TaskStatus::Failed).await?;
-            println!("Circuit registration failed : {:?}", e.to_string());
+            println!("Circuit registration failed : {:?}", e.root_cause().to_string());
         },
     }
     Ok(())
@@ -150,7 +150,7 @@ pub async fn generate_reduced_proof(pool: &Pool<MySql>, proof_generation_task: T
             update_task_status(pool, proof_generation_task.clone().id.unwrap(), TaskStatus::Failed).await?;
             println!("Changed Task Status to FAILED");
 
-            println!("Proof Reduction Failed: {:?}", e.to_string());
+            println!("Proof Reduction Failed: {:?}", e.root_cause().to_string());
         }
     }
 

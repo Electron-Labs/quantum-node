@@ -6,6 +6,7 @@ use quantum_db::repository::protocol::get_protocol_by_auth_token;
 use quantum_db::repository::reduction_circuit_repository::get_reduction_circuit_for_user_circuit;
 use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
+use quantum_utils::error_line;
 use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
 use quantum_types::types::gnark_groth16::GnarkGroth16Vkey;
@@ -60,9 +61,9 @@ async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, c
     let response: AnyhowResult<RegisterCircuitResponse>; 
     let protocol = match get_protocol_by_auth_token(get_pool().await, &auth_token.0).await {
         Ok(p) => Ok(p),
-        Err(_) => {
+        Err(e) => {
             info!("error in db while fetching protocol");
-            Err(CustomError::Internal("error in db while fetching protocol".to_string()))
+            Err(CustomError::Internal(error_line!(format!("error in db while fetching protocol. Error: {}", e))))
         },
     };
     let protocol = protocol?;
@@ -71,7 +72,7 @@ async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, c
         Some(p) => Ok(p),
         None => {
             info!("No protocol against this auth token");
-            Err(CustomError::Internal("No protocol against this auth token".to_string()))
+            Err(CustomError::Internal(error_line!("/register_circuit No protocol against this auth token".to_string())))
         },
     };
     let protocol = protocol?;
@@ -87,7 +88,10 @@ async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, c
     }
     match response {
         Ok(resp)  => Ok(Json(resp)),
-        Err(e) => Err(CustomError::Internal(e.to_string()))
+        Err(e) => {
+            info!("Error in /register_circuit: {:?}", e);
+            Err(CustomError::Internal(e.root_cause().to_string()))
+        }
     }
 }
 
@@ -96,7 +100,10 @@ async fn get_circuit_reduction_status(_auth_token: AuthToken, circuit_id: String
     let status = get_circuit_registration_status(circuit_id).await;
     match status {
         Ok(s) => Ok(Json(s)),
-        Err(_) => Err(CustomError::Internal(String::from("error in db call")))
+        Err(e) => {
+            info!("Error in /circuit/<circuit_id>/status: {:?}",e);
+            Err(CustomError::Internal(e.root_cause().to_string()))
+        }
     }
 }
 
@@ -108,12 +115,15 @@ async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, config_d
     } else if data.proof_type == ProvingSchemes::Groth16 {
         response = submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis>(data, config_data).await;
     } else {
-        info!("unspoorted proving scheme");
-        return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
+        info!("unsupported proving scheme");
+        return Err(CustomError::Internal(error_line!(String::from("/proof Unsupported Proving Scheme"))))
     }
     match response {
         Ok(resp)  => Ok(Json(resp)),
-        Err(e) => Err(CustomError::Internal(e.to_string()))
+        Err(e) => {
+            info!("Error in /proof: {:?}",e);
+            Err(CustomError::Internal(e.root_cause().to_string()))
+        }
     }
 }
 
@@ -122,7 +132,10 @@ async fn get_proof_status(_auth_token: AuthToken, proof_id: String, config_data:
     let response = get_proof_data_exec(proof_id, config_data).await;
     match response{
         Ok(r) => Ok(Json(r)),
-        Err(e) => Err(CustomError::Internal(e.to_string()))
+        Err(e) => {
+            info!("Error in /proof/<proof_id>: {:?}",e);
+            Err(CustomError::Internal(e.root_cause().to_string()))
+        }
     }
 }
 
@@ -131,7 +144,10 @@ async fn generate_auth_token(_auth_token: AuthToken, data: GenerateAuthTokenRequ
     let response = generate_auth_token_for_protocol(data).await;
     match response{
         Ok(r) => Ok(Json(r)),
-        Err(e) => Err(CustomError::Internal(e.to_string()))
+        Err(e) => {
+            info!("Error in auth/protocol: {:?}", e);
+            Err(CustomError::Internal(e.root_cause().to_string()))
+        }
     }
 }
 
@@ -143,8 +159,8 @@ async fn get_protocol_proof(_auth_token: AuthToken, proof_id: String) -> AnyhowR
     let response = match get_protocol_proof_exec(&proof_id).await {
         Ok(r) => Ok(Json(r)),
         Err(e) => {
-            let erro_string  = format!("some error occured in getting protocol proof : {:?}", e);
-            Err(CustomError::Internal(erro_string))
+            info!("Error in /protocol_proof/merkle/<proof_id>: {:?}", e);
+            Err(CustomError::Internal(e.root_cause().to_string()))
         },
     };
 

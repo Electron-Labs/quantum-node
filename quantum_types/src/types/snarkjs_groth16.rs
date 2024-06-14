@@ -5,7 +5,7 @@ use std::{path, str::FromStr};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
-use quantum_utils::file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file};
+use quantum_utils::{file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, error_line};
 use serde::{Deserialize, Serialize};
 
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -31,21 +31,21 @@ pub struct SnarkJSGroth16Vkey {
 impl SnarkJSGroth16Vkey {
     pub fn validate_fq_point(fq: &Vec<String>) -> AnyhowResult<()> {
         if fq.len() != 3 || fq[2] != "1" {
-            return Err(anyhow!("not valid"));
+            return Err(anyhow!(error_line!("fq point is not valid")));
         }
         let x = ark_bn254::Fq::from(BigUint::from_str(&fq[0]).unwrap());
         let y = ark_bn254::Fq::from(BigUint::from_str(&fq[1]).unwrap());
         let p = ark_bn254::G1Affine::new_unchecked(x, y);
         let is_valid = p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve();
         if !is_valid {
-            return Err(anyhow!("not valid"));
+            return Err(anyhow!(error_line!("fq point is not valid")));
         }
         Ok(())
     }
 
     pub fn validate_fq2_point(fq2: &Vec<Vec<String>>)  -> AnyhowResult<()>{
         if fq2.len() != 3 || fq2[2].len() != 2 ||  fq2[2][0] != "1" || fq2[2][1] != "0" {
-            return Err(anyhow!("not valid"));
+            return Err(anyhow!(error_line!("fq2 point is not valid")));
         }
         let x1 = ark_bn254::Fq::from(BigUint::from_str(&fq2[0][0])?);
         let x2 = ark_bn254::Fq::from(BigUint::from_str(&fq2[0][1])?);
@@ -58,7 +58,7 @@ impl SnarkJSGroth16Vkey {
         let p = ark_bn254::G2Affine::new_unchecked(x, y);
         let is_valid = p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve();
         if !is_valid {
-            return Err(anyhow!("not valid"));
+            return Err(anyhow!(error_line!("fq2 point is not valid")));
         }
         Ok(())
     }
@@ -156,12 +156,12 @@ impl SnarkJSGroth16Vkey {
 impl Vkey for SnarkJSGroth16Vkey {
 	fn serialize_vkey(&self) -> AnyhowResult<Vec<u8>> {
 		let mut buffer: Vec<u8> = Vec::new();
-		BorshSerialize::serialize(&self,&mut buffer)?;
+		BorshSerialize::serialize(&self,&mut buffer).map_err(|err| anyhow!(error_line!(err)))?;
 		Ok(buffer)
 	}
 
 	fn deserialize_vkey(bytes: &mut &[u8]) -> AnyhowResult<Self>{
-		let key: SnarkJSGroth16Vkey = BorshDeserialize::deserialize(bytes)?;
+		let key: SnarkJSGroth16Vkey = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
 		Ok(key)
 	}
 
@@ -217,7 +217,7 @@ impl Proof for SnarkJSGroth16Proof {
 	}
 
 	fn deserialize_proof(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-		let key: SnarkJSGroth16Proof = BorshDeserialize::deserialize(bytes)?;
+		let key: SnarkJSGroth16Proof = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
 		Ok(key)
 	}
 
@@ -245,7 +245,7 @@ impl Pis for SnarkJSGroth16Pis {
 	}
 
 	fn deserialize_pis(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-		let key: SnarkJSGroth16Pis = BorshDeserialize::deserialize(bytes)?;
+		let key: SnarkJSGroth16Pis = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
 		Ok(key)
 	}
 

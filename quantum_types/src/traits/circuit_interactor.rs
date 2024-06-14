@@ -1,9 +1,9 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use keccak_hash::keccak;
-use quantum_utils::{file::{read_bytes_from_file, write_bytes_to_file}, keccak::encode_keccak_hash};
+use quantum_utils::{file::{read_bytes_from_file, write_bytes_to_file}, keccak::encode_keccak_hash, error_line};
 use serde::{Deserialize, Serialize};
-use anyhow::Result as AnyhowResult;
-use crate::types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}};
+use anyhow::{anyhow, Result as AnyhowResult};
+use crate::{types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}}};
 use tiny_merkle::{proof::Position, Hasher, MerkleTree};
 
 #[derive(Clone, Debug)]
@@ -75,7 +75,7 @@ impl IMT_Tree {
     }
 
     pub fn deserialise_imt_tree(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let imt_tree: IMT_Tree = BorshDeserialize::deserialize(bytes)?;
+        let imt_tree: IMT_Tree = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(imt_tree)
     }
 
@@ -110,7 +110,7 @@ impl IMT_Tree {
             }
         }
         if leaf_asked.is_none() {
-            return Err(anyhow::Error::msg("Couldnt find a value in leaves"));
+            return Err(anyhow!(error_line!("Couldnt find a value in leaves")));
         }
         let leaf = leaf_asked.unwrap();
         let mtree = self.get_mtree();

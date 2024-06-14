@@ -1,6 +1,6 @@
 use quantum_types::{enums::proof_status::ProofStatus, types::db::proof::Proof};
 use sqlx::{mysql::MySqlRow, Execute, MySql, Pool, Row};
-
+use quantum_utils::error_line;
 use anyhow::{anyhow, Error, Result as AnyhowResult};
 use tracing::info;
 
@@ -16,7 +16,7 @@ pub async fn get_aggregation_waiting_proof_num(pool: &Pool<MySql>) -> AnyhowResu
             let id: u64 = t.try_get_unchecked("reduced_proof_count")?;
             Ok(id)
         }
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     reduction_circuit
 }
@@ -28,7 +28,7 @@ pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, 
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
-        Err(e) =>Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) =>Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -40,7 +40,7 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
     info!("{}", query.sql());
     let proof = match query.fetch_one(pool).await{
         Ok(t) => get_proof_from_mysql_row(&t),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     proof
 }
@@ -52,7 +52,7 @@ pub async fn get_proof_hash_by_superproof_id(pool: &Pool<MySql>, superproof_id: 
     info!("{}", query.sql());
     let rows = match query.fetch_all(pool).await{
         Ok(rows) => Ok(rows),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     }?;
     let mut proof_ids = vec![];
     for row in rows {
@@ -70,7 +70,7 @@ pub async fn update_proof_status(pool: &Pool<MySql>, proof_hash: &str, proof_sta
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -82,7 +82,7 @@ pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -94,7 +94,7 @@ pub async fn update_superproof_id_in_proof(pool: &Pool<MySql>, proof_hash: &str,
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -106,7 +106,7 @@ pub async fn get_n_reduced_proofs(pool: &Pool<MySql>, n: u64) -> AnyhowResult<Ve
     info!("{}", query.sql());
     let db_rows = match query.fetch_all(pool).await {
         Ok(t) => Ok(t),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))  
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))  
     };
 
     let db_rows = db_rows?;

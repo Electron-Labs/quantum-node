@@ -1,6 +1,7 @@
 use quantum_db::repository::{reduction_circuit_repository::{check_if_pis_len_compatible_reduction_circuit_exist, get_reduction_circuit_for_user_circuit}, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::vkey::Vkey, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}}};
 use quantum_utils::{keccak::encode_keccak_hash, paths::get_user_vk_path};
+use quantum_utils::error_line;
 use rocket::State;
 
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -16,9 +17,9 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     let vkey: T = T::deserialize_vkey(&mut vkey_bytes.as_slice())?;
     let _ = match vkey.validate(data.num_public_inputs) {
         Ok(_) => Ok(()),
-        Err(_) => {
+        Err(e) => {
             info!("vk is not valid");
-            Err(anyhow!(CustomError::Internal("vk is invalid".to_string())))
+            Err(anyhow!(CustomError::Internal(format!("vk is invalid. {}",e))))
         },
     }?;
     println!("validated");

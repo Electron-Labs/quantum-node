@@ -1,4 +1,5 @@
 use quantum_types::{enums::{task_status::TaskStatus, task_type::TaskType}, types::db::task::Task};
+use quantum_utils::error_line;
 use sqlx::{mysql::MySqlRow, MySql, Pool, Execute};
 use sqlx::Row;
 use anyhow::{anyhow, Error, Result as AnyhowResult};
@@ -14,7 +15,7 @@ pub async fn create_circuit_reduction_task(pool: &Pool<MySql>,user_circuit_hash:
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -29,7 +30,7 @@ pub async fn get_unpicked_task(pool: &Pool<MySql>) -> Result<Option<Task>, Error
     info!("{}", query.sql());
     let reduction_circuit = match query.fetch_optional(pool).await{
         Ok(t) => get_task_from_mysql_row(t),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     reduction_circuit
 }
@@ -59,7 +60,7 @@ pub async fn update_task_status(pool: &Pool<MySql>, task_id: u64, task_status: T
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -74,7 +75,7 @@ pub async fn get_aggregation_waiting_tasks_num(pool: &Pool<MySql>) -> Result<u64
             let id: u64 = t.try_get_unchecked("reduced_proof_count")?;
             Ok(id)
         }
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     reduction_circuit
 } 
@@ -87,8 +88,8 @@ pub async fn create_proof_task(pool: &Pool<MySql>, user_circuit_hash: &str, task
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => {
-            info!("error in db: {:?}", e.to_string());
-            Err(anyhow!(CustomError::DB(e.to_string())))
+            info!("error in db: {:?}", error_line!(e));
+            Err(anyhow!(CustomError::DB(error_line!(e))))
         }
     };
     row_affected

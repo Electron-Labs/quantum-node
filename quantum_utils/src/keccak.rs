@@ -2,8 +2,10 @@ use std::str::FromStr;
 
 use hex::ToHex;
 use keccak_hash::{keccak, H256};
-use anyhow::{Ok, Result as AnyhowResult};
+use anyhow::{anyhow, Ok, Result as AnyhowResult};
 use num_bigint::BigUint;
+
+use crate::error_line;
 
 pub fn get_keccak_hash_of_string(value: &str) -> [u8; 32]{
     let hash = keccak(value);
@@ -17,7 +19,7 @@ pub fn encode_keccak_hash(keccak_bytes: &[u8; 32]) -> AnyhowResult<String> {
 
 pub fn decode_keccak_hex(keccak_hex: &str) -> AnyhowResult<[u8; 32]> {
     let mut decoded  = [0; 32];
-    hex::decode_to_slice(&keccak_hex[2..], &mut decoded)?;
+    hex::decode_to_slice(&keccak_hex[2..], &mut decoded).map_err(|err| anyhow!(error_line!(err)))?;
     Ok(decoded)
 }
 

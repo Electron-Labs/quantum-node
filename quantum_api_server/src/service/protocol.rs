@@ -1,21 +1,22 @@
 use quantum_db::repository::protocol::{check_if_protocol_already_registered, insert_protocol_auth_token};
+use quantum_utils::error_line;
 use quantum_utils::keccak::get_keccak_hash_of_string;
 
 use crate::{connection::get_pool, error::error::CustomError, types::generate_auth_token::{GenerateAuthTokenRequest, GenerateAuthTokenResponse}};
 
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::{anyhow, Context, Result as AnyhowResult};
 
 pub async fn generate_auth_token_for_protocol(data: GenerateAuthTokenRequest) -> AnyhowResult<GenerateAuthTokenResponse> {
     let is_present = check_if_protocol_already_registered(get_pool().await, &data.protocol_name).await;
     let is_present = match is_present {
         Ok(t) => Ok(t) ,
-        Err(_) => Err(anyhow!(CustomError::Internal("some internal error".to_string()))),
+        Err(e) => Err(anyhow!(CustomError::Internal(e.root_cause().to_string()))),
     };
 
     let is_present = is_present?;
     if is_present {
         println!("protocol has already been registered");
-        return Err(anyhow!(CustomError::Internal("protocol has already been registered".to_string())));
+        return Err(anyhow!(CustomError::Internal(error_line!("protocol has already been registered".to_string()))));
     }
     
     let protocol_name_hash = get_keccak_hash_of_string(&data.protocol_name);

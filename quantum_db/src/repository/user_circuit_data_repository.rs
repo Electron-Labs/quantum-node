@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use quantum_types::enums::circuit_reduction_status::CircuitReductionStatus;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
+use quantum_utils::error_line;
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use sqlx::mysql::MySqlRow;
 use sqlx::{Error, MySql, Pool, Row, Execute};
@@ -9,7 +10,7 @@ use tracing::info;
 
 // use crate::connection::get_pool;
 use crate::error::error::CustomError;
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::{anyhow, Context, Result as AnyhowResult, Error as AnyhowError};
 
 pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: &str) -> AnyhowResult<UserCircuitData>{
     let query  = sqlx::query("SELECT * from user_circuit_data where circuit_hash = ?")
@@ -18,13 +19,13 @@ pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_h
     info!("{}", query.sql());
     let user_circuit_data = match query.fetch_one(pool).await{
         Ok(t) => get_user_circuit_data_from_mysql_row(t),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     user_circuit_data
 }
 
 pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, reduction_circuit_id: Option<String>, 
-    pis_len: u8, proving_scheme: ProvingSchemes, circuit_reduction_status: CircuitReductionStatus, protocol_name: &str) -> AnyhowResult<u64, Error>{
+    pis_len: u8, proving_scheme: ProvingSchemes, circuit_reduction_status: CircuitReductionStatus, protocol_name: &str) -> AnyhowResult<u64, AnyhowError>{
     let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, reduction_circuit_id, pis_len, proving_scheme, circuit_reduction_status, protocol_name) VALUES(?,?,?,?,?,?,?)")
                 .bind(circuit_hash).bind(vk_path).bind(reduction_circuit_id).bind(pis_len).bind(proving_scheme.to_string())
                 .bind(circuit_reduction_status.as_u8()).bind(protocol_name);
@@ -32,16 +33,20 @@ pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
-        Err(e) => Err(e)
+        //start from here by printing   
+        Err(e) => {
+            println!("insert user error: {:?}", e);
+            Err(anyhow!(error_line!(e)))
+        }
     };
     row_affected
 }
 
 
-fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircuitData>{
-    let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme")?) {
+fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircuitData, AnyhowError>{
+    let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme").map_err(|err| anyhow!(error_line!(err)))?) {
         Ok(ps) => Ok(ps),
-        Err(e) => Err(anyhow!(CustomError::DB(e)))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     let circuit_status_as_u8: u8 = row.try_get_unchecked("circuit_reduction_status")?;
     let circuit_status =  CircuitReductionStatus::from(circuit_status_as_u8);
@@ -64,7 +69,7 @@ pub async fn update_user_circuit_data_reduction_status(pool: &Pool<MySql>, user_
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
@@ -76,7 +81,7 @@ pub async fn update_user_circuit_data_redn_circuit(pool: &Pool<MySql>, user_circ
     info!("{}", query.sql());
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(CustomError::DB(e.to_string())))
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
 }
