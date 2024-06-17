@@ -160,7 +160,7 @@ pub async fn get_last_superproof(pool: &Pool<MySql>) -> AnyhowResult<Option<Supe
         Ok(t) => Ok(t),
         Err(e) => {
             info!("error in super proof fetch");
-            Err(anyhow!(CustomError::DB(e.to_string())))
+            Err(anyhow!(CustomError::DB(error_line!(e))))
         }
     };
     let superproof = superproof?;

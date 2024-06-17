@@ -1,3 +1,5 @@
+use std::env;
+
 use connection::get_pool;
 use dotenv::dotenv;
 use error::error::CustomError;
@@ -170,6 +172,7 @@ async fn get_protocol_proof(_auth_token: AuthToken, proof_id: String) -> AnyhowR
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
+    env::set_var("RUST_BACKTRACE", "1");
 
     let cors = rocket_cors::CorsOptions {
         ..Default::default()
