@@ -13,6 +13,8 @@ pub async fn create_circuit_reduction_task(pool: &Pool<MySql>,user_circuit_hash:
                 .bind(user_circuit_hash).bind(task_type.as_u8()).bind(task_status.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {}", user_circuit_hash, task_type.as_u8(), task_status.as_u8());
+
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -58,6 +60,8 @@ pub async fn update_task_status(pool: &Pool<MySql>, task_id: u64, task_status: T
                 .bind(task_status.as_u8()).bind(task_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", task_status.as_u8(), task_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -85,6 +89,8 @@ pub async fn create_proof_task(pool: &Pool<MySql>, user_circuit_hash: &str, task
                 .bind(user_circuit_hash).bind(task_type.as_u8()).bind(task_status.as_u8()).bind(proof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {}, {}", user_circuit_hash, task_type.as_u8(), task_status.as_u8(), proof_id);
+    
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => {

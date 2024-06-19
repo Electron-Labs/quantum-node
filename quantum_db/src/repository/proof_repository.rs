@@ -26,6 +26,8 @@ pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, 
                 .bind(proof_hash).bind(pis_path).bind(proof_path).bind(proof_status.as_u8()).bind(user_circuit_hash);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {}, {}, {}", proof_hash, pis_path, proof_path, proof_status.as_u8(), user_circuit_hash);
+
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) =>Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -38,6 +40,8 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
                 .bind(proof_hash);
 
     info!("{}", query.sql());
+    info!("arguments: {}", proof_hash);
+    
     let proof = match query.fetch_one(pool).await{
         Ok(t) => get_proof_from_mysql_row(&t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -50,6 +54,8 @@ pub async fn get_proof_hash_by_superproof_id(pool: &Pool<MySql>, superproof_id: 
                 .bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}", superproof_id);
+
     let rows = match query.fetch_all(pool).await{
         Ok(rows) => Ok(rows),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -68,6 +74,8 @@ pub async fn update_proof_status(pool: &Pool<MySql>, proof_hash: &str, proof_sta
                 .bind(proof_status.as_u8()).bind(proof_hash);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", proof_status.as_u8(), proof_hash);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -80,6 +88,8 @@ pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction
                 .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(proof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {}, {}", reduction_proof_path, reduction_pis_path, reduction_time, proof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -92,6 +102,8 @@ pub async fn update_superproof_id_in_proof(pool: &Pool<MySql>, proof_hash: &str,
                 .bind(superproof_id).bind(proof_hash);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", superproof_id, proof_hash);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -104,6 +116,8 @@ pub async fn get_n_reduced_proofs(pool: &Pool<MySql>, n: u64) -> AnyhowResult<Ve
                 .bind(ProofStatus::Reduced.as_u8()).bind(n);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", ProofStatus::Reduced.as_u8(), n);
+
     let db_rows = match query.fetch_all(pool).await {
         Ok(t) => Ok(t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))  

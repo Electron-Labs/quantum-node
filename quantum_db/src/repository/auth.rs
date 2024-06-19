@@ -8,6 +8,7 @@ pub async fn check_if_auth_token_registered_and_is_master(pool: &Pool<MySql>, au
     .bind(auth_token);
 
    info!("{}", query.sql());
+   info!("arguments: {}", auth_token);
    let is_present = match query.fetch_optional(pool).await?{
        Some(t) => {
            println!("{:?}", t);

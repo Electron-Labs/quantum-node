@@ -10,6 +10,8 @@ pub async fn get_protocol_by_auth_token(pool: &Pool<MySql>, auth_token: &str) ->
      .bind(auth_token);
     
     info!("{}", query.sql());
+    info!("arguments: {}", auth_token);
+
     let protocol = match query.fetch_optional(pool).await.map_err(|err| anyhow!(error_line!(err)))? {
         Some(r) => Some(get_protocol_from_row(r)?),
         None => None,
@@ -33,6 +35,8 @@ pub async fn check_if_protocol_already_registered(pool: &Pool<MySql>, protocol_n
         .bind(protocol_name);
 
    info!("{}", query.sql());
+   info!("arguments: {}", protocol_name);
+
    let is_present = match query.fetch_optional(pool).await.map_err(|err| anyhow!(error_line!(err)))?{
        Some(t) => {
            println!("{:?}", t);
@@ -48,6 +52,8 @@ pub async fn insert_protocol_auth_token(pool: &Pool<MySql>, protocol_name: &str,
         .bind(protocol_name).bind(auth_token);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", protocol_name, auth_token);
+
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => Err(anyhow!(error_line!(e)))
