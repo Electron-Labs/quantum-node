@@ -12,6 +12,8 @@ slack_auth_token = os.getenv("SLACK_APP_AUTH_TOKEN")
 api_auth_token = os.getenv("API_SERVER_AUTH_TOKEN")
 username = os.getenv("BOT_USERNAME")
 channel = os.getenv("SLACK_CHANNEL")
+max_error_count = os.getenv("MAX_ERROR_COUNT");
+max_messages_sent = os.getenv("MAX_MESSAGES_SENT")
 
 
 def sendMessageToSlack(message:str):
@@ -27,7 +29,7 @@ def sendMessageToSlack(message:str):
     
 
 def checkQuantumApiServer():
-    global api_auth_token
+    global api_auth_token, max_error_count, max_messages_sent
     error_count = 0
     message_sent = 0
 
@@ -47,20 +49,21 @@ def checkQuantumApiServer():
             print("Retrying.....")
             error_count += 1
 
-            if error_count == 2 and message_sent < 3:
+            if error_count == max_error_count and message_sent < max_messages_sent:
                 print("Sending alerts to slack")
-                message = "*Health check for API SERVER FAILED. Attemps: 2*"
+                message = f"*Health check for API SERVER FAILED. Attemps: {max_error_count}*"
                 sendMessageToSlack(message)               
                 error_count = 0
                 message_sent += 1
             
-            elif error_count == 2:
+            elif error_count == max_error_count:
                 error_count = 0
 
         print("sleeping for 120 seconds")
         time.sleep(120)
 
 def checkQuantumWorkerServer():
+    global max_error_count, max_messages_sent
     process_exited = 0
     message_sent = 0
 
@@ -79,14 +82,14 @@ def checkQuantumWorkerServer():
             process_exited += 1
             print("Retrying.....")
 
-            if process_exited == 2 and message_sent < 3:
+            if process_exited == max_error_count and message_sent < max_messages_sent:
                 print("Sending alerts to slack")
-                message = "*Health check for WORKER SERVER FAILED. Attemps: 2*"
+                message = f"*Health check for WORKER SERVER FAILED. Attemps: {max_error_count}*"
                 sendMessageToSlack(message)
                 process_exited = 0
                 message_sent += 1
 
-            elif process_exited == 2:
+            elif process_exited == max_error_count:
                 process_exited = 0
 
         print("sleeping for 120 seconds")
