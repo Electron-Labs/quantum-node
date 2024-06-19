@@ -9,7 +9,7 @@ use anyhow::{Ok, Result as AnyhowResult};
 
 pub const IMT_DEPTH: usize = 10;
 
-pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  superproof_id: u64, config: &ConfigData) -> AnyhowResult<()> {
+pub async fn handle_imt_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  superproof_id: u64, config: &ConfigData) -> AnyhowResult<()> {
     let mut reduced_proofs = Vec::<GnarkGroth16Proof>::new();
     let mut reduced_pis_vec = Vec::<GnarkGroth16Pis>::new();
     let mut reduced_circuit_vkeys = Vec::<GnarkGroth16Vkey>::new();
@@ -30,6 +30,7 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
     let last_root: KeccakHashOut;
     let last_leaves: IMT_Tree;
     if last_updated_superproof.is_some() {
+        // TODO: fix below logic
         let last_superproof = last_updated_superproof.unwrap();
         if last_superproof.id.unwrap() == superproof_id {
             let (zero_leaves, zero_root) = get_init_tree_data(IMT_DEPTH as u8);
@@ -57,12 +58,12 @@ pub async fn handle_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  super
     println!("{:?}", last_leaves.leafs.len());
 
     let aggregation_result = QuantumV2CircuitInteractor::generate_aggregated_proof(
-        reduced_proofs, 
-        reduced_pis_vec, 
-        reduced_circuit_vkeys, 
-        last_root, 
-        last_leaves.leafs, 
-        aggregator_circuit_pkey, 
+        reduced_proofs,
+        reduced_pis_vec,
+        reduced_circuit_vkeys,
+        last_root,
+        last_leaves.leafs,
+        aggregator_circuit_pkey,
         aggregator_circuit_vkey
     );
 
@@ -96,7 +97,7 @@ mod tests {
     use quantum_circuits_ffi::interactor::get_init_tree_data;
     use quantum_utils::keccak::{decode_keccak_hex, encode_keccak_hash};
 
-    use crate::aggregator::IMT_DEPTH;
+    use crate::imt_aggregator::IMT_DEPTH;
 
     #[test]
     pub fn yo() {

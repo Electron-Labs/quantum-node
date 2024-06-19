@@ -11,13 +11,13 @@
 */
 
 pub mod connection;
-pub mod aggregator;
+pub mod imt_aggregator;
 pub mod registration;
 pub mod proof_generator;
 pub mod utils;
 
 use std::{thread::sleep, time::Duration};
-use aggregator::handle_aggregation;
+use imt_aggregator::handle_imt_aggregation;
 use dotenv::dotenv;
 use quantum_db::{error::error::CustomError, repository::{proof_repository::{get_n_reduced_proofs, update_proof_status, update_superproof_id_in_proof}, superproof_repository::{insert_new_superproof, update_superproof_status}, task_repository::{get_aggregation_waiting_tasks_num, get_unpicked_task, update_task_status}, user_circuit_data_repository::update_user_circuit_data_reduction_status}};
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -88,8 +88,8 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>, config: &C
 
     println!("4");
     // 4. superproof_status -> (0: Not Started, 1: IN_PROGRESS, 2: PROVING_DONE, 3: SUBMITTED_ONCHAIN, 4: FAILED)
-    
-    let aggregation_request = handle_aggregation(pool, proofs.clone(), superproof_id, config).await;
+
+    let aggregation_request = handle_imt_aggregation(pool, proofs.clone(), superproof_id, config).await;
 
     match aggregation_request {
         Ok(_) => {
@@ -100,7 +100,7 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>, config: &C
             // Superproof status to PROVING_DONE
             println!("changing the superproof status to proving done");
             update_superproof_status(pool, SuperproofStatus::ProvingDone, superproof_id).await?;
-        },  
+        },
         Err(e) => {
             // Change proof_generation status to FAILED
             for proof in proofs {
@@ -113,7 +113,7 @@ pub async fn aggregate_proofs(pool: &Pool<MySql>, proofs: Vec<Proof>, config: &C
         }
     }
 
-    Ok(())   
+    Ok(())
 }
 
 
@@ -140,7 +140,7 @@ pub async fn generate_reduced_proof(pool: &Pool<MySql>, proof_generation_task: T
             println!("Changed task status to Completed");
 
             println!("Proof Reduced Successfully");
-        },  
+        },
         Err(e) => {
             // Change proof_generation status to FAILED
             update_proof_status(pool, &proof_hash, ProofStatus::ReductionFailed).await?;
