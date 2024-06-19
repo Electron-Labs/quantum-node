@@ -41,5 +41,5 @@ fn create_symlink_file(file_name_thread:String)  {
         if symlink_path.exists() {
             std::fs::remove_file(symlink_path).expect("Failed to remove existing symlink");
         }
-        std::os::windows::fs::symlink_file(log_file_name, symlink_path).expect("Failed to create symlink");
+        std::os::unix::fs::symlink(log_file_name, symlink_path).expect("Failed to create symlink");
 }
