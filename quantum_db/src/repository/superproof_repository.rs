@@ -153,7 +153,28 @@ fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
 
 
 pub async fn get_last_superproof(pool: &Pool<MySql>) -> AnyhowResult<Option<Superproof>> {
-    let query  = sqlx::query("SELECT * from superproof order by id desc LIMIT 1");
+    let query  = sqlx::query("SELECT * from superproof order by id desc LIMIT 1 OFFSET 1");
+
+    info!("{}", query.sql());
+    let superproof = match query.fetch_optional(pool).await{
+        Ok(t) => Ok(t),
+        Err(e) => {
+            info!("error in super proof fetch");
+            Err(anyhow!(CustomError::DB(error_line!(e))))
+        }
+    };
+    let superproof = superproof?;
+
+    let superproof = match superproof {
+        Some(t) => Some(get_superproof_from_row(t)?),
+        None =>  None,
+    };
+    Ok(superproof)
+}
+
+pub async fn get_last_aggregated_superproof(pool: &Pool<MySql>) -> AnyhowResult<Option<Superproof>> {
+    let query  = sqlx::query("SELECT * from superproof where status = ? order by id desc LIMIT 1")
+                                                    .bind(SuperproofStatus::ProvingDone.as_u8());
 
     info!("{}", query.sql());
     let superproof = match query.fetch_optional(pool).await{

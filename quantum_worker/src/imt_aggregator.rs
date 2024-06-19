@@ -26,7 +26,7 @@ pub async fn handle_imt_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  s
         reduced_circuit_vkeys.push(reduced_vkey);
     }
     println!("superproof_id {:?}", superproof_id);
-    let last_updated_superproof = get_last_verified_superproof(pool).await?;
+    let last_updated_superproof = get_last_superproof(pool).await?;
     let last_root: KeccakHashOut;
     let last_leaves: IMT_Tree;
     if last_updated_superproof.is_some() {
@@ -36,8 +36,10 @@ pub async fn handle_imt_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  s
             let (zero_leaves, zero_root) = get_init_tree_data(IMT_DEPTH as u8);
             last_root = zero_root;
             last_leaves = IMT_Tree{ leafs: zero_leaves };
+            println!("using zero leaves, zero root");
         }
         else {
+            println!("last superproof root {:?}", last_superproof.superproof_root);
             last_root = KeccakHashOut(decode_keccak_hex(&last_superproof.superproof_root.unwrap())?);
             last_leaves = IMT_Tree::read_tree(&last_superproof.superproof_leaves_path.unwrap())?;
         }
