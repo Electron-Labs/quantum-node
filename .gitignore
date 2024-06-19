@@ -4,3 +4,4 @@ Cargo.lock
 /storage
 /log
 /aggregated_circuit_data
+.env

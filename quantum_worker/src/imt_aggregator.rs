@@ -59,7 +59,7 @@ pub async fn handle_imt_aggregation(pool: &Pool<MySql>, proofs: Vec<DBProof>,  s
 
     println!("{:?}", last_leaves.leafs.len());
 
-    let aggregation_result = QuantumV2CircuitInteractor::generate_aggregated_proof(
+    let aggregation_result = QuantumV2CircuitInteractor::generate_imt_aggregated_proof(
         reduced_proofs,
         reduced_pis_vec,
         reduced_circuit_vkeys,
