@@ -13,7 +13,7 @@ pub fn get_keccak_hash_of_string(value: &str) -> [u8; 32]{
 }
 
 pub fn encode_keccak_hash(keccak_bytes: &[u8; 32]) -> AnyhowResult<String> {
-    let keccak_h256 = H256::from_slice(keccak_bytes);   
+    let keccak_h256 = H256::from_slice(keccak_bytes);
     Ok(format!("0x{}",keccak_h256.encode_hex::<String>()))
 }
 

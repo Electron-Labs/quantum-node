@@ -64,11 +64,10 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
         let mut keccak_ip = Vec::<u8>::new();
         let vkey_hash = gnark_inner_vk.keccak_hash()?;
         println!("vkey_hash {:?}", vkey_hash);
-        keccak_ip.extend(gnark_inner_vk.keccak_hash()?.to_vec().iter().cloned());
-        for i in 0..gnark_inner_pis.0.len() {
-            let pi = gnark_inner_pis.0[i].clone();
-            keccak_ip.extend(convert_string_to_le_bytes(&pi).to_vec().iter().cloned());
-        }
+        keccak_ip.extend(vkey_hash);
+        let pis_hash = gnark_inner_pis.keccak_hash()?;
+        println!("pis_hash {:?}", pis_hash);
+        keccak_ip.extend(pis_hash);
         let hash = keccak_hash::keccak(keccak_ip).0;
         let pis1 = BigUint::from_bytes_le(&hash[0..16]).to_string();
         let pis2 = BigUint::from_bytes_le(&hash[16..32]).to_string();
@@ -84,7 +83,24 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
         let snarkjs_inner_vk: SnarkJSGroth16Vkey = SnarkJSGroth16Vkey::read_vk(&inner_vk_path)?;
         let snarkjs_inner_pis: SnarkJSGroth16Pis = SnarkJSGroth16Pis::read_pis(&inner_pis_path)?;
         // 2. Call reduced proof generator for circom inner proof
-        prove_result = QuantumV2CircuitInteractor::generate_snarkjs_groth16_reduced_proof(snarkjs_inner_proof, snarkjs_inner_vk, snarkjs_inner_pis, outer_vk, outer_pk_bytes);
+        prove_result = QuantumV2CircuitInteractor::generate_snarkjs_groth16_reduced_proof(snarkjs_inner_proof, snarkjs_inner_vk.clone(), snarkjs_inner_pis.clone(), outer_vk, outer_pk_bytes);
+
+        let mut keccak_ip = Vec::<u8>::new();
+        let vkey_hash = snarkjs_inner_vk.keccak_hash()?;
+        println!("vkey_hash {:?}", vkey_hash);
+        keccak_ip.extend(vkey_hash);
+        let pis_hash = snarkjs_inner_pis.keccak_hash()?;
+        println!("pis_hash {:?}", pis_hash);
+        keccak_ip.extend(pis_hash);
+        let hash = keccak_hash::keccak(keccak_ip).0;
+        let pis1 = BigUint::from_bytes_le(&hash[0..16]).to_string();
+        let pis2 = BigUint::from_bytes_le(&hash[16..32]).to_string();
+        println!("pis1 {:?}", pis1);
+        println!("pis2 {:?}", pis2);
+        println!("p1 {:?}", prove_result.reduced_pis.0[0]);
+        println!("p2 {:?}", prove_result.reduced_pis.0[1]);
+        assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+        assert_eq!(pis2, prove_result.reduced_pis.0[1]);
     } else {
         return Ok(());
     }
