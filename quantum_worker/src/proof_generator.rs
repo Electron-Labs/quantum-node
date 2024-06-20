@@ -3,11 +3,12 @@ use std::{fs, str::FromStr};
 use num_bigint::BigUint;
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, update_reduction_data}, reduction_circuit_repository::get_reduction_circuit_data_by_id, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType}, traits::{circuit_interactor::{CircuitInteractor, GenerateReductionProofResult}, pis::Pis, proof::Proof, vkey::Vkey}, types::{config::ConfigData, db::{task::Task, user_circuit_data}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}}};
-use quantum_utils::{file::read_bytes_from_file, keccak::{self, convert_string_to_le_bytes}};
+use quantum_utils::{error_line, file::read_bytes_from_file, keccak::{self, convert_string_to_le_bytes}};
 use sqlx::{MySql, Pool};
 use anyhow::{Ok, Result as AnyhowResult};
 use quantum_circuits_ffi:: interactor::QuantumV2CircuitInteractor;
 use tokio::time::Instant;
+use tracing::info;
 
 use crate::utils::dump_reduction_proof_data;
 
@@ -51,7 +52,7 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
     let prove_result: GenerateReductionProofResult;
 
     // Call proof generation to quantum_reduction_circuit
-    println!("Calling gnark groth16 proof generation");
+    info!("Calling gnark groth16 proof generation");
     let reduction_start_time = Instant::now();
     if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
         // 1.Reconstruct inner proof
@@ -109,19 +110,19 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
 
     // Check if build was done successfully
     if !prove_result.success{
-        return Err(anyhow::Error::msg(prove_result.msg));
+        return Err(anyhow::Error::msg(error_line!( prove_result.msg)));
     }
 
-    println!("Reduced Proof successfully generated in {:?}", reduction_time);
+    info!("Reduced Proof successfully generated in {:?}", reduction_time);
 
     // Dump reduced proof and public inputs
     // TODO change proof bytes and pis bytes values
     let (reduced_proof_path, reduced_pis_path) = dump_reduction_proof_data(config, &user_circuit_hash, &proof_hash, prove_result.reduced_proof, prove_result.reduced_pis)?;
-    println!("Dumped reduced proof and pis");
+    info!("Dumped reduced proof and pis");
 
     // update reduction data corresponding to proof
     update_reduction_data(pool, &proof_hash, &reduced_proof_path, &reduced_pis_path, reduction_time).await?;
-    println!("Updated reduction data to corresponding proof");
+    info!("Updated reduction data to corresponding proof");
 
     Ok(())
 }

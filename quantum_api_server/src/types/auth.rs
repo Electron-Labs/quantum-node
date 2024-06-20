@@ -2,6 +2,7 @@ use quantum_db::repository::auth::check_if_auth_token_registered_and_is_master;
 use quantum_db::repository::protocol::get_protocol_by_auth_token;
 use rocket::http::Status;
 use rocket::request::{Request, FromRequest, Outcome};
+use tracing::error;
 
 use crate::connection::get_pool;
 
@@ -35,13 +36,16 @@ impl<'r> FromRequest<'r> for AuthToken {
             }
             println!("{:?}", is_present);
             if is_present.is_err() {
+                error!("unauthorized api access with access toekn: {:?}", auth_token);
                 return Outcome::Error((Status::InternalServerError, ()));
             }
             if is_present.is_ok_and(|x| x == true) {
                 return Outcome::Success(AuthToken(auth_token.to_string()));
             }
+            error!("unauthorized api access with access toekn: {:?}", auth_token);
             Outcome::Error((Status::Unauthorized, ()))
         } else {
+            error!("authorized token not present in the request");
             Outcome::Error((Status::Unauthorized, ()))
         }
     }

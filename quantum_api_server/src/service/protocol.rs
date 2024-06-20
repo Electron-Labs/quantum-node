@@ -15,7 +15,7 @@ pub async fn generate_auth_token_for_protocol(data: GenerateAuthTokenRequest) ->
 
     let is_present = is_present?;
     if is_present {
-        println!("protocol has already been registered");
+        error!("protocol has already been registered");
         return Err(anyhow!(CustomError::Internal(error_line!("protocol has already been registered".to_string()))));
     }
     

@@ -183,5 +183,6 @@ async fn rocket() -> _ {
     let _db_initialize = get_pool().await;
     
     let t = rocket::Config::figment();
-    rocket::custom(t).manage(config_data).mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token, get_protocol_proof]).attach(cors)
+    rocket::custom(t).manage(config_data).manage(_guard)
+    .mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token, get_protocol_proof]).attach(cors)
 }

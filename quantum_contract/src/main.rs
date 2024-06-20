@@ -122,7 +122,7 @@ fn get_current_time() -> NaiveDateTime{
 async fn main() {
     // gen_quantum_structs().unwrap();
     dotenv().ok();
-    println!(" --- Starting quantum contract --- ");
+    info!(" --- Starting quantum contract --- ");
     let _guard = initialize_logger("quantum_contract.log");
     let _db_pool = get_pool().await;
     let superproof_submission_duration = Duration::from_secs(SUPERPROOF_SUBMISSION_DURATION);

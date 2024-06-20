@@ -49,11 +49,11 @@ pub async fn update_quantum_contract_state(
 
     let new_state_bytes = get_bytes_from_hex_string(new_state)?;
 
-    println!("new_state_bytes {:?}", new_state_bytes);
+    info!("new_state_bytes {:?}", new_state_bytes);
 
     let proof = get_proof_from_gnark_groth16_proof(&gnark_proof)?;
 
-    println!("making call to eth");
+    info!("making call to eth");
 
     let receipt = contract
         .update_quantum_state(new_state_bytes, proof)
@@ -62,7 +62,7 @@ pub async fn update_quantum_contract_state(
 }
 
 pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<Proof> {
-    println!("gmarl+[ {:?}", gnark_proof);
+    info!("gmarl+[ {:?}", gnark_proof);
 
     let arx = U256::from_dec_str(&gnark_proof.Ar.X).expect("arx");
     let arx1 = U256::from_dec_str(&gnark_proof.Ar.X).expect("arx1");

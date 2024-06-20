@@ -18,10 +18,10 @@ use quantum_types::{
     },
 };
 use quantum_utils::{
-    file::read_bytes_from_file,
-    paths::{get_aggregation_circuit_constraint_system_path, get_aggregation_circuit_proving_key_path, get_aggregation_circuit_vkey_path, get_superproof_proof_path},
+    error_line, file::read_bytes_from_file, paths::{get_aggregation_circuit_constraint_system_path, get_aggregation_circuit_proving_key_path, get_aggregation_circuit_vkey_path, get_superproof_proof_path}
 };
 use sqlx::{MySql, Pool};
+use tracing::info;
 
 pub async fn handle_aggregation(
     pool: &Pool<MySql>,
@@ -110,13 +110,13 @@ pub async fn handle_aggregation(
     );
 
     let aggregation_time = aggregation_start.elapsed();
-    println!(
+    info!(
         "aggregation_result {:?} in {:?}",
         aggregation_result.msg, aggregation_time
     );
 
     if !aggregation_result.success {
-        return Err(anyhow::Error::msg(aggregation_result.msg));
+        return Err(anyhow::Error::msg(error_line!(aggregation_result.msg)));
     }
 
     // Dump superproof_proof and add to the DB

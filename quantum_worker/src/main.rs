@@ -43,12 +43,12 @@ use quantum_types::{
         db::{proof::Proof, superproof::Superproof, task::Task},
     },
 };
-use quantum_utils::logger::initialize_logger;
+use quantum_utils::{error_line, logger::initialize_logger};
 use sqlx::{MySql, Pool};
 use std::{thread::sleep, time::Duration};
-use tracing::info;
+use tracing::{info, error};
 
-pub const BATCH_SIZE: u64 = 1; // Number of proofs to be included in 1 batch
+pub const BATCH_SIZE: u64 = 10; // Number of proofs to be included in 1 batch
 pub const WORKER_SLEEP_SECS: u64 = 10;
 
 pub async fn regsiter_circuit(
@@ -85,7 +85,7 @@ pub async fn regsiter_circuit(
             // Set Task Status to Completed
             update_task_status(pool, registration_task.id.unwrap(), TaskStatus::Completed).await?;
 
-            println!("Circuit registered successfully");
+            info!("Circuit registered successfully");
         }
         Err(e) => {
             // Update db task to failed and circuit reduction to failed too
@@ -98,7 +98,7 @@ pub async fn regsiter_circuit(
 
             // Set Task Status to failed
             update_task_status(pool, registration_task.id.unwrap(), TaskStatus::Failed).await?;
-            println!(
+            error!(
                 "Circuit registration failed : {:?}",
                 e.root_cause().to_string()
             );
@@ -116,7 +116,7 @@ pub async fn aggregate_proofs(
     for proof in &proofs {
         let proof_id = match proof.id {
             Some(id) => Ok(id),
-            None => Err(anyhow!("not able to find proofId")),
+            None => Err(anyhow!(error_line!("not able to find proofId"))),
         };
         let proof_id = proof_id?;
         proof_ids.push(proof_id);
@@ -148,11 +148,11 @@ pub async fn aggregate_proofs(
                 update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregated).await?;
             }
             // Superproof status to PROVING_DONE
-            println!("changing the superproof status to proving done");
+            info!("changing the superproof status to proving done");
             update_superproof_status(pool, SuperproofStatus::ProvingDone, superproof_id).await?;
         }
         Err(e) => {
-            println!("aggregation_request error {:?}", e);
+            error!("aggregation_request error {:?}", e);
 
             // Change proof_generation status to FAILED
             for proof in proofs {
@@ -160,7 +160,7 @@ pub async fn aggregate_proofs(
                     .await?;
             }
 
-            println!("changing the superproof status to failed");
+            error!("changing the superproof status to failed");
             update_superproof_status(pool, SuperproofStatus::Failed, superproof_id).await?;
             return Err(e);
         }
@@ -182,11 +182,11 @@ pub async fn generate_reduced_proof(
         TaskStatus::InProgress,
     )
     .await?;
-    println!("Updated Task Status to InProgress");
+    info!("Updated Task Status to InProgress");
 
     // Update Proof Status to Reducing
     update_proof_status(pool, &proof_hash, ProofStatus::Reducing).await?;
-    println!("Update Proof Status to Reducing");
+    info!("Update Proof Status to Reducing");
 
     let request =
         proof_generator::handle_proof_generation_task(pool, proof_generation_task.clone(), config)
@@ -196,7 +196,7 @@ pub async fn generate_reduced_proof(
         Ok(_) => {
             // Change proof_generation status to REDUCED
             update_proof_status(pool, &proof_hash, ProofStatus::Reduced).await?;
-            println!("Changed proof status to REDUCED");
+            info!("Changed proof status to REDUCED");
 
             // Update task status to completed
             update_task_status(
@@ -205,14 +205,14 @@ pub async fn generate_reduced_proof(
                 TaskStatus::Completed,
             )
             .await?;
-            println!("Changed task status to Completed");
+            info!("Changed task status to Completed");
 
-            println!("Proof Reduced Successfully");
+            info!("Proof Reduced Successfully");
         }
         Err(e) => {
             // Change proof_generation status to FAILED
             update_proof_status(pool, &proof_hash, ProofStatus::ReductionFailed).await?;
-            println!("Changed Proof Status to FAILED");
+            info!("Changed Proof Status to FAILED");
 
             // Update task status to failed
             update_task_status(
@@ -221,9 +221,9 @@ pub async fn generate_reduced_proof(
                 TaskStatus::Failed,
             )
             .await?;
-            println!("Changed Task Status to FAILED");
+            info!("Changed Task Status to FAILED");
 
-            println!("Proof Reduction Failed: {:?}", e.root_cause().to_string());
+            error!("Proof Reduction Failed: {:?}", e.root_cause().to_string());
         }
     }
 
@@ -231,7 +231,7 @@ pub async fn generate_reduced_proof(
 }
 
 pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> AnyhowResult<()> {
-    println!(" --- Initialising DB connection pool ---");
+    info!(" --- Initialising DB connection pool ---");
     let pool = connection::get_pool().await;
     loop {
         println!("Running worker loop");
@@ -249,10 +249,10 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
         if unpicked_task.is_some() {
             let task = unpicked_task.unwrap();
             if task.task_type == TaskType::CircuitReduction {
-                println!("Picked up circuit reduction task --> {:?}", task);
+                info!("Picked up circuit reduction task --> {:?}", task);
                 regsiter_circuit(pool, task, config_data).await?;
             } else if task.task_type == TaskType::ProofGeneration {
-                println!("Picked up proof generation task --> {:?}", task);
+                info!("Picked up proof generation task --> {:?}", task);
                 generate_reduced_proof(pool, task, config_data).await?;
             }
         } else {
@@ -264,11 +264,19 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
 
 #[tokio::main]
 async fn main() {
-    println!(" --- Load env configuration ---");
+    info!(" --- Load env configuration ---");
     dotenv().ok();
-    println!(" --- Starting worker --- ");
+    info!(" --- Starting worker --- ");
     let _guard = initialize_logger("qunatum_node_worker.log");
     let worker_sleep_duration = Duration::from_secs(WORKER_SLEEP_SECS);
     let config_data = ConfigData::new("./config.yaml");
-    let _res = worker(worker_sleep_duration, &config_data).await;
+    match worker(worker_sleep_duration, &config_data).await {
+        Ok(_) => {
+            info!("stopping worker");
+        },
+        Err(e) => {
+            error!("error encountered in worker: {}", e);
+            error!("worker stopped");
+        },    
+    };
 }
