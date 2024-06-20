@@ -42,6 +42,10 @@ pub fn get_reduction_circuit_pis_path(storage_folder_path: &str, reduced_pis_pat
     pis_path
 }
 
+pub fn get_aggregation_circuit_constraint_system_path(aggregated_circuit_data_path: &str) -> String {
+    format!("{}/cs.bin", aggregated_circuit_data_path)
+}
+
 pub fn get_aggregation_circuit_proving_key_path(aggregated_circuit_data_path: &str) -> String {
     format!("{}/pkey.bin", aggregated_circuit_data_path)
 }

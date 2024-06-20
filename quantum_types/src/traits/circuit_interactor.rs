@@ -194,6 +194,7 @@ pub trait CircuitInteractor {
         reduction_circuit_vkeys: Vec<GnarkGroth16Vkey>,
         protocol_circuit_vkeys: Vec<GnarkGroth16Vkey>,
         protocol_pis: Vec<GnarkGroth16Pis>,
+        aggregator_circuit_cs: Vec<u8>,
         aggregator_circuit_pkey: Vec<u8>,
         aggregator_circuit_vkey: GnarkGroth16Vkey,
     ) -> GenerateReductionProofResult;
