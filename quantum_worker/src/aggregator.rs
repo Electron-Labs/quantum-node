@@ -19,7 +19,7 @@ use quantum_types::{
 };
 use quantum_utils::{
     file::read_bytes_from_file,
-    paths::{get_aggregation_circuit_proving_key_path, get_aggregation_circuit_vkey_path, get_superproof_proof_path},
+    paths::{get_aggregation_circuit_constraint_system_path, get_aggregation_circuit_proving_key_path, get_aggregation_circuit_vkey_path, get_superproof_proof_path},
 };
 use sqlx::{MySql, Pool};
 
@@ -87,9 +87,12 @@ pub async fn handle_aggregation(
     println!("superproof_id {:?}", superproof_id);
 
     // Read aggregator_circuit_pkey and aggregator_circuit_vkey from file
+    let aggregator_cs_path =
+        get_aggregation_circuit_constraint_system_path(&config.aggregated_circuit_data);
     let aggregator_pkey_path =
         get_aggregation_circuit_proving_key_path(&config.aggregated_circuit_data);
     let aggregator_vkey_path = get_aggregation_circuit_vkey_path(&config.aggregated_circuit_data);
+    let aggregator_circuit_cs = read_bytes_from_file(&aggregator_cs_path)?;
     let aggregator_circuit_pkey = read_bytes_from_file(&aggregator_pkey_path)?;
     let aggregator_circuit_vkey = GnarkGroth16Vkey::read_vk(&aggregator_vkey_path)?;
 
@@ -101,6 +104,7 @@ pub async fn handle_aggregation(
         reduced_circuit_vkeys,
         protocol_circuit_vkeys,
         protocol_pis_vec,
+        aggregator_circuit_cs,
         aggregator_circuit_pkey,
         aggregator_circuit_vkey,
     );
