@@ -30,6 +30,8 @@ pub async fn get_unpicked_task(pool: &Pool<MySql>) -> Result<Option<Task>, Error
                 .bind(TaskStatus::NotPicked.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}", TaskStatus::NotPicked.as_u8());
+
     let reduction_circuit = match query.fetch_optional(pool).await{
         Ok(t) => get_task_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -74,6 +76,8 @@ pub async fn get_aggregation_waiting_tasks_num(pool: &Pool<MySql>) -> Result<u64
                 .bind(TaskStatus::Completed.as_u8()).bind(TaskType::ProofGeneration.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", TaskStatus::Completed.as_u8(), TaskType::ProofGeneration.as_u8());
+
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) =>{ 
             let id: u64 = t.try_get_unchecked("reduced_proof_count")?;

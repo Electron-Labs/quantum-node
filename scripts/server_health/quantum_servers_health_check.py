@@ -12,9 +12,8 @@ slack_auth_token = os.getenv("SLACK_APP_AUTH_TOKEN")
 api_auth_token = os.getenv("API_SERVER_AUTH_TOKEN")
 username = os.getenv("BOT_USERNAME")
 channel = os.getenv("SLACK_CHANNEL")
-max_error_count = os.getenv("MAX_ERROR_COUNT");
-max_messages_sent = os.getenv("MAX_MESSAGES_SENT")
-
+max_error_count = 2
+max_messages_sent = 3
 
 def sendMessageToSlack(message:str):
     global slack_auth_token, username, channel

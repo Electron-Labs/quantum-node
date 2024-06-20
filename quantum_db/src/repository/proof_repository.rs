@@ -11,6 +11,8 @@ pub async fn get_aggregation_waiting_proof_num(pool: &Pool<MySql>) -> AnyhowResu
                 .bind(ProofStatus::Reduced.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}",ProofStatus::Reduced.as_u8());
+    
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) =>{ 
             let id: u64 = t.try_get_unchecked("reduced_proof_count")?;

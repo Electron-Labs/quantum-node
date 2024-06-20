@@ -218,6 +218,8 @@ pub async fn get_last_verified_superproof(pool: &Pool<MySql>) -> AnyhowResult<Op
                                                     .bind(SuperproofStatus::SubmittedOnchain.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}", SuperproofStatus::SubmittedOnchain.as_u8());
+
     let superproof = match query.fetch_optional(pool).await{
         Ok(t) => Ok(t),
         Err(e) => {
@@ -239,6 +241,8 @@ pub async fn get_first_non_submitted_superproof(pool: &Pool<MySql>) -> AnyhowRes
                                                     .bind(SuperproofStatus::ProvingDone.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}", SuperproofStatus::ProvingDone.as_u8());
+
     let superproof = match query.fetch_optional(pool).await{
         Ok(t) => Ok(t),
         Err(e) => {

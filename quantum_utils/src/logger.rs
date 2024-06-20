@@ -1,6 +1,6 @@
 use chrono::Utc;
 use cron::Schedule;
-use std::{str::FromStr, thread};
+use std::{path::Path, str::FromStr, thread, time::Duration};
 use tracing_appender::{non_blocking::WorkerGuard, rolling::daily};
 use tracing_subscriber::{filter, fmt, prelude::*, util::SubscriberInitExt};
 
@@ -24,6 +24,17 @@ pub fn initialize_logger(file_name: &str) -> WorkerGuard {
             if let Some(next) = schedule.upcoming(Utc).take(1).next() {
                 let until_next = next - now;
                 thread::sleep(until_next.to_std().unwrap());
+
+                // check if file exists
+                let today = Utc::now().format("%Y-%m-%d").to_string();
+                let log_file_path = format!("./log/{}.{}", file_name_thread, today);
+                let log_file_path = Path::new(&log_file_path);
+
+                // keep checking if file is created in every two minutes
+                while !log_file_path.exists() {
+                    thread::sleep(Duration::from_secs(120));
+                }
+
                 create_symlink_file(file_name_thread.clone());
             }
         }
@@ -34,12 +45,12 @@ pub fn initialize_logger(file_name: &str) -> WorkerGuard {
 
 fn create_symlink_file(file_name_thread:String)  {
     let today = Utc::now().format("%Y-%m-%d").to_string();
-        let log_file_name = format!("{}.{}",file_name_thread.clone(), today);
-        let latest_log_file_name = format!("latest_{}",file_name_thread);
-        let symlink_path = format!("./log/{}", latest_log_file_name);
-        let symlink_path = std::path::Path::new(&symlink_path);
-        if symlink_path.exists() {
-            std::fs::remove_file(symlink_path).expect("Failed to remove existing symlink");
-        }
+    let log_file_name = format!("{}.{}",file_name_thread.clone(), today);
+    let latest_log_file_name = format!("latest_{}",file_name_thread);
+    let symlink_path = format!("./log/{}", latest_log_file_name);
+    let symlink_path = Path::new(&symlink_path);
+    if symlink_path.exists() {
+        std::fs::remove_file(symlink_path).expect("Failed to remove existing symlink");
+    }
         std::os::unix::fs::symlink(log_file_name, symlink_path).expect("Failed to create symlink");
 }
