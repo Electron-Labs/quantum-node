@@ -28,5 +28,6 @@ pub fn convert_string_to_be_bytes(ip: &str) -> [u8; 32] {
     while x.len() < 32 {
         x.push(0u8);
     }
+    x.reverse();
     x[0..32].try_into().unwrap()
 }

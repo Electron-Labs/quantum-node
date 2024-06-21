@@ -70,8 +70,8 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
         println!("pis_hash {:?}", pis_hash);
         keccak_ip.extend(pis_hash);
         let hash = keccak_hash::keccak(keccak_ip).0;
-        let pis1 = BigUint::from_bytes_le(&hash[0..16]).to_string();
-        let pis2 = BigUint::from_bytes_le(&hash[16..32]).to_string();
+        let pis1 = BigUint::from_bytes_be(&hash[0..16]).to_string();
+        let pis2 = BigUint::from_bytes_be(&hash[16..32]).to_string();
         println!("pis1 {:?}", pis1);
         println!("pis2 {:?}", pis2);
         println!("p1 {:?}", prove_result.reduced_pis.0[0]);
@@ -94,8 +94,8 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
         println!("pis_hash {:?}", pis_hash);
         keccak_ip.extend(pis_hash);
         let hash = keccak_hash::keccak(keccak_ip).0;
-        let pis1 = BigUint::from_bytes_le(&hash[0..16]).to_string();
-        let pis2 = BigUint::from_bytes_le(&hash[16..32]).to_string();
+        let pis1 = BigUint::from_bytes_be(&hash[0..16]).to_string();
+        let pis2 = BigUint::from_bytes_be(&hash[16..32]).to_string();
         println!("pis1 {:?}", pis1);
         println!("pis2 {:?}", pis2);
         println!("p1 {:?}", prove_result.reduced_pis.0[0]);
