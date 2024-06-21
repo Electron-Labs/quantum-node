@@ -13,6 +13,8 @@ pub async fn get_reduction_circuit_by_pis_len(pool: &Pool<MySql>, num_public_inp
                 .bind(num_public_inputs).bind(proving_scheme.to_string());
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", num_public_inputs, proving_scheme.to_string());
+
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) => get_reduction_circuit_data_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -25,6 +27,8 @@ pub async fn get_reduction_circuit_for_user_circuit(pool: &Pool<MySql>, user_cir
                 .bind(user_circuit_hash);
 
     info!("{}", query.sql());
+    info!("arguments: {}", user_circuit_hash);
+
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) => get_reduction_circuit_data_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -58,9 +62,11 @@ fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<Redu
 // Sending ReductionCircuit type with reduction_circuit.id = None, return id
 pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: ReductionCircuit) -> AnyhowResult<u64, Error> {
     let query  = sqlx::query("INSERT into reduction_circuit(circuit_id, proving_key_path, vk_path, pis_len, proving_scheme) VALUES(?,?,?,?,?)")
-                .bind(reduction_circuit.circuit_id).bind(reduction_circuit.proving_key_path).bind(reduction_circuit.vk_path).bind(reduction_circuit.pis_len).bind(reduction_circuit.proving_scheme.to_string());
+                .bind(reduction_circuit.circuit_id.clone()).bind(reduction_circuit.proving_key_path.clone()).bind(reduction_circuit.vk_path.clone()).bind(reduction_circuit.pis_len).bind(reduction_circuit.proving_scheme.to_string());
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {}, {}, {}", reduction_circuit.circuit_id, reduction_circuit.proving_key_path, reduction_circuit.vk_path, reduction_circuit.pis_len, reduction_circuit.proving_scheme.to_string());
+
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => Err(e)
@@ -74,6 +80,8 @@ pub async fn get_reduction_circuit_data_by_id(pool: &Pool<MySql>, id: &str) -> A
                 .bind(id);
 
     info!("{}", query.sql());
+    info!("arguments: {}", id);
+
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) => get_reduction_circuit_data_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))

@@ -13,6 +13,8 @@ pub async fn create_circuit_reduction_task(pool: &Pool<MySql>,user_circuit_hash:
                 .bind(user_circuit_hash).bind(task_type.as_u8()).bind(task_status.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {}", user_circuit_hash, task_type.as_u8(), task_status.as_u8());
+
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -28,6 +30,8 @@ pub async fn get_unpicked_task(pool: &Pool<MySql>) -> Result<Option<Task>, Error
                 .bind(TaskStatus::NotPicked.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}", TaskStatus::NotPicked.as_u8());
+
     let reduction_circuit = match query.fetch_optional(pool).await{
         Ok(t) => get_task_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -58,6 +62,8 @@ pub async fn update_task_status(pool: &Pool<MySql>, task_id: u64, task_status: T
                 .bind(task_status.as_u8()).bind(task_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", task_status.as_u8(), task_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -70,6 +76,8 @@ pub async fn get_aggregation_waiting_tasks_num(pool: &Pool<MySql>) -> Result<u64
                 .bind(TaskStatus::Completed.as_u8()).bind(TaskType::ProofGeneration.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", TaskStatus::Completed.as_u8(), TaskType::ProofGeneration.as_u8());
+
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) =>{ 
             let id: u64 = t.try_get_unchecked("reduced_proof_count")?;
@@ -85,6 +93,8 @@ pub async fn create_proof_task(pool: &Pool<MySql>, user_circuit_hash: &str, task
                 .bind(user_circuit_hash).bind(task_type.as_u8()).bind(task_status.as_u8()).bind(proof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {}, {}", user_circuit_hash, task_type.as_u8(), task_status.as_u8(), proof_id);
+    
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         Err(e) => {

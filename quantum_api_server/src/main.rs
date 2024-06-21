@@ -31,7 +31,7 @@ pub mod connection;
 pub mod error;
 
 use anyhow::Result as AnyhowResult;
-use tracing::info;
+use tracing::{info, error};
 use types::auth::AuthToken;
 use types::circuit_registration_status::CircuitRegistrationStatusResponse;
 use types::generate_auth_token::GenerateAuthTokenRequest;
@@ -64,7 +64,7 @@ async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, c
     let protocol = match get_protocol_by_auth_token(get_pool().await, &auth_token.0).await {
         Ok(p) => Ok(p),
         Err(e) => {
-            info!("error in db while fetching protocol");
+            error!("error in db while fetching protocol");
             Err(CustomError::Internal(error_line!(format!("error in db while fetching protocol. Error: {}", e))))
         },
     };
@@ -73,7 +73,7 @@ async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, c
     let protocol = match protocol {
         Some(p) => Ok(p),
         None => {
-            info!("No protocol against this auth token");
+            error!("No protocol against this auth token");
             Err(CustomError::Internal(error_line!("/register_circuit No protocol against this auth token".to_string())))
         },
     };
@@ -91,7 +91,7 @@ async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, c
     match response {
         Ok(resp)  => Ok(Json(resp)),
         Err(e) => {
-            info!("Error in /register_circuit: {:?}", e);
+            error!("Error in /register_circuit: {:?}", e);
             Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
@@ -103,7 +103,7 @@ async fn get_circuit_reduction_status(_auth_token: AuthToken, circuit_id: String
     match status {
         Ok(s) => Ok(Json(s)),
         Err(e) => {
-            info!("Error in /circuit/<circuit_id>/status: {:?}",e);
+            error!("Error in /circuit/<circuit_id>/status: {:?}",e);
             Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
@@ -117,13 +117,13 @@ async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, config_d
     } else if data.proof_type == ProvingSchemes::Groth16 {
         response = submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis>(data, config_data).await;
     } else {
-        info!("unsupported proving scheme");
+        error!("unsupported proving scheme");
         return Err(CustomError::Internal(error_line!(String::from("/proof Unsupported Proving Scheme"))))
     }
     match response {
         Ok(resp)  => Ok(Json(resp)),
         Err(e) => {
-            info!("Error in /proof: {:?}",e);
+            error!("Error in /proof: {:?}",e);
             Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
@@ -135,7 +135,7 @@ async fn get_proof_status(_auth_token: AuthToken, proof_id: String, config_data:
     match response{
         Ok(r) => Ok(Json(r)),
         Err(e) => {
-            info!("Error in /proof/<proof_id>: {:?}",e);
+            error!("Error in /proof/<proof_id>: {:?}",e);
             Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
@@ -147,7 +147,7 @@ async fn generate_auth_token(_auth_token: AuthToken, data: GenerateAuthTokenRequ
     match response{
         Ok(r) => Ok(Json(r)),
         Err(e) => {
-            info!("Error in auth/protocol: {:?}", e);
+            error!("Error in auth/protocol: {:?}", e);
             Err(CustomError::Internal(e.root_cause().to_string()))
         }
     }
@@ -161,7 +161,7 @@ async fn get_protocol_proof(_auth_token: AuthToken, proof_id: String) -> AnyhowR
     let response = match get_protocol_proof_exec(&proof_id).await {
         Ok(r) => Ok(Json(r)),
         Err(e) => {
-            info!("Error in /protocol_proof/merkle/<proof_id>: {:?}", e);
+            error!("Error in /protocol_proof/merkle/<proof_id>: {:?}", e);
             Err(CustomError::Internal(e.root_cause().to_string()))
         },
     };

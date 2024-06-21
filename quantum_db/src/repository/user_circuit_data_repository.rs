@@ -10,13 +10,15 @@ use tracing::info;
 
 // use crate::connection::get_pool;
 use crate::error::error::CustomError;
-use anyhow::{anyhow, Context, Result as AnyhowResult, Error as AnyhowError};
+use anyhow::{anyhow, Result as AnyhowResult, Error as AnyhowError};
 
 pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: &str) -> AnyhowResult<UserCircuitData>{
     let query  = sqlx::query("SELECT * from user_circuit_data where circuit_hash = ?")
                 .bind(circuit_hash);
 
     info!("{}", query.sql());
+    info!("arguments: {}", circuit_hash);
+    
     let user_circuit_data = match query.fetch_one(pool).await{
         Ok(t) => get_user_circuit_data_from_mysql_row(t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -27,10 +29,12 @@ pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_h
 pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, reduction_circuit_id: Option<String>, 
     pis_len: u8, proving_scheme: ProvingSchemes, circuit_reduction_status: CircuitReductionStatus, protocol_name: &str) -> AnyhowResult<u64, AnyhowError>{
     let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, reduction_circuit_id, pis_len, proving_scheme, circuit_reduction_status, protocol_name) VALUES(?,?,?,?,?,?,?)")
-                .bind(circuit_hash).bind(vk_path).bind(reduction_circuit_id).bind(pis_len).bind(proving_scheme.to_string())
+                .bind(circuit_hash).bind(vk_path).bind(reduction_circuit_id.clone()).bind(pis_len).bind(proving_scheme.to_string())
                 .bind(circuit_reduction_status.as_u8()).bind(protocol_name);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {:?}, {}, {}, {}, {}", circuit_hash, vk_path, reduction_circuit_id, pis_len, proving_scheme.to_string(), circuit_reduction_status.as_u8(), protocol_name);
+    
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
         //start from here by printing   
@@ -67,6 +71,8 @@ pub async fn update_user_circuit_data_reduction_status(pool: &Pool<MySql>, user_
                 .bind(status.as_u8()).bind(user_circuit_hash);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", status.as_u8(), user_circuit_hash);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -79,6 +85,8 @@ pub async fn update_user_circuit_data_redn_circuit(pool: &Pool<MySql>, user_circ
                 .bind(reduction_circuit_id).bind(user_circuit_hash);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", reduction_circuit_id, user_circuit_hash);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))

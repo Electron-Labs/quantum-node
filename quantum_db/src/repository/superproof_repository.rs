@@ -12,6 +12,8 @@ pub async fn get_superproof_by_id(pool: &Pool<MySql>, id: u64) -> AnyhowResult<S
                 .bind(id);
 
     info!("{}", query.sql());
+    info!("arguments: {}", id);
+
     let superproof = match query.fetch_one(pool).await{
         Ok(t) => get_superproof_from_row(t).map_err(|err| anyhow!(error_line!(err))),
         Err(e) => {
@@ -27,6 +29,8 @@ pub async fn insert_new_superproof(pool: &Pool<MySql>, proof_ids_string: &str, s
         .bind(proof_ids_string).bind(superproof_status.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", proof_ids_string, superproof_status.as_u8());
+
     let superproof_id = match query.execute(pool).await {
         Ok(t) => Ok(t.last_insert_id()),
         Err(e) => Err(anyhow!(error_line!(e)))
@@ -39,6 +43,8 @@ pub async fn update_superproof_status(pool: &Pool<MySql>, superproof_status: Sup
                 .bind(superproof_status.as_u8()).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", superproof_status.as_u8(), superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -51,6 +57,8 @@ pub async fn update_superproof_leaves_path(pool: &Pool<MySql>, superproof_leaves
                 .bind(superproof_leaves_path).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", superproof_leaves_path, superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -63,6 +71,8 @@ pub async fn update_superproof_root(pool: &Pool<MySql>, superproof_root: &str, s
                 .bind(superproof_root).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", superproof_root, superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -75,6 +85,8 @@ pub async fn update_superproof_agg_time(pool: &Pool<MySql>, agg_time: u64, super
                 .bind(agg_time).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", agg_time, superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -87,6 +99,8 @@ pub async fn update_superproof_gas_cost(pool: &Pool<MySql>, gas_cost: f64, super
                 .bind(gas_cost).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", gas_cost, superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -100,6 +114,8 @@ pub async fn update_transaction_hash(pool: &Pool<MySql>, transaction_hash: &str,
                 .bind(transaction_hash).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", transaction_hash, superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -112,6 +128,8 @@ pub async fn update_superproof_proof_path(pool: &Pool<MySql>, superproof_proof_p
                 .bind(superproof_proof_path).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", superproof_proof_path, superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -124,6 +142,8 @@ pub async fn update_superproof_onchain_submission_time(pool: &Pool<MySql>, oncha
                 .bind(onchain_submission_time).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}", onchain_submission_time, superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -198,6 +218,8 @@ pub async fn get_last_verified_superproof(pool: &Pool<MySql>) -> AnyhowResult<Op
                                                     .bind(SuperproofStatus::SubmittedOnchain.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}", SuperproofStatus::SubmittedOnchain.as_u8());
+
     let superproof = match query.fetch_optional(pool).await{
         Ok(t) => Ok(t),
         Err(e) => {
@@ -219,6 +241,8 @@ pub async fn get_first_non_submitted_superproof(pool: &Pool<MySql>) -> AnyhowRes
                                                     .bind(SuperproofStatus::ProvingDone.as_u8());
 
     info!("{}", query.sql());
+    info!("arguments: {}", SuperproofStatus::ProvingDone.as_u8());
+
     let superproof = match query.fetch_optional(pool).await{
         Ok(t) => Ok(t),
         Err(e) => {
@@ -240,6 +264,8 @@ pub async fn update_superproof_fields_after_onchain_submission(pool: &Pool<MySql
             .bind(transaction_hash).bind(status.as_u8()).bind(gas_cost).bind(eth_price).bind(superproof_id);
 
     info!("{}", query.sql());
+    info!("arguments: {}, {}, {}, {}, {}", transaction_hash, status.as_u8(), gas_cost, eth_price, superproof_id);
+
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
