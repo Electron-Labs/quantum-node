@@ -23,7 +23,7 @@ pub fn decode_keccak_hex(keccak_hex: &str) -> AnyhowResult<[u8; 32]> {
     Ok(decoded)
 }
 
-pub fn convert_string_to_le_bytes(ip: &str) -> [u8; 32] {
+pub fn convert_string_to_be_bytes(ip: &str) -> [u8; 32] {
     let mut x = BigUint::from_str(ip).unwrap().to_bytes_le();
     while x.len() < 32 {
         x.push(0u8);

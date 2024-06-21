@@ -3,7 +3,7 @@ use std::{fs, str::FromStr};
 use num_bigint::BigUint;
 use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, update_reduction_data}, reduction_circuit_repository::get_reduction_circuit_data_by_id, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType}, traits::{circuit_interactor::{CircuitInteractor, GenerateReductionProofResult}, pis::Pis, proof::Proof, vkey::Vkey}, types::{config::ConfigData, db::{task::Task, user_circuit_data}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}}};
-use quantum_utils::{error_line, file::read_bytes_from_file, keccak::{self, convert_string_to_le_bytes}};
+use quantum_utils::{error_line, file::read_bytes_from_file};
 use sqlx::{MySql, Pool};
 use anyhow::{Ok, Result as AnyhowResult};
 use quantum_circuits_ffi:: interactor::QuantumV2CircuitInteractor;

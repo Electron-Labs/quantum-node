@@ -204,7 +204,7 @@ pub trait CircuitInteractor {
 mod tests {
     use keccak_hash::keccak;
     use quantum_utils::keccak::{
-        convert_string_to_le_bytes, decode_keccak_hex, encode_keccak_hash,
+        convert_string_to_be_bytes, decode_keccak_hex, encode_keccak_hash,
     };
 
     use crate::{
