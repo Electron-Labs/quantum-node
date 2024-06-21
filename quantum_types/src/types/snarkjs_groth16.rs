@@ -7,7 +7,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use quantum_utils::{
     error_line,
-    file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_le_bytes,
+    file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_be_bytes,
 };
 use serde::{Deserialize, Serialize};
 
@@ -275,7 +275,7 @@ impl Pis for SnarkJSGroth16Pis {
         let mut keccak_ip = Vec::<u8>::new();
 
         for pub_str in self.0.clone() {
-            keccak_ip.extend(convert_string_to_le_bytes(&pub_str));
+            keccak_ip.extend(convert_string_to_be_bytes(&pub_str));
         }
         let hash = keccak(keccak_ip);
         Ok(hash.0)
