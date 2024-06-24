@@ -1,125 +1,125 @@
 [
-    {
-      "inputs": [],
-      "name": "InvalidInitialization",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "NotInitializing",
-      "type": "error"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint64",
-          "name": "version",
-          "type": "uint64"
-        }
-      ],
-      "name": "Initialized",
-      "type": "event"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "initState",
-          "type": "bytes32"
-        }
-      ],
-      "name": "initialize",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "owner",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "state",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "newState",
-          "type": "bytes32"
-        },
-        {
-          "components": [
-            {
-              "internalType": "uint256[8]",
-              "name": "proof",
-              "type": "uint256[8]"
-            },
-            {
-              "internalType": "uint256[2]",
-              "name": "commitments",
-              "type": "uint256[2]"
-            },
-            {
-              "internalType": "uint256[2]",
-              "name": "commitmentPok",
-              "type": "uint256[2]"
-            }
-          ],
-          "internalType": "struct Quantum.Proof",
-          "name": "proof",
-          "type": "tuple"
-        }
-      ],
-      "name": "updateQuantumState",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "_verifier",
-          "type": "address"
-        }
-      ],
-      "name": "updateVerifier",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "verifier",
-      "outputs": [
-        {
-          "internalType": "contract IVerifier",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    }
-  ]
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "verifier_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "pubInputsHashes",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "vkHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "registerProtocol",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifier",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256[8]",
+            "name": "proof",
+            "type": "uint256[8]"
+          },
+          {
+            "internalType": "uint256[2]",
+            "name": "commitments",
+            "type": "uint256[2]"
+          },
+          {
+            "internalType": "uint256[2]",
+            "name": "commitmentPok",
+            "type": "uint256[2]"
+          }
+        ],
+        "internalType": "struct Quantum.Proof",
+        "name": "proof",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "vkHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "pubInputsHash",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct Quantum.Protocol[10]",
+            "name": "protocols",
+            "type": "tuple[10]"
+          }
+        ],
+        "internalType": "struct Quantum.Batch",
+        "name": "batch",
+        "type": "tuple"
+      }
+    ],
+    "name": "verifySuperproof",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

@@ -51,8 +51,8 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
     proof
 }
 
-pub async fn get_proof_hash_by_superproof_id(pool: &Pool<MySql>, superproof_id: u64) -> AnyhowResult<Vec<String>> {
-    let query  = sqlx::query("SELECT proof_hash from proof where superproof_id = ?")
+pub async fn get_proofs_in_superproof_id(pool: &Pool<MySql>, superproof_id: u64) -> AnyhowResult<Vec<Proof>> {
+    let query  = sqlx::query("SELECT * from proof where superproof_id = ?")
                 .bind(superproof_id);
 
     info!("{}", query.sql());
@@ -62,13 +62,13 @@ pub async fn get_proof_hash_by_superproof_id(pool: &Pool<MySql>, superproof_id: 
         Ok(rows) => Ok(rows),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     }?;
-    let mut proof_ids = vec![];
+    let mut proofs = vec![];
     for row in rows {
-        let id: String = row.try_get_unchecked("proof_hash")?;
-        proof_ids.push(id);
+        let proof = get_proof_from_mysql_row(&row)?;
+        proofs.push(proof);
     }
 
-    return Ok(proof_ids)
+    return Ok(proofs)
 }
 
 pub async fn update_proof_status(pool: &Pool<MySql>, proof_hash: &str, proof_status: ProofStatus) -> AnyhowResult<()>{

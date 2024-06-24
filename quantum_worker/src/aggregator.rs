@@ -4,7 +4,7 @@ use anyhow::{Ok, Result as AnyhowResult};
 use quantum_circuits_ffi::interactor::QuantumV2CircuitInteractor;
 use quantum_db::repository::{
     reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
-    superproof_repository::update_superproof_proof_path,
+    superproof_repository::{update_superproof_agg_time, update_superproof_proof_path},
     user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
 };
 use quantum_types::{
@@ -129,21 +129,7 @@ pub async fn handle_aggregation(
     superproof_proof.dump_proof(&superproof_proof_path)?;
     update_superproof_proof_path(pool, &superproof_proof_path, superproof_id).await?;
 
-    // Dump superproof_leaves and add to the DB
-    // let superproof_leaves = IMT_Tree {
-    //     leafs: aggregation_result.new_leaves,
-    // };
-    // let superproof_leaves_path = get_superproof_leaves_path(
-    //     &config.storage_folder_path,
-    //     &config.supperproof_path,
-    //     superproof_id,
-    // );
-    // superproof_leaves.dump_tree(&superproof_leaves_path)?;
-    // update_superproof_leaves_path(pool, &superproof_leaves_path, superproof_id).await?;
     // Add agg_time to the db
-    // update_superproof_agg_time(pool, aggregation_time.as_secs(), superproof_id).await?;
-    // Add superproof root to the db
-    // let new_root = encode_keccak_hash(&aggregation_result.new_root.0)?;
-    // update_superproof_root(pool, &new_root, superproof_id).await?;
+    update_superproof_agg_time(pool, aggregation_time.as_secs(), superproof_id).await?;
     Ok(())
 }
