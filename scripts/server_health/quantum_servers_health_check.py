@@ -1,10 +1,10 @@
 import threading
-import psutil
 import requests
 from slack_sdk import WebClient
 import time
 from dotenv import load_dotenv
 import os
+import docker
 
 load_dotenv()
 
@@ -45,7 +45,7 @@ def checkQuantumApiServer():
         except Exception as e:
 
             print(f"An error occurred: {e}")
-            print("Retrying.....")
+            print("Retrying. for quantum_api_server ....")
             error_count += 1
 
             if error_count == max_error_count and message_sent < max_messages_sent:
@@ -69,9 +69,13 @@ def checkQuantumWorkerServer():
     while True:
 
         process_running = False
+        client = docker.from_env()
 
-        for proc in psutil.process_iter(["name"]):
-            if "quantum_worker" in proc.info["name"]:
+        containers = client.containers.list()
+
+        # Print the names of the running Docker containers
+        for container in containers:
+            if "quantum_worker" in container.name:
                 print("quantum_worker server is up and running")
                 process_running = True
                 message_sent = 0
@@ -79,7 +83,7 @@ def checkQuantumWorkerServer():
 
         if process_running == False:
             process_exited += 1
-            print("Retrying.....")
+            print("Retrying for quantum_worker.....")
 
             if process_exited == max_error_count and message_sent < max_messages_sent:
                 print("Sending alerts to slack")

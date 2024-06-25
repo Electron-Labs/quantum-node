@@ -269,7 +269,7 @@ async fn main() {
     info!(" --- Starting worker --- ");
     let _guard = initialize_logger("qunatum_node_worker.log");
     let worker_sleep_duration = Duration::from_secs(WORKER_SLEEP_SECS);
-    let config_data = ConfigData::new("./config.yaml");
+    let config_data = ConfigData::new("/quantum-node/config.yaml");
     match worker(worker_sleep_duration, &config_data).await {
         Ok(_) => {
             info!("stopping worker");

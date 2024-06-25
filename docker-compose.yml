@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+
+  quantum_api_server:
+    image: aditya700/quantum_api_server
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: quantum_api_server
+      args:
+        GITHUB_PAT: ${GITHUB_PAT}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "mysql://root:${MYSQL_ROOT_PASSWORD}@db:3306/${DATABASE}"
+      QUANTUM_CONTRACT_ADDRESS: contract_address
+      RPC_ENDPOINT: rpc_endPoint
+      PRIVATE_KEY: PRIVATE_KEY
+      CHAIN_ID: chain_id
+      ETH_PRICE_RPC: https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD
+      GAS_COST_RPC:  https://api.blocknative.com/gasprices/blockprices
+      GAS_COST_API_KEY: e33ccc1f-8baa-4862-ac89-2d216743ba22
+
+  quantum_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: quantum_worker
+      args:
+        GITHUB_PAT: ${GITHUB_PAT}
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "mysql://root:${MYSQL_ROOT_PASSWORD}@db:3306/${DATABASE}"
+      QUANTUM_CONTRACT_ADDRESS: contract_address
+      RPC_ENDPOINT: rpc_endPoint
+      PRIVATE_KEY: PRIVATE_KEY
+      CHAIN_ID: chain_id
+      ETH_PRICE_RPC: https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD
+      GAS_COST_RPC:  https://api.blocknative.com/gasprices/blockprices
+      GAS_COST_API_KEY: e33ccc1f-8baa-4862-ac89-2d216743ba22
+
+  db:
+    image: mysql:latest
+    restart: always
+    ports:
+      - "3307:3306"
+    volumes:
+      - db:/var/lib/mysql
+      - .docker/db_init.sql:/docker-entrypoint-initdb.d/db_init.sql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+volumes:
+  db:
+    driver: local

@@ -12,7 +12,7 @@ pub use quantum::*;
 pub mod quantum {
     const _: () = {
         ::core::include_bytes!(
-            "/home/ubuntu/quantum/quantum-node/quantum_contract/src/abi/Quantum.json",
+            "/quantum-node/quantum_contract/src/abi/Quantum.json",
         );
     };
     #[allow(deprecated)]
