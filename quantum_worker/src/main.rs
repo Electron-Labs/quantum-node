@@ -78,7 +78,7 @@ pub async fn regsiter_circuit(
             update_user_circuit_data_reduction_status(
                 pool,
                 &user_circuit_hash,
-                CircuitReductionStatus::Completed,
+                CircuitReductionStatus::SmartContractRgistrationPending,
             )
             .await?;
 

@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use ethers::contract::Abigen;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
+use quantum_utils::error_line;
 use tracing::{error, info};
 
 use ethers::types::{Bytes, U256};
@@ -56,6 +57,15 @@ pub async fn update_quantum_contract_state(
         .await?
         .await?;
     return Ok(receipt);
+}
+
+pub async fn register_cricuit_in_contract(
+    vk_hash: [u8;32],
+    contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
+) -> AnyhowResult<()> {
+    info!("calling register circuit contract call with vkey hash: {:?}", vk_hash);
+    let s = contract.register_protocol(vk_hash).send().await?.await.map_err(|err| anyhow!(error_line!(err)));
+    Ok(())
 }
 
 pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<Proof> {

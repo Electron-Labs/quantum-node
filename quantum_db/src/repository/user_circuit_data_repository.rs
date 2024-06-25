@@ -20,10 +20,31 @@ pub async fn get_user_circuit_data_by_circuit_hash(pool: &Pool<MySql>, circuit_h
     info!("arguments: {}", circuit_hash);
     
     let user_circuit_data = match query.fetch_one(pool).await{
-        Ok(t) => get_user_circuit_data_from_mysql_row(t),
+        Ok(t) => get_user_circuit_data_from_mysql_row(&t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     user_circuit_data
+}
+
+pub async fn get_user_circuits_by_circuit_status(pool: &Pool<MySql>, status: CircuitReductionStatus) -> AnyhowResult<Vec<UserCircuitData>> {
+    let query  = sqlx::query("SELECT * from user_circuit_data where circuit_reduction_status = ?")
+    .bind(status.as_u8());
+
+    info!("{}", query.sql());
+    info!("arguments: {}", status.as_u8());
+
+    let db_rows = match query.fetch_all(pool).await{
+        Ok(rows) => Ok(rows),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e)))),
+    }?;
+
+    let mut user_circuits = vec![];
+    for row in db_rows.iter() {
+        let user_circuit = get_user_circuit_data_from_mysql_row(row)?;
+        user_circuits.push(user_circuit);
+    }
+
+    Ok(user_circuits)
 }
 
 pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, reduction_circuit_id: Option<String>, 
@@ -47,7 +68,7 @@ pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk
 }
 
 
-fn get_user_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<UserCircuitData, AnyhowError>{
+fn get_user_circuit_data_from_mysql_row(row: &MySqlRow) -> AnyhowResult<UserCircuitData, AnyhowError>{
     let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme").map_err(|err| anyhow!(error_line!(err)))?) {
         Ok(ps) => Ok(ps),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
