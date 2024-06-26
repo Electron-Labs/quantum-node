@@ -20,7 +20,7 @@ use quantum_types::{
         config::ConfigData,
         db::{task::Task, user_circuit_data},
         gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey},
-        halo2_plonk::{Halo2PlonkProof, Halo2PlonkVkey},
+        halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey},
         snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
     },
 };
@@ -141,16 +141,30 @@ pub async fn handle_proof_generation_task(
         assert_eq!(pis1, prove_result.reduced_pis.0[0]);
         assert_eq!(pis2, prove_result.reduced_pis.0[1]);
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
-        let snarkjs_inner_proof = Halo2PlonkProof::read_proof(&inner_proof_path)?;
-        let snarkjs_inner_vk = Halo2PlonkVkey::read_vk(&inner_vk_path)?;
+        let inner_proof = Halo2PlonkProof::read_proof(&inner_proof_path)?;
+        let inner_vk = Halo2PlonkVkey::read_vk(&inner_vk_path)?;
+        let inner_pis = Halo2PlonkPis::read_pis(&inner_pis_path)?;
         prove_result = QuantumV2CircuitInteractor::generate_halo2_plonk_reduced_proof(
-            snarkjs_inner_proof,
-            snarkjs_inner_vk,
+            inner_pis.clone(),
+            inner_proof,
+            inner_vk.clone(),
             outer_vk,
             outer_pk_bytes,
         );
-        println!("p1 {:?}", prove_result.reduced_pis.0[0]);
-        println!("p2 {:?}", prove_result.reduced_pis.0[1]);
+        let mut keccak_ip = Vec::<u8>::new();
+        let vkey_hash = inner_vk.keccak_hash()?;
+        println!("vkey_hash {:?}", vkey_hash);
+        keccak_ip.extend(vkey_hash);
+        let pis_hash = inner_pis.keccak_hash()?;
+        println!("pis_hash {:?}", pis_hash);
+        keccak_ip.extend(pis_hash);
+        let hash = keccak_hash::keccak(keccak_ip).0;
+        let pis1 = BigUint::from_bytes_be(&hash[0..16]).to_string();
+        let pis2 = BigUint::from_bytes_be(&hash[16..32]).to_string();
+        println!("pis1 {:?}", pis1);
+        println!("pis2 {:?}", pis2);
+        assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+        assert_eq!(pis2, prove_result.reduced_pis.0[1]);
     } else {
         return Ok(());
     }

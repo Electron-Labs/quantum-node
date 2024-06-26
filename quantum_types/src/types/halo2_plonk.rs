@@ -1,11 +1,16 @@
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
+use ark_ff::BigInt;
 use borsh::{BorshDeserialize, BorshSerialize};
+use keccak_hash::keccak;
+use num_bigint::BigUint;
 use quantum_utils::error_line;
 use quantum_utils::file::read_bytes_from_file;
 use quantum_utils::file::write_bytes_to_file;
+use quantum_utils::keccak::convert_string_to_be_bytes;
 use serde::{Deserialize, Serialize};
+use snark_verifier_sdk::snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::Fr;
 use snark_verifier_sdk::snark_verifier::halo2_base::utils::ScalarField;
 use snark_verifier_sdk::snark_verifier::{
     halo2_base::halo2_proofs::halo2curves::bn256::G1Affine, verifier::plonk::PlonkProtocol,
@@ -51,20 +56,26 @@ impl Vkey for Halo2PlonkVkey {
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
         let protocol: PlonkProtocol<G1Affine> =
             serde_json::from_str(&String::from_utf8(self.protocol_bytes.clone())?)?;
-        let transcript_initial_state = protocol
+        let transcript_initial_state_fr = protocol
             .transcript_initial_state
             .ok_or_else(|| anyhow!(error_line!("protocol.transcript_initial_state")))?;
-        transcript_initial_state
-            .to_bytes_le()
+        let mut transcript_initial_state_bytes = transcript_initial_state_fr.to_bytes_le(); // in le
+        transcript_initial_state_bytes.reverse(); // in be
+
+        transcript_initial_state_bytes
+            .as_slice()
             .try_into()
-            .map_err(|_| anyhow!(error_line!("transcript_initial_state.to_bytes_le")))
+            .map_err(|_| {
+                anyhow!(error_line!(
+                    "transcript_initial_state_bytes.as_slice.try_into"
+                ))
+            })
     }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Halo2PlonkProof {
     pub proof_bytes: Vec<u8>,
-    pub instance_bytes: Vec<u8>,
 }
 
 impl Proof for Halo2PlonkProof {
@@ -90,5 +101,57 @@ impl Proof for Halo2PlonkProof {
         let proof_bytes = read_bytes_from_file(full_path)?;
         let gnark_proof = Halo2PlonkProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
+    }
+}
+
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
+pub struct Halo2PlonkPis(pub Vec<u8>);
+
+impl Pis for Halo2PlonkPis {
+    fn serialize_pis(&self) -> AnyhowResult<Vec<u8>> {
+        Ok(self.0.clone())
+    }
+
+    fn deserialize_pis(bytes: &mut &[u8]) -> AnyhowResult<Self> {
+        let key: Halo2PlonkPis =
+            BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
+        Ok(key)
+    }
+
+    fn dump_pis(&self, path: &str) -> AnyhowResult<()> {
+        let pis_bytes = self.serialize_pis()?;
+        write_bytes_to_file(&pis_bytes, path)?;
+        Ok(())
+    }
+
+    fn read_pis(full_path: &str) -> AnyhowResult<Self> {
+        let pis_bytes = read_bytes_from_file(full_path)?;
+        Ok(Halo2PlonkPis(pis_bytes))
+    }
+
+    fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
+        let mut keccak_ip = Vec::<u8>::new();
+
+        for pub_str in self.get_data()? {
+            keccak_ip.extend(convert_string_to_be_bytes(&pub_str));
+        }
+        let hash = keccak(keccak_ip);
+        Ok(hash.0)
+    }
+
+    fn get_data(&self) -> AnyhowResult<Vec<String>> {
+        let a: Vec<Vec<Fr>> = serde_json::from_str(&String::from_utf8(self.0.clone())?)?;
+        let pis = a
+            .iter()
+            .flat_map(|fr| {
+                fr.iter()
+                    .map(|elm| {
+                        let bytes = elm.to_bytes_le();
+                        BigUint::from_bytes_le(&bytes).to_string()
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        Ok(pis)
     }
 }

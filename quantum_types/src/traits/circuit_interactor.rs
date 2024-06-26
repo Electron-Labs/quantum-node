@@ -1,5 +1,5 @@
 use crate::types::{
-    gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, halo2_plonk::{Halo2PlonkProof, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}
+    gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, halo2_plonk::{Halo2PlonkProof, Halo2PlonkVkey, Halo2PlonkPis}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}
 };
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -180,6 +180,7 @@ pub trait CircuitInteractor {
     ) -> GenerateReductionProofResult;
     // Generate reduction circuit proof corresponding to inner halo2 plonk proof
     fn generate_halo2_plonk_reduced_proof(
+        inner_pis: Halo2PlonkPis,
         inner_proof: Halo2PlonkProof,
         inner_vk: Halo2PlonkVkey,
         outer_vk: GnarkGroth16Vkey,
@@ -200,8 +201,8 @@ pub trait CircuitInteractor {
         reduced_proofs: Vec<GnarkGroth16Proof>,
         reduced_pis: Vec<GnarkGroth16Pis>,
         reduction_circuit_vkeys: Vec<GnarkGroth16Vkey>,
-        protocol_circuit_vkeys: Vec<GnarkGroth16Vkey>,
-        protocol_pis: Vec<GnarkGroth16Pis>,
+        protocol_vkey_hashes: Vec<Vec<u8>>,
+        protocol_pis_hashes: Vec<Vec<u8>>,
         aggregator_circuit_cs: Vec<u8>,
         aggregator_circuit_pkey: Vec<u8>,
         aggregator_circuit_vkey: GnarkGroth16Vkey,
