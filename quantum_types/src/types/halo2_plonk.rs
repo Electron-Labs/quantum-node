@@ -140,7 +140,7 @@ impl Pis for Halo2PlonkPis {
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
-        let a: Vec<Vec<Fr>> = serde_json::from_str(&String::from_utf8(self.0.clone())?)?;
+        let a: Vec<Vec<Fr>> = serde_json::from_str(&String::from_utf8(self.0.clone()).map_err(|err| anyhow!(error_line!(err)))?).map_err(|e| anyhow!(error_line!(e)))?;
         let pis = a
             .iter()
             .flat_map(|fr| {
