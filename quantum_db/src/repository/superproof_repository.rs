@@ -151,6 +151,22 @@ pub async fn update_superproof_onchain_submission_time(pool: &Pool<MySql>, oncha
     row_affected
 }
 
+pub async fn update_superproof_total_proving_time(pool: &Pool<MySql>, total_proving_time: u32, superproof_id: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE superproof set total_proving_time = ? where id = ?")
+                .bind(total_proving_time).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", total_proving_time, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+
+
 fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
     let superproof_status_as_u8: u8 = row.try_get_unchecked("status")?;
     let superproof_status =  SuperproofStatus::from(superproof_status_as_u8);

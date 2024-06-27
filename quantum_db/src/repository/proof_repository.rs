@@ -23,9 +23,9 @@ pub async fn get_aggregation_waiting_proof_num(pool: &Pool<MySql>) -> AnyhowResu
     reduction_circuit
 }
 
-pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, proof_path: &str, proof_status: ProofStatus, user_circuit_hash: &str)-> AnyhowResult<u64, Error> {
-    let query  = sqlx::query("INSERT into proof(proof_hash, pis_path, proof_path, proof_status, user_circuit_hash) VALUES(?,?,?,?,?)")
-                .bind(proof_hash).bind(pis_path).bind(proof_path).bind(proof_status.as_u8()).bind(user_circuit_hash);
+pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, proof_path: &str, proof_status: ProofStatus, user_circuit_hash: &str, pis_json_string: &str)-> AnyhowResult<u64, Error> {
+    let query  = sqlx::query("INSERT into proof(proof_hash, pis_path, proof_path, proof_status, user_circuit_hash, public_inputs) VALUES(?,?,?,?,?,?)")
+                .bind(proof_hash).bind(pis_path).bind(proof_path).bind(proof_status.as_u8()).bind(user_circuit_hash).bind(pis_json_string);
 
     info!("{}", query.sql());
     info!("arguments: {}, {}, {}, {}, {}", proof_hash, pis_path, proof_path, proof_status.as_u8(), user_circuit_hash);
@@ -98,9 +98,23 @@ pub async fn update_proof_status(pool: &Pool<MySql>, proof_hash: &str, proof_sta
     row_affected
 }
 
-pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction_proof_path: &str, reduction_pis_path: &str, reduction_time: u64) -> AnyhowResult<()> {
-    let query  = sqlx::query("UPDATE proof set reduction_proof_path = ?, reduction_proof_pis_path = ?, reduction_time = ?  where proof_hash = ?")
-                .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(proof_id);
+pub async fn add_aggregation_hardware_cost_to_proofs(pool: &Pool<MySql>, aggr_cost: f32, superproof_id: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE proof set hardware_cost = hardware_cost + ? where superproof_id = ?")
+                .bind(aggr_cost).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", aggr_cost, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction_proof_path: &str, reduction_pis_path: &str, reduction_time: u64, hardware_cost: f32) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE proof set reduction_proof_path = ?, reduction_proof_pis_path = ?, reduction_time = ?, hardware_cost = ?  where proof_hash = ?")
+                .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(proof_id).bind(hardware_cost);
 
     info!("{}", query.sql());
     info!("arguments: {}, {}, {}, {}", reduction_proof_path, reduction_pis_path, reduction_time, proof_id);

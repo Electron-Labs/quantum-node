@@ -35,7 +35,8 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     proof.dump_proof(&proof_full_path)?;
     pis.dump_pis(&pis_full_path)?;
 
-    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash).await?;
+    let public_inputs_json_string =  serde_json::to_string(&pis_data).unwrap();
+    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash, &public_inputs_json_string).await?;
     create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await?;
 
     Ok(SubmitProofResponse {

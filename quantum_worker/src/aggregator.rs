@@ -3,9 +3,7 @@ use std::time::Instant;
 use anyhow::{Ok, Result as AnyhowResult};
 use quantum_circuits_ffi::interactor::QuantumV2CircuitInteractor;
 use quantum_db::repository::{
-    reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
-    superproof_repository::{update_superproof_agg_time, update_superproof_proof_path},
-    user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
+    proof_repository::add_aggregation_hardware_cost_to_proofs, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{update_superproof_agg_time, update_superproof_proof_path, update_superproof_total_proving_time}, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
 };
 use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
@@ -137,5 +135,12 @@ pub async fn handle_aggregation(
 
     // Add agg_time to the db
     update_superproof_agg_time(pool, aggregation_time.as_secs(), superproof_id).await?;
+    
+    let proof_with_max_reduction_time = proofs.iter().min_by_key(|proof| proof.reduction_time);
+    let total_proving_time = proof_with_max_reduction_time.unwrap().reduction_time.unwrap() + aggregation_time.as_secs();
+    update_superproof_total_proving_time(pool, total_proving_time, superproof_id);
+    
+    let agg_hardware_cost_pr_proof: f32 = (aggregation_time.as_secs() * config.proof_aggregation_pr_sec_machine_cost) / proofs.len();
+    add_aggregation_hardware_cost_to_proofs(pool, agg_hardware_cost_pr_proof, superproof_id).await?;
     Ok(())
 }

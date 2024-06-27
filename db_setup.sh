@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS proof (
   reduction_time INT,
   proof_status INT,
   user_circuit_hash VARCHAR(255),
+  public_inputs varchar(1200) DEFAULT NULL,
+  hardware_cost decimal(18,3) DEFAULT NULL,
   FOREIGN KEY (user_circuit_hash) REFERENCES user_circuit_data(circuit_hash)
 );
 
@@ -83,7 +85,10 @@ CREATE TABLE IF NOT EXISTS superproof (
   status INT,
   superproof_root VARCHAR(255),
   superproof_leaves_path VARCHAR(255),
-  onchain_submission_time datetime DEFAULT NULL
+  onchain_submission_time datetime DEFAULT NULL,
+  total_proof_ver_cost decimal(18,2) DEFAULT NULL,
+  total_cost_usd decimal(18,2) DEFAULT NULL,
+  total_proving_time decimal(18,2) DEFAULT NULL
 );
 "
 
