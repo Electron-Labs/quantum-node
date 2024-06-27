@@ -14,11 +14,17 @@ use quantum_types::{
         config::ConfigData,
         db::proof::Proof as DBProof,
         gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey},
+        halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey},
         snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
     },
 };
 use quantum_utils::{
-    error_line, file::read_bytes_from_file, paths::{get_aggregation_circuit_constraint_system_path, get_aggregation_circuit_proving_key_path, get_aggregation_circuit_vkey_path, get_superproof_proof_path}
+    error_line,
+    file::read_bytes_from_file,
+    paths::{
+        get_aggregation_circuit_constraint_system_path, get_aggregation_circuit_proving_key_path,
+        get_aggregation_circuit_vkey_path, get_superproof_proof_path,
+    },
 };
 use sqlx::{MySql, Pool};
 use tracing::info;
@@ -32,8 +38,8 @@ pub async fn handle_aggregation(
     let mut reduced_proofs = Vec::<GnarkGroth16Proof>::new();
     let mut reduced_pis_vec = Vec::<GnarkGroth16Pis>::new();
     let mut reduced_circuit_vkeys = Vec::<GnarkGroth16Vkey>::new();
-    let mut protocol_circuit_vkeys = Vec::<GnarkGroth16Vkey>::new();
-    let mut protocol_pis_vec = Vec::<GnarkGroth16Pis>::new();
+    let mut protocol_vkey_hashes: Vec<Vec<u8>> = vec![];
+    let mut protocol_pis_hashes: Vec<Vec<u8>> = vec![];
 
     for proof in &proofs {
         let reduced_proof_path = proof.reduction_proof_path.clone().unwrap();
@@ -53,33 +59,33 @@ pub async fn handle_aggregation(
 
         let user_circuit_data =
             get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash).await?;
+        let protocol_circuit_vkey_path =
+            get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash)
+                .await?
+                .vk_path;
+        let protocol_pis_path = proof.pis_path.clone();
 
         match user_circuit_data.proving_scheme {
             ProvingSchemes::GnarkGroth16 => {
-                let protocol_circuit_vkey_path =
-                    get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash)
-                        .await?
-                        .vk_path;
                 let protocol_vkey = GnarkGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
-                protocol_circuit_vkeys.push(protocol_vkey);
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
 
-                let protocol_pis_path = proof.pis_path.clone();
                 let protocol_pis = GnarkGroth16Pis::read_pis(&protocol_pis_path)?;
-                protocol_pis_vec.push(protocol_pis);
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
             }
             ProvingSchemes::Groth16 => {
-                let protocol_circuit_vkey_path =
-                    get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash)
-                        .await?
-                        .vk_path;
-                let protocol_vkey = SnarkJSGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?
-                    .convert_to_gnark_vkey();
-                protocol_circuit_vkeys.push(protocol_vkey);
+                let protocol_vkey = SnarkJSGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
 
-                let protocol_pis_path = proof.pis_path.clone();
-                let protocol_pis =
-                    GnarkGroth16Pis(SnarkJSGroth16Pis::read_pis(&protocol_pis_path)?.0);
-                protocol_pis_vec.push(protocol_pis);
+                let protocol_pis = SnarkJSGroth16Pis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
+            }
+            ProvingSchemes::Halo2Plonk => {
+                let protocol_vkey = Halo2PlonkVkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
+
+                let protocol_pis = Halo2PlonkPis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
             }
             _ => todo!(),
         }
@@ -102,8 +108,8 @@ pub async fn handle_aggregation(
         reduced_proofs,
         reduced_pis_vec,
         reduced_circuit_vkeys,
-        protocol_circuit_vkeys,
-        protocol_pis_vec,
+        protocol_vkey_hashes,
+        protocol_pis_hashes,
         aggregator_circuit_cs,
         aggregator_circuit_pkey,
         aggregator_circuit_vkey,

@@ -8,6 +8,9 @@ use quantum_db::repository::protocol::get_protocol_by_auth_token;
 use quantum_db::repository::reduction_circuit_repository::get_reduction_circuit_for_user_circuit;
 use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
+use quantum_types::types::halo2_plonk::Halo2PlonkPis;
+use quantum_types::types::halo2_plonk::Halo2PlonkProof;
+use quantum_types::types::halo2_plonk::Halo2PlonkVkey;
 use quantum_utils::error_line;
 use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
@@ -60,7 +63,7 @@ fn ping(_auth_token: AuthToken) -> &'static str {
 
 #[post("/register_circuit", data = "<data>")]
 async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
-    let response: AnyhowResult<RegisterCircuitResponse>; 
+    let response: AnyhowResult<RegisterCircuitResponse>;
     let protocol = match get_protocol_by_auth_token(get_pool().await, &auth_token.0).await {
         Ok(p) => Ok(p),
         Err(e) => {
@@ -85,6 +88,8 @@ async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, c
         response = register_circuit_exec::<GnarkGroth16Vkey>(data, config_data, protocol).await;
     } else if data.proof_type == ProvingSchemes::Groth16 {
         response = register_circuit_exec::<SnarkJSGroth16Vkey>(data, config_data, protocol).await;
+    } else if data.proof_type == ProvingSchemes::Halo2Plonk {
+        response = register_circuit_exec::<Halo2PlonkVkey>(data, config_data, protocol).await;
     } else {
         return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
     }
@@ -111,11 +116,13 @@ async fn get_circuit_reduction_status(_auth_token: AuthToken, circuit_id: String
 
 #[post("/proof", data = "<data>")]
 async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
-    let response: AnyhowResult<SubmitProofResponse>; 
+    let response: AnyhowResult<SubmitProofResponse>;
     if data.proof_type == ProvingSchemes::GnarkGroth16 {
         response = submit_proof_exec::<GnarkGroth16Proof, GnarkGroth16Pis>(data, config_data).await;
     } else if data.proof_type == ProvingSchemes::Groth16 {
         response = submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis>(data, config_data).await;
+    } else if data.proof_type == ProvingSchemes::Halo2Plonk {
+        response = submit_proof_exec::<Halo2PlonkProof, Halo2PlonkPis>(data, config_data).await;
     } else {
         error!("unsupported proving scheme");
         return Err(CustomError::Internal(error_line!(String::from("/proof Unsupported Proving Scheme"))))
@@ -181,7 +188,7 @@ async fn rocket() -> _ {
     let _guard = initialize_logger("qunatum_node_api.log");
     let config_data = ConfigData::new("./config.yaml");
     let _db_initialize = get_pool().await;
-    
+
     let t = rocket::Config::figment();
     rocket::custom(t).manage(config_data).manage(_guard)
     .mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token, get_protocol_proof]).attach(cors)

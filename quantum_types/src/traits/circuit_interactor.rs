@@ -1,6 +1,5 @@
 use crate::types::{
-    gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey},
-    snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
+    gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, halo2_plonk::{Halo2PlonkProof, Halo2PlonkVkey, Halo2PlonkPis}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}
 };
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -161,6 +160,8 @@ pub trait CircuitInteractor {
     ) -> ReductionCircuitBuildResult;
     // Build reducer circuit when inner circuit is circom groth16
     fn build_snarkjs_groth16_circuit(inner_vk: SnarkJSGroth16Vkey) -> ReductionCircuitBuildResult;
+    // Build reducer circuit when inner circuit is halo2 plonk
+    fn build_halo2_plonk_circuit(vk: Halo2PlonkVkey) -> ReductionCircuitBuildResult;
     // Generate reduction circuit proof corresponding to inner gnark groth16 proof
     fn generate_gnark_groth16_reduced_proof(
         inner_proof: GnarkGroth16Proof,
@@ -174,6 +175,14 @@ pub trait CircuitInteractor {
         inner_proof: SnarkJSGroth16Proof,
         inner_vk: SnarkJSGroth16Vkey,
         inner_pis: SnarkJSGroth16Pis,
+        outer_vk: GnarkGroth16Vkey,
+        outer_pk_bytes: Vec<u8>,
+    ) -> GenerateReductionProofResult;
+    // Generate reduction circuit proof corresponding to inner halo2 plonk proof
+    fn generate_halo2_plonk_reduced_proof(
+        inner_pis: Halo2PlonkPis,
+        inner_proof: Halo2PlonkProof,
+        inner_vk: Halo2PlonkVkey,
         outer_vk: GnarkGroth16Vkey,
         outer_pk_bytes: Vec<u8>,
     ) -> GenerateReductionProofResult;
@@ -192,8 +201,8 @@ pub trait CircuitInteractor {
         reduced_proofs: Vec<GnarkGroth16Proof>,
         reduced_pis: Vec<GnarkGroth16Pis>,
         reduction_circuit_vkeys: Vec<GnarkGroth16Vkey>,
-        protocol_circuit_vkeys: Vec<GnarkGroth16Vkey>,
-        protocol_pis: Vec<GnarkGroth16Pis>,
+        protocol_vkey_hashes: Vec<Vec<u8>>,
+        protocol_pis_hashes: Vec<Vec<u8>>,
         aggregator_circuit_cs: Vec<u8>,
         aggregator_circuit_pkey: Vec<u8>,
         aggregator_circuit_vkey: GnarkGroth16Vkey,

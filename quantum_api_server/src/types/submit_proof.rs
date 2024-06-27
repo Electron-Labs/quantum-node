@@ -5,8 +5,8 @@ use tracing::info;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SubmitProofRequest {
-    pub proof: Vec<u8>, // borsh serialised vkey
-    pub pis: Vec<u8>,  // borsh serialised vkey
+    pub proof: Vec<u8>, // borsh serialised proof
+    pub pis: Vec<u8>,  // borsh serialised pis
     pub circuit_hash: String,
     pub proof_type: ProvingSchemes
 }
