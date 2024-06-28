@@ -75,6 +75,7 @@ impl Vkey for Halo2PlonkVkey {
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Halo2PlonkProof {
+    // TODO: change it to protocol_bytes
     pub proof_bytes: Vec<u8>,
 }
 
