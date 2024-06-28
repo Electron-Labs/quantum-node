@@ -117,7 +117,7 @@ pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction
                 .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(hardware_cost).bind(proof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}, {}", reduction_proof_path, reduction_pis_path, reduction_time, proof_id);
+    info!("arguments: {}, {}, {}, {}, {}", reduction_proof_path, reduction_pis_path, reduction_time, hardware_cost, proof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
