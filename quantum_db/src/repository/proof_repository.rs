@@ -28,7 +28,7 @@ pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, 
                 .bind(proof_hash).bind(pis_path).bind(proof_path).bind(proof_status.as_u8()).bind(user_circuit_hash).bind(pis_json_string);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}, {}, {}", proof_hash, pis_path, proof_path, proof_status.as_u8(), user_circuit_hash);
+    info!("arguments: {}, {}, {}, {}, {}, {}", proof_hash, pis_path, proof_path, proof_status.as_u8(), user_circuit_hash, pis_json_string);
 
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
@@ -114,7 +114,7 @@ pub async fn add_aggregation_hardware_cost_to_proofs(pool: &Pool<MySql>, aggr_co
 
 pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction_proof_path: &str, reduction_pis_path: &str, reduction_time: u64, hardware_cost: f32) -> AnyhowResult<()> {
     let query  = sqlx::query("UPDATE proof set reduction_proof_path = ?, reduction_proof_pis_path = ?, reduction_time = ?, hardware_cost = ?  where proof_hash = ?")
-                .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(proof_id).bind(hardware_cost);
+                .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(hardware_cost).bind(proof_id);
 
     info!("{}", query.sql());
     info!("arguments: {}, {}, {}, {}", reduction_proof_path, reduction_pis_path, reduction_time, proof_id);

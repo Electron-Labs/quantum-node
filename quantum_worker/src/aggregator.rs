@@ -136,11 +136,11 @@ pub async fn handle_aggregation(
     // Add agg_time to the db
     update_superproof_agg_time(pool, aggregation_time.as_secs(), superproof_id).await?;
     
-    let proof_with_max_reduction_time = proofs.iter().min_by_key(|proof| proof.reduction_time);
+    let proof_with_max_reduction_time = proofs.iter().max_by_key(|proof| proof.reduction_time);
     let total_proving_time = proof_with_max_reduction_time.unwrap().reduction_time.unwrap() + aggregation_time.as_secs();
-    update_superproof_total_proving_time(pool, total_proving_time, superproof_id);
+    update_superproof_total_proving_time(pool, total_proving_time, superproof_id).await?;
     
-    let agg_hardware_cost_pr_proof: f32 = (aggregation_time.as_secs() * config.proof_aggregation_pr_sec_machine_cost) / proofs.len();
+    let agg_hardware_cost_pr_proof: f32 = ((aggregation_time.as_secs() as f32) * config.proof_aggregation_pr_sec_machine_cost) / (proofs.len() as f32);
     add_aggregation_hardware_cost_to_proofs(pool, agg_hardware_cost_pr_proof, superproof_id).await?;
     Ok(())
 }

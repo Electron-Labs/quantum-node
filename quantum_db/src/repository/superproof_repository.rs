@@ -151,7 +151,7 @@ pub async fn update_superproof_onchain_submission_time(pool: &Pool<MySql>, oncha
     row_affected
 }
 
-pub async fn update_superproof_total_proving_time(pool: &Pool<MySql>, total_proving_time: u32, superproof_id: u64) -> AnyhowResult<()> {
+pub async fn update_superproof_total_proving_time(pool: &Pool<MySql>, total_proving_time: u64, superproof_id: u64) -> AnyhowResult<()> {
     let query  = sqlx::query("UPDATE superproof set total_proving_time = ? where id = ?")
                 .bind(total_proving_time).bind(superproof_id);
 
