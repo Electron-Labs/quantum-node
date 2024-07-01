@@ -37,6 +37,19 @@ pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, 
     row_affected
 }
 
+pub async fn get_latest_proof_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: &str) -> AnyhowResult<Proof> {
+    let query  = sqlx::query("SELECT * from proof where user_circuit_hash = ? order by id desc LIMIT 1").bind(circuit_hash);
+
+    info!("{}", query.sql());
+    info!("arguments: {}", circuit_hash);
+    
+    let proof = match query.fetch_one(pool).await{
+        Ok(t) => get_proof_from_mysql_row(&t),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    proof
+}
+
 pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> AnyhowResult<Proof> {
     let query  = sqlx::query("SELECT * from proof where proof_hash = ?")
                 .bind(proof_hash);
