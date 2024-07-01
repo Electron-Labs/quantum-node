@@ -46,6 +46,7 @@ use crate::{
 const SUPERPROOF_SUBMISSION_DURATION: u64 = 15 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const REGISTER_CIRCUIT_LOOP_DURATION: u64 = 1*60;
+const RETRY_COUNT: u64 = 3;
 
 async fn initialize_superproof_submission_loop(
     superproof_submission_duration: Duration,
@@ -148,7 +149,7 @@ async fn initialize_superproof_submission_loop(
             };
         }
 
-        let quantum_contract = get_quantum_contract()?;
+        
 
         let current_time = get_current_time();
         update_superproof_onchain_submission_time(
@@ -161,21 +162,7 @@ async fn initialize_superproof_submission_loop(
         let gas_cost = get_gas_cost().await.unwrap();
         let eth_price = get_eth_price().await.unwrap();
 
-        //make smart contract call here
-        let receipt =
-            update_quantum_contract_state(&quantum_contract, Batch { protocols }, &gnark_proof)
-                .await?;
-        let receipt = match receipt {
-            Some(r) => {
-                println!("succefully updated quantum contract!");
-                Ok(r)
-            },
-            None => Err(anyhow!("error in updating the quantum contract")),
-        }?;
-
-        // update the transaction_hash, gas_cost, eth_price and gas cost
-        let transaction_hash = receipt.transaction_hash.encode_hex();
-        let transaction_hash = String::from("0x") + &transaction_hash;
+        let transaction_hash = make_smart_contract_call_with_retry(protocols, &gnark_proof).await?;
 
         for proof in proofs {
             update_proof_status(get_pool().await, &proof.proof_hash, ProofStatus::Verified).await?;
@@ -194,6 +181,28 @@ async fn initialize_superproof_submission_loop(
         info!("Sleeping for {:?}", superproof_submission_duration);
         sleep(superproof_submission_duration).await;
     }
+}
+
+async fn make_smart_contract_call_with_retry(protocols: [Protocol; 10], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<String> {
+    let mut retry_count = 0;
+    let mut transaction_hash : AnyhowResult<String> = Ok(String::from("0x"));
+    let quantum_contract = get_quantum_contract()?;
+    while retry_count <= RETRY_COUNT {
+        match update_quantum_contract_state(&quantum_contract, Batch { protocols }, &gnark_proof).await {
+            Ok(receipt) =>{
+                let transaction_hash_string = receipt.transaction_hash.encode_hex();
+                let transaction_hash_string = String::from("0x") + &transaction_hash_string;
+                transaction_hash = Ok(transaction_hash_string);
+                break;
+            }
+            Err(e) => {
+                retry_count = retry_count+1;
+                error!("error occured in smart contract call, retrying count {:?}, error: {:?}",retry_count, error_line!(e));
+                transaction_hash = Err(anyhow!(error_line!(e)))
+            },
+        }
+    }
+    transaction_hash
 }
 
 fn get_current_time() -> NaiveDateTime {
