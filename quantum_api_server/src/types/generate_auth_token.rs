@@ -42,7 +42,7 @@ impl<'r> FromData<'r> for GenerateAuthTokenRequest {
 
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct GenerateAuthTokenResponse {
     pub auth_token: String,
