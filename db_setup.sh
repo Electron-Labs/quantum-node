@@ -87,7 +87,26 @@ CREATE TABLE IF NOT EXISTS superproof (
   onchain_submission_time datetime DEFAULT NULL,
   total_proof_ver_cost decimal(18,2) DEFAULT NULL,
   total_cost_usd decimal(18,2) DEFAULT NULL,
-  total_proving_time decimal(18,2) DEFAULT NULL
+  total_proving_time decimal(18,2) DEFAULT NULL,
+  previous_superproof_root varchar(255) DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS proof_submission_config (
+  proof_submission_time int DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS proof_system (
+  proof_system varchar(255) DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS protocol_ui (
+  protocol_name varchar(255) DEFAULT NULL,
+  is_aggregated int DEFAULT '0',
+  display_name varchar(255) DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS superproof_contract_config (
+  address varchar(255) DEFAULT NULL
 );
 "
 
