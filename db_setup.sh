@@ -67,7 +67,6 @@ CREATE TABLE IF NOT EXISTS proof (
   proof_status INT,
   user_circuit_hash VARCHAR(255),
   public_inputs varchar(1200) DEFAULT NULL,
-  hardware_cost decimal(18,3) DEFAULT NULL,
   FOREIGN KEY (user_circuit_hash) REFERENCES user_circuit_data(circuit_hash)
 );
 

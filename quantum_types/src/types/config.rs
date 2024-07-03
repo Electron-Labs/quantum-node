@@ -15,9 +15,6 @@ pub struct ConfigData {
     pub aggregated_circuit_data: String,
     pub supperproof_path: String,
     pub verification_contract_address: String,
-    pub proof_normalization_pr_sec_machine_cost: f32,
-    pub proof_aggregation_pr_sec_machine_cost: f32
-
 }
 
 impl ConfigData {
