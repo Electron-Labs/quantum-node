@@ -192,7 +192,6 @@ pub async fn handle_proof_generation_task(
     )?;
     info!("Dumped reduced proof and pis");
 
-    let reduction_hardware_cost: f32 = (reduction_time as f32) * config.proof_normalization_pr_sec_machine_cost;
     // update reduction data corresponding to proof
     update_reduction_data(
         pool,
@@ -200,7 +199,6 @@ pub async fn handle_proof_generation_task(
         &reduced_proof_path,
         &reduced_pis_path,
         reduction_time,
-        reduction_hardware_cost
     )
     .await?;
     info!("Updated reduction data to corresponding proof");
