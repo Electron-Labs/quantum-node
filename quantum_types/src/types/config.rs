@@ -14,8 +14,7 @@ pub struct ConfigData {
     pub reduced_circuit_path: String,
     pub aggregated_circuit_data: String,
     pub supperproof_path: String,
-    pub verification_contract_address: String
-
+    pub verification_contract_address: String,
 }
 
 impl ConfigData {

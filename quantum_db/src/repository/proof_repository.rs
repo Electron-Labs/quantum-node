@@ -23,12 +23,12 @@ pub async fn get_aggregation_waiting_proof_num(pool: &Pool<MySql>) -> AnyhowResu
     reduction_circuit
 }
 
-pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, proof_path: &str, proof_status: ProofStatus, user_circuit_hash: &str)-> AnyhowResult<u64, Error> {
-    let query  = sqlx::query("INSERT into proof(proof_hash, pis_path, proof_path, proof_status, user_circuit_hash) VALUES(?,?,?,?,?)")
-                .bind(proof_hash).bind(pis_path).bind(proof_path).bind(proof_status.as_u8()).bind(user_circuit_hash);
+pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, proof_path: &str, proof_status: ProofStatus, user_circuit_hash: &str, pis_json_string: &str)-> AnyhowResult<u64, Error> {
+    let query  = sqlx::query("INSERT into proof(proof_hash, pis_path, proof_path, proof_status, user_circuit_hash, public_inputs) VALUES(?,?,?,?,?,?)")
+                .bind(proof_hash).bind(pis_path).bind(proof_path).bind(proof_status.as_u8()).bind(user_circuit_hash).bind(pis_json_string);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}, {}, {}", proof_hash, pis_path, proof_path, proof_status.as_u8(), user_circuit_hash);
+    info!("arguments: {}, {}, {}, {}, {}, {}", proof_hash, pis_path, proof_path, proof_status.as_u8(), user_circuit_hash, pis_json_string);
 
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
