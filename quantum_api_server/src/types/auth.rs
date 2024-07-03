@@ -24,9 +24,9 @@ impl<'r> FromRequest<'r> for AuthToken {
                 auth_token = token.unwrap();
             }
             if request.uri().path() == "/auth/protocol" {
-                is_present =  check_if_auth_token_registered_and_is_master(get_pool().await, auth_token).await;
+                is_present =  check_if_auth_token_registered_and_is_master(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), auth_token).await;
             } else {
-                is_present = match get_protocol_by_auth_token(get_pool().await, auth_token).await {
+                is_present = match get_protocol_by_auth_token(&&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), auth_token).await {
                         Ok(p) => match p {
                             Some(_) => Ok(true),
                             None => Ok(false),

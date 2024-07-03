@@ -1,11 +1,11 @@
 mod common;
-use common::{db::db_connection::get_pool, repository::{proof::{self, delete_all_proof_data, update_superproof_id}, task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, update_circuit_redn_status_user_circuit_data_completed}}, setup};
-use quantum_api_server::types::{proof_data::ProofDataResponse, register_circuit::RegisterCircuitResponse, submit_proof::SubmitProofResponse};
-use quantum_types::{enums::proof_status::ProofStatus, types::{config::ConfigData, db::proof::Proof}};
+use common::{repository::{proof::{delete_all_proof_data, update_superproof_id}, task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, update_circuit_redn_status_user_circuit_data_completed}}, setup};
+use quantum_api_server::{connection::{get_pool, terminate_pool}, types::{proof_data::ProofDataResponse, register_circuit::RegisterCircuitResponse, submit_proof::SubmitProofResponse}};
+use quantum_types::{enums::proof_status::ProofStatus, types::config::ConfigData};
 use rocket::{form::validate::Contains, http::{ContentType, Header, Status}, local::asynchronous::Client};
 
 const  AUTH_TOKEN: &str = "b3047d47c5d6551744680f5c3ba77de90acb84055eefdcbb";
-const config_data_path: &str = "../../quantum-node/config.yaml"; // TODO make it relative 
+const CONFIG_DATA_PATH: &str = "../../quantum-node/config.yaml";
 
 
 async fn before_test(client: &Client) -> String{
@@ -27,7 +27,7 @@ async fn before_test(client: &Client) -> String{
 
     // updating proof status to complete
     let circuit_hash = res.circuit_hash;
-    let _ = update_circuit_redn_status_user_circuit_data_completed(get_pool().await, &circuit_hash).await;
+    let _ = update_circuit_redn_status_user_circuit_data_completed(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &circuit_hash).await;
 
     // submitting correctproof
 
@@ -52,12 +52,12 @@ async fn before_test(client: &Client) -> String{
 }
 
 async fn after_test() {
-    let _ = delete_all_user_circuit_data(get_pool().await).await;
-    let _ = delete_all_task_data(get_pool().await).await;
-    let _ = delete_all_proof_data(get_pool().await).await;
+    let _ = delete_all_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_task_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_proof_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
 }
 
-#[tokio::test(flavor="multi_thread", worker_threads=1)]
+#[tokio::test]
 async fn test_proof_status_with_invalid_proof_id(){
     let client = setup().await;
     let invalid_proof_id = "0x413e1cd49f83c319a4a67d03d817d43d1b8c80cdab33b3e7f69a2db71e166572";
@@ -68,21 +68,24 @@ async fn test_proof_status_with_invalid_proof_id(){
     assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 
     let res: ProofDataResponse = response.into_json().await.unwrap();
-    let config_data = ConfigData::new(config_data_path); 
+    let config_data = ConfigData::new(CONFIG_DATA_PATH); 
     
     assert_eq!(res.status, ProofStatus::NotFound.to_string());
     assert_eq!(res.superproof_id, -1);
     assert_eq!(res.transaction_hash, None);
-    assert_eq!(res.verification_contract, config_data.verification_contract_address.to_string())
+    assert_eq!(res.verification_contract, config_data.verification_contract_address.to_string());
+    
+    terminate_pool().await;
+
 }
 
-#[tokio::test(flavor="multi_thread", worker_threads=1)]
+#[tokio::test]
 async fn test_proof_status_with_valid_proof_id_invalid_superproof_id(){
     let client = setup().await;
     let proof_id = before_test(client).await;
     let invalid_superproof_id: u32 = 32;
     
-    let _ = update_superproof_id(get_pool().await, &proof_id, invalid_superproof_id).await;
+    let _ = update_superproof_id(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &proof_id, invalid_superproof_id).await;
 
     let response = client.get(format!("/proof/{}", proof_id)).header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
 
@@ -92,9 +95,10 @@ async fn test_proof_status_with_valid_proof_id_invalid_superproof_id(){
     assert!(response.into_string().await.contains("superproof not found in db"));
 
     after_test().await;
+    terminate_pool().await;
 }
 
-#[tokio::test(flavor="multi_thread", worker_threads=1)]
+#[tokio::test]
 async fn test_proof_status_with_valid_proof_id(){
     let client = setup().await;
 
@@ -106,11 +110,11 @@ async fn test_proof_status_with_valid_proof_id(){
     assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 
     let res: ProofDataResponse = response.into_json().await.unwrap();
-    let config_data = ConfigData::new(config_data_path);
+    let config_data = ConfigData::new(CONFIG_DATA_PATH);
 
     assert_eq!(res.status, ProofStatus::Registered.to_string());
     assert_eq!(res.verification_contract, config_data.verification_contract_address.to_string());
 
     after_test().await;
-
+    terminate_pool().await;
 }

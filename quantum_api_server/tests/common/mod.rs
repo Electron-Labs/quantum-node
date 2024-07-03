@@ -1,4 +1,3 @@
-pub mod db;
 pub mod repository;
 pub mod rocket_setup;
 
@@ -8,7 +7,7 @@ use dotenv::dotenv;
 use lazy_static::lazy_static;
 use rocket::local::asynchronous::Client;
 use rocket_setup::rocket_builder;
-use db::db_connection::get_pool;
+use quantum_api_server::connection::get_pool;
 use tokio::sync::OnceCell; 
 
 

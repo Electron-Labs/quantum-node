@@ -1,8 +1,7 @@
 mod common;
-use common::{db::db_connection::get_pool, repository::{proof::delete_all_proof_data, task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, update_circuit_redn_status_user_circuit_data_completed}}, setup};
-use quantum_api_server::types::{register_circuit::RegisterCircuitResponse, submit_proof::SubmitProofResponse};
-use quantum_types::types::halo2_plonk::Halo2PlonkPis;
-use rocket::{http::{ContentType, Header, Status}, local::asynchronous::Client, response};
+use common::{repository::{proof::delete_all_proof_data, task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, update_circuit_redn_status_user_circuit_data_completed}}, setup};
+use quantum_api_server::{connection::{get_pool, terminate_pool}, types::{register_circuit::RegisterCircuitResponse, submit_proof::SubmitProofResponse}};
+use rocket::{http::{ContentType, Header, Status}, local::asynchronous::Client};
 
 const  AUTH_TOKEN: &str = "b3047d47c5d6551744680f5c3ba77de90acb84055eefdcbb";
 
@@ -22,16 +21,16 @@ async fn before_test(client: &Client){
 
     // update reduction status to completed
     let circuit_hash = res.circuit_hash;
-    let _ = update_circuit_redn_status_user_circuit_data_completed(get_pool().await, &circuit_hash).await;
+    let _ = update_circuit_redn_status_user_circuit_data_completed(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &circuit_hash).await;
 }
 
 async fn after_test() {
-    let _ = delete_all_task_data(get_pool().await).await;
-    let _ = delete_all_user_circuit_data(get_pool().await).await;
-    let _ = delete_all_proof_data(get_pool().await).await;
+    let _ = delete_all_task_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_proof_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
 }
 
-#[tokio::test(flavor="multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_submit_proof_with_missing_payload() {
     let client = setup().await;
 
@@ -39,10 +38,11 @@ async fn test_submit_proof_with_missing_payload() {
 
     assert_eq!(response.status(), Status::UnsupportedMediaType);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    terminate_pool().await;
 }
 
 
-#[tokio::test(flavor="multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_submit_proof_with_invalid_payload(){
     let client = setup().await;
     let payload = r##"{
@@ -55,10 +55,11 @@ async fn test_submit_proof_with_invalid_payload(){
 
     assert_eq!(response.status(), Status::InternalServerError);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    terminate_pool().await;
 }
 
 
-#[tokio::test(flavor="multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_submit_proof_with_invalid_proving_scheme(){
     let client = setup().await;
 
@@ -78,10 +79,11 @@ async fn test_submit_proof_with_invalid_proving_scheme(){
     assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 
     after_test().await;
+    terminate_pool().await;
 }
 
 
-#[tokio::test(flavor="multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_submit_proof_with_invalid_proof(){
     let client = setup().await;
 
@@ -101,9 +103,10 @@ async fn test_submit_proof_with_invalid_proof(){
     assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 
     after_test().await;
+    terminate_pool().await;
 }
 
-#[tokio::test(flavor="multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_submit_proof_with_invalid_pis(){
     let client = setup().await;
 
@@ -123,9 +126,10 @@ async fn test_submit_proof_with_invalid_pis(){
     assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 
     after_test().await;
+    terminate_pool().await;
 }
 
-#[tokio::test(flavor="multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_submit_proof_with_repeated_proof(){
     // should return error for same prove
     let client = setup().await;
@@ -160,10 +164,11 @@ async fn test_submit_proof_with_repeated_proof(){
     assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 
     after_test().await;
+    terminate_pool().await;
 
 }
 
-#[tokio::test(flavor="multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_submit_proof_with_valid_payload(){
     let client = setup().await;
 
@@ -187,4 +192,5 @@ async fn test_submit_proof_with_valid_payload(){
     assert!(!res.proof_id.is_empty());
 
     after_test().await;
+    terminate_pool().await;
 } 

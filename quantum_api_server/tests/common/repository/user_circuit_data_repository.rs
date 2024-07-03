@@ -10,7 +10,7 @@ pub async fn delete_all_user_circuit_data(pool: &Pool<MySql>) -> AnyhowResult<()
 
     info!("{}", query.sql());
 
-    let row_affected = match query.execute(pool).await {
+    let row_affected = match query.execute(&mut *pool.acquire().await.unwrap()).await {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };

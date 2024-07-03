@@ -1,6 +1,6 @@
 mod common;
-use common::{db::db_connection::get_pool, repository::{task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, insert_random_protocol_user_circuit_data}}, setup};
-use quantum_api_server::types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::RegisterCircuitResponse};
+use common::{ repository::{task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, insert_random_protocol_user_circuit_data}}, setup};
+use quantum_api_server::{connection::{terminate_pool, get_pool}, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::RegisterCircuitResponse}};
 use rocket::{http::{ContentType, Header, Status}, local::asynchronous::Client};
 
 const  AUTH_TOKEN: &str = "b3047d47c5d6551744680f5c3ba77de90acb84055eefdcbb";
@@ -26,11 +26,11 @@ async fn before_test(client: &Client) -> String{
 
 
 async fn after_test() {
-    let _ = delete_all_user_circuit_data(get_pool().await).await;
-    let _ = delete_all_task_data(get_pool().await).await;
+    let _ = delete_all_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_task_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
 }
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_get_circuit_reduction_status_with_invalid_circuit_hash(){
     let client = setup().await;
     let _correct_circuit_hash = before_test(client).await;
@@ -40,19 +40,19 @@ async fn test_get_circuit_reduction_status_with_invalid_circuit_hash(){
 
     let response = client.get(format!("/circuit/{}/status", incorrect_circuit_hash)).header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
     
-    
     // validating response status and content_type
     assert_eq!(response.status(), Status::InternalServerError);
     assert_eq!(response.content_type().unwrap(), ContentType::JSON);    
     
     after_test().await; 
+    terminate_pool().await;
 }
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_get_circuit_reduction_status_with_invalid_proof_type(){
     let client = setup().await;
     let circuit_hash = "0x6d42821632517e2b28b39b33aaf268a0785df7d68cccd3e01737c8de3f3ff6d7";
-    let _ = insert_random_protocol_user_circuit_data(get_pool().await, circuit_hash);
+    let _ = insert_random_protocol_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), circuit_hash);
     let response = client.get(format!("/circuit/{}/status", circuit_hash)).header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
 
     println!("response: {:?}", response);
@@ -61,10 +61,10 @@ async fn test_get_circuit_reduction_status_with_invalid_proof_type(){
     assert_eq!(response.content_type().unwrap(), ContentType::JSON); 
 
     after_test().await;
-
+    terminate_pool().await;
 }
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_get_circuit_reduction_status_with_valid_circuit_hash(){
     let client = setup().await;
     let correct_circuit_hash = before_test(client).await;
@@ -79,5 +79,6 @@ async fn test_get_circuit_reduction_status_with_valid_circuit_hash(){
     let res: CircuitRegistrationStatusResponse = response.into_json().await.unwrap();
     assert!(!res.circuit_registration_status.is_empty());
 
-    after_test().await;    
+    after_test().await;
+    terminate_pool().await;
 }

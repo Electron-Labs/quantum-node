@@ -1,7 +1,7 @@
 mod common;
 
-use common::{db::db_connection::get_pool, repository::{task_repository::{delete_all_task_data, get_task_data_count_from_circuit_hash}, user_circuit_data_repository::delete_all_user_circuit_data}};
-use quantum_api_server::types::register_circuit::RegisterCircuitResponse;
+use common::repository::{task_repository::{delete_all_task_data, get_task_data_count_from_circuit_hash}, user_circuit_data_repository::delete_all_user_circuit_data};
+use quantum_api_server::{connection::{get_pool, terminate_pool}, types::register_circuit::RegisterCircuitResponse};
 use rocket::http::{ContentType, Header, Status};
 
 use crate::common::setup; 
@@ -9,20 +9,21 @@ use crate::common::setup;
 const  AUTH_TOKEN: &str = "b3047d47c5d6551744680f5c3ba77de90acb84055eefdcbb";
 
 pub async fn after_test() {
-    let _ = delete_all_user_circuit_data(get_pool().await).await;
-    let _ = delete_all_task_data(get_pool().await).await;
+    let _ = delete_all_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_task_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
 }
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_register_circuit_with_missing_payload(){
     let client = setup().await;
     let response = client.post("/register_circuit").header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
     assert_eq!(response.status(), Status::UnsupportedMediaType);   
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    terminate_pool().await;
 }
 
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_register_circuit_with_missing_data_fields(){
     let client = setup().await;
     let payload = r##"{
@@ -33,9 +34,10 @@ async fn test_register_circuit_with_missing_data_fields(){
     .header(ContentType::JSON).body(payload).dispatch().await;
     assert_eq!(response.status(), Status::InternalServerError);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    terminate_pool().await;
 }
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_register_circuit_should_not_register_same_circuit(){
 
     let client = setup().await;
@@ -73,11 +75,10 @@ async fn test_register_circuit_should_not_register_same_circuit(){
 
     // deleting circuit entry
     after_test().await;
-
-    
+    terminate_pool().await;
 }
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_register_circuit_with_invalid_vkey() {
     let client = setup().await;
     let payload =r##"{
@@ -91,10 +92,11 @@ async fn test_register_circuit_with_invalid_vkey() {
     // validating status
     assert_eq!(response.status(), Status::InternalServerError);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    terminate_pool().await;
 }
 
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_register_circuit_should_return_saved_reduction_circuit(){
     let client = setup().await;
     let payload = r##"{
@@ -114,17 +116,17 @@ async fn test_register_circuit_should_return_saved_reduction_circuit(){
     .header(ContentType::JSON).body(payload).dispatch().await;
 
     // fetching from task table
-    let result = get_task_data_count_from_circuit_hash(get_pool().await, &circuit_hash).await.expect("Error in fetching from task table");
+    let result = get_task_data_count_from_circuit_hash(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &circuit_hash).await.expect("Error in fetching from task table");
 
     // still there should be one entry
     assert_eq!(result, 1);
     
     // deleting circuit entry
     after_test().await;
-
+    terminate_pool().await;
 }
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_register_circuit_with_invalid_proof_type(){
     let client = setup().await;
     let payload =r##"{
@@ -139,11 +141,12 @@ async fn test_register_circuit_with_invalid_proof_type(){
     // validating status
     assert_eq!(response.status(), Status::InternalServerError);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    terminate_pool().await;
 }
 
 
 
-#[sqlx::test]
+#[tokio::test]
 async fn test_register_circuit_with_valid_data_fields(){
     let client = setup().await;
     let payload =r##"{
@@ -166,6 +169,6 @@ async fn test_register_circuit_with_valid_data_fields(){
     assert!(!res.circuit_hash.is_empty());
 
     // deleting circuit entry
-    after_test().await
-
+    after_test().await;
+    terminate_pool().await;
 }

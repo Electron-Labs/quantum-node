@@ -8,7 +8,7 @@ use crate::{connection::get_pool, error::error::CustomError, types::generate_aut
 use anyhow::{anyhow, Result as AnyhowResult};
 
 pub async fn generate_auth_token_for_protocol(data: GenerateAuthTokenRequest) -> AnyhowResult<GenerateAuthTokenResponse> {
-    let is_present = check_if_protocol_already_registered(get_pool().await, &data.protocol_name).await;
+    let is_present = check_if_protocol_already_registered(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &data.protocol_name).await;
     let is_present = match is_present {
         Ok(t) => Ok(t) ,
         Err(e) => Err(anyhow!(CustomError::Internal(e.root_cause().to_string()))),
@@ -23,7 +23,7 @@ pub async fn generate_auth_token_for_protocol(data: GenerateAuthTokenRequest) ->
     let protocol_name_hash = get_keccak_hash_of_string(&data.protocol_name);
     let token = get_token_from_hash(protocol_name_hash);
 
-    insert_protocol_auth_token(get_pool().await, &data.protocol_name, &token).await?;
+    insert_protocol_auth_token(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &data.protocol_name, &token).await?;
     Ok(GenerateAuthTokenResponse {
         auth_token: token,
     })
