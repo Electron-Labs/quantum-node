@@ -47,7 +47,7 @@ pub async fn update_quantum_contract_state(
     contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
     batch: Batch,
     gnark_proof: &GnarkGroth16Proof,
-) -> AnyhowResult<Option<TransactionReceipt>> {
+) -> AnyhowResult<TransactionReceipt> {
     let proof = get_proof_from_gnark_groth16_proof(&gnark_proof)?;
 
     info!("calling verify_superproof");
@@ -55,8 +55,9 @@ pub async fn update_quantum_contract_state(
         .verify_superproof(proof, batch)
         .send()
         .await?
-        .await?;
-    return Ok(receipt);
+        .await?
+        .ok_or(anyhow!("could not verify superproof"));
+    return receipt;
 }
 
 pub async fn register_cricuit_in_contract(

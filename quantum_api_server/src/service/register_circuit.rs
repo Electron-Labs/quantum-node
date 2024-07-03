@@ -1,5 +1,5 @@
 use quantum_db::repository::{reduction_circuit_repository::{check_if_pis_len_compatible_reduction_circuit_exist, get_reduction_circuit_for_user_circuit}, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::vkey::Vkey, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, vkey::Vkey}, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}}};
 use quantum_utils::{keccak::encode_keccak_hash, paths::get_user_vk_path};
 use quantum_utils::error_line;
 use rocket::State;
@@ -37,6 +37,8 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
         );
     }
     println!("already registered {:?}", is_circuit_already_registered);
+
+    let num_public_inputs = get_public_input_count(&data)?;
     // dump vkey
     let vkey_path = get_user_vk_path(&config_data.storage_folder_path, &config_data.user_data_path, &circuit_hash_string);
     println!("User vkey path {:?}", vkey_path);
@@ -44,7 +46,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     println!("User vkey path dumped");
 
     // Get a reduction circuit id
-    let reduction_circuit_id = handle_reduce_circuit(data.num_public_inputs, data.proof_type).await?;
+    let reduction_circuit_id = handle_reduce_circuit(num_public_inputs, data.proof_type).await?;
     println!("reduction_circuit_id {:?}", reduction_circuit_id);
 
     // Add user circuit data to DB
@@ -56,6 +58,17 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     Ok(
         RegisterCircuitResponse{ circuit_hash: circuit_hash_string }
     )
+}
+
+pub fn get_public_input_count(data: &RegisterCircuitRequest) -> AnyhowResult<u8> {
+    if data.proof_type != ProvingSchemes::Halo2Plonk {
+        return Ok(data.num_public_inputs);
+    }
+
+    let vkey = Halo2PlonkVkey::deserialize_vkey(&mut data.vkey.as_slice())?;
+    let pis = Halo2PlonkPis(vkey.instances_bytes);
+    let pub_input_count = pis.get_data()?.len() as u8;
+    Ok(pub_input_count)
 }
 
 pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResult<CircuitRegistrationStatusResponse> {

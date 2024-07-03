@@ -1,9 +1,9 @@
-use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
+use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, get_proof_by_proof_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{circuit_interactor::{IMT_Tree, KeccakHashOut}, pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis}};
 use quantum_utils::{keccak::{convert_string_to_be_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
 use rocket::State;
 use anyhow::{anyhow, Context, Result as AnyhowResult};
-use tracing::info;
+use tracing::{error, info};
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, protocol_proof::ProtocolProofResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 use keccak_hash::keccak;
 
@@ -92,11 +92,33 @@ async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest
         info!("circuit reduction not completed");
         return Err(anyhow!(CustomError::BadRequest(error_line!("circuit reduction not completed".to_string()))));
     }
+    
     if data.proof_type != circuit_data.proving_scheme {
         info!("prove type is not correct");
         return Err(anyhow!(CustomError::BadRequest(error_line!("prove type is not correct".to_string()))));
     }
 
+    validate_on_ongoing_proof_with_same_circuit_hash(&data.circuit_hash).await?;
+    Ok(())
+}
+
+pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str) -> AnyhowResult<()> {
+    let proof = match get_latest_proof_by_circuit_hash(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), circuit_hash).await {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            error!("error in finding the last proof for circuit hash {:?}: {:?}", circuit_hash, error_line!(e));
+            Err(e)
+        },
+    };
+
+    if proof.is_err() {
+        return Ok(())
+    }
+
+    let proof = proof?;
+    if proof.proof_status == ProofStatus::Registered || proof.proof_status == ProofStatus::Reducing || proof.proof_status == ProofStatus::Reduced {
+        return Err(anyhow!(CustomError::BadRequest(error_line!(format!("last proof for circuit id {:?} hasn't been verified, rejecting proof submission request", circuit_hash)))))
+    } 
     Ok(())
 }
 
