@@ -42,10 +42,6 @@ pub async fn connection_options() -> MySqlConnectOptions {
             password = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set.");
             database = std::env::var("DB_NAME").expect("DB_NAME must be set.")
         }
-
-        println!("username: {:?}", username);
-        println!("password: {:?}", password);
-        println!("database: {:?}", database);
         
         let connect_options = MySqlConnectOptions::new()
             .username(&username)
