@@ -5,8 +5,8 @@ use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType
 use anyhow::{Ok, Result as AnyhowResult};
 use quantum_utils::error_line;
 use sqlx::{MySql, Pool};
-use quantum_circuits_ffi::interactor::QuantumV2CircuitInteractor;
-use quantum_types::traits::circuit_interactor::CircuitInteractor;
+use quantum_circuits_interface::ffi::interactor::QuantumV2CircuitInteractor;
+use quantum_types::traits::circuit_interactor::CircuitInteractorFFI;
 use tracing::{info, error};
 
 use crate::utils::dump_reduction_circuit_data;

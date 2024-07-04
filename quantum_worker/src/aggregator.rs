@@ -1,29 +1,24 @@
 use std::time::Instant;
 
 use anyhow::{Ok, Result as AnyhowResult};
-use quantum_circuits_ffi::interactor::QuantumV2CircuitInteractor;
+use quantum_circuits_interface::amqp::interactor::QuantumV2CircuitInteractor;
 use quantum_db::repository::{
-     reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{update_superproof_agg_time, update_superproof_proof_path, update_superproof_total_proving_time}, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
+     reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
+    superproof_repository::{update_superproof_agg_time, update_superproof_proof_path, update_superproof_total_proving_time},
+    user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
 };
 use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
-    traits::{circuit_interactor::CircuitInteractor, pis::Pis, proof::Proof, vkey::Vkey},
+    traits::{circuit_interactor::CircuitInteractorAMQP, pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::ConfigData,
+        config::{AMQPConfigData, ConfigData},
         db::proof::Proof as DBProof,
-        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey},
+        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, GnarkVerifier},
         halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey},
         snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
     },
 };
-use quantum_utils::{
-    error_line,
-    file::read_bytes_from_file,
-    paths::{
-        get_aggregation_circuit_constraint_system_path, get_aggregation_circuit_proving_key_path,
-        get_aggregation_circuit_vkey_path, get_superproof_proof_path,
-    },
-};
+use quantum_utils::{error_line, paths::get_superproof_proof_path};
 use sqlx::{MySql, Pool};
 use tracing::info;
 
@@ -33,27 +28,30 @@ pub async fn handle_aggregation(
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
-    let mut reduced_proofs = Vec::<GnarkGroth16Proof>::new();
-    let mut reduced_pis_vec = Vec::<GnarkGroth16Pis>::new();
-    let mut reduced_circuit_vkeys = Vec::<GnarkGroth16Vkey>::new();
+    let amqp_config = AMQPConfigData::get_config();
+    let mut reduction_circuit_data_vec = Vec::<GnarkVerifier>::new();
     let mut protocol_vkey_hashes: Vec<Vec<u8>> = vec![];
     let mut protocol_pis_hashes: Vec<Vec<u8>> = vec![];
 
     for proof in &proofs {
         let reduced_proof_path = proof.reduction_proof_path.clone().unwrap();
         let reduced_proof = GnarkGroth16Proof::read_proof(&reduced_proof_path)?;
-        reduced_proofs.push(reduced_proof);
 
         let reduced_pis_path = proof.reduction_proof_pis_path.clone().unwrap();
         let reduced_pis = GnarkGroth16Pis::read_pis(&reduced_pis_path)?;
-        reduced_pis_vec.push(reduced_pis);
 
         let reduced_circuit_vkey_path =
             get_reduction_circuit_for_user_circuit(pool, &proof.user_circuit_hash)
                 .await?
                 .vk_path;
         let reduced_vkey = GnarkGroth16Vkey::read_vk(&reduced_circuit_vkey_path)?;
-        reduced_circuit_vkeys.push(reduced_vkey);
+
+        let gnark_verifier = GnarkVerifier {
+            Proof: reduced_proof,
+            VK: reduced_vkey,
+            PubInputs: reduced_pis.0,
+        };
+        reduction_circuit_data_vec.push(gnark_verifier);
 
         let user_circuit_data =
             get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash).await?;
@@ -88,30 +86,17 @@ pub async fn handle_aggregation(
             _ => todo!(),
         }
     }
-    println!("superproof_id {:?}", superproof_id);
-
-    // Read aggregator_circuit_pkey and aggregator_circuit_vkey from file
-    let aggregator_cs_path =
-        get_aggregation_circuit_constraint_system_path(&config.aggregated_circuit_data);
-    let aggregator_pkey_path =
-        get_aggregation_circuit_proving_key_path(&config.aggregated_circuit_data);
-    let aggregator_vkey_path = get_aggregation_circuit_vkey_path(&config.aggregated_circuit_data);
-    let aggregator_circuit_cs = read_bytes_from_file(&aggregator_cs_path)?;
-    let aggregator_circuit_pkey = read_bytes_from_file(&aggregator_pkey_path)?;
-    let aggregator_circuit_vkey = GnarkGroth16Vkey::read_vk(&aggregator_vkey_path)?;
+    info!("superproof_id {:?}", superproof_id);
 
     let aggregation_start = Instant::now();
 
     let aggregation_result = QuantumV2CircuitInteractor::generate_aggregated_proof(
-        reduced_proofs,
-        reduced_pis_vec,
-        reduced_circuit_vkeys,
+        &amqp_config,
+        reduction_circuit_data_vec,
         protocol_vkey_hashes,
         protocol_pis_hashes,
-        aggregator_circuit_cs,
-        aggregator_circuit_pkey,
-        aggregator_circuit_vkey,
-    );
+        superproof_id,
+    )?;
 
     let aggregation_time = aggregation_start.elapsed();
     info!(
@@ -135,10 +120,10 @@ pub async fn handle_aggregation(
 
     // Add agg_time to the db
     update_superproof_agg_time(pool, aggregation_time.as_secs(), superproof_id).await?;
-    
+
     let proof_with_max_reduction_time = proofs.iter().max_by_key(|proof| proof.reduction_time);
     let total_proving_time = proof_with_max_reduction_time.unwrap().reduction_time.unwrap() + aggregation_time.as_secs();
     update_superproof_total_proving_time(pool, total_proving_time, superproof_id).await?;
-    
+
     Ok(())
 }
