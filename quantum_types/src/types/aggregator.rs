@@ -68,3 +68,9 @@ pub struct AggregatorData {
     current_leaves: Vec<Leaf>
 }
 
+
+pub struct AggregatorCircuitConfig {
+    pub cs:  Vec<u8>,
+    pub pkey: Vec<u8>,
+    pub vkey: GnarkGroth16Vkey,
+}

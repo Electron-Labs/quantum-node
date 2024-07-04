@@ -1,7 +1,7 @@
 use std::fs;
 
 use quantum_db::repository::{reduction_circuit_repository::add_reduction_circuit_row, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, update_user_circuit_data_redn_circuit, update_user_circuit_data_reduction_status}};
-use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType}, traits::{circuit_interactor::ReductionCircuitBuildResult, pis::Pis, vkey::Vkey}, types::{config::ConfigData, db::{reduction_circuit::{self, ReductionCircuit}, task::Task}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey}, halo2_plonk::Halo2PlonkVkey, snarkjs_groth16::SnarkJSGroth16Vkey}};
+use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType}, traits::{circuit_interactor::ReductionCircuitBuildResult, pis::Pis, vkey::Vkey}, types::{config::ConfigData, db::{reduction_circuit::{self, ReductionCircuit}, task::Task, user_circuit_data::{self, UserCircuitData}}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey}, halo2_plonk::Halo2PlonkVkey, snarkjs_groth16::SnarkJSGroth16Vkey}};
 use anyhow::{Ok, Result as AnyhowResult};
 use quantum_utils::error_line;
 use sqlx::{MySql, Pool};
@@ -11,35 +11,43 @@ use tracing::{info, error};
 
 use crate::utils::dump_reduction_circuit_data;
 
+pub fn build_reduction_circuit_from_user_circuit_data(user_circuit_data: &UserCircuitData) -> AnyhowResult<ReductionCircuitBuildResult>{
+    // Get vk_path
+    let user_vk_path = &user_circuit_data.vk_path;
+
+    // Load User Vkey
+    let circuit_build_result: ReductionCircuitBuildResult;
+
+    // Build reduction circuit
+    info!("Calling reduction circuit");
+
+    if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
+        let inner_circuit_gnark_vkey = GnarkGroth16Vkey::read_vk(user_vk_path)?;
+        info!("vkey :: {:?}", inner_circuit_gnark_vkey);
+        circuit_build_result = QuantumV2CircuitInteractor::build_gnark_groth16_circuit(inner_circuit_gnark_vkey, user_circuit_data.pis_len as usize);
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::Groth16 {
+        let inner_circuit_circom_vkey = SnarkJSGroth16Vkey::read_vk(user_vk_path)?;
+        circuit_build_result = QuantumV2CircuitInteractor::build_snarkjs_groth16_circuit(inner_circuit_circom_vkey);
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
+        let vkey = Halo2PlonkVkey::read_vk(user_vk_path)?;
+        circuit_build_result = QuantumV2CircuitInteractor::build_halo2_plonk_circuit(vkey);
+    } else {
+        error!("Unsupported Proving scheme");
+        return Err(anyhow::Error::msg(error_line!("Proving scheme unsupported")));
+    }
+
+    Ok(circuit_build_result)
+}
+
 pub async fn handle_registration_task(pool: &Pool<MySql>, registration_task: Task, config: &ConfigData) -> AnyhowResult<()> {
+
     assert_eq!(registration_task.task_type, TaskType::CircuitReduction);
     let user_circuit_hash = registration_task.user_circuit_hash;
 
     // get user_circuit_data
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(pool, &user_circuit_hash).await?;
 
-    // Get vk_path
-    let user_vk_path = user_circuit_data.vk_path;
-
-    // Load User Vkey
-    let circuit_build_result: ReductionCircuitBuildResult;
-
-    // Build reduction circuit
-    info!("Calling gnark groth16 reduction circuit");
-    if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
-        let inner_circuit_gnark_vkey = GnarkGroth16Vkey::read_vk(&user_vk_path)?;
-        info!("vkey :: {:?}", inner_circuit_gnark_vkey);
-        circuit_build_result = QuantumV2CircuitInteractor::build_gnark_groth16_circuit(inner_circuit_gnark_vkey, user_circuit_data.pis_len as usize);
-    } else if user_circuit_data.proving_scheme == ProvingSchemes::Groth16 {
-        let inner_circuit_circom_vkey = SnarkJSGroth16Vkey::read_vk(&user_vk_path)?;
-        circuit_build_result = QuantumV2CircuitInteractor::build_snarkjs_groth16_circuit(inner_circuit_circom_vkey);
-    } else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
-        let vkey = Halo2PlonkVkey::read_vk(&user_vk_path)?;
-        circuit_build_result = QuantumV2CircuitInteractor::build_halo2_plonk_circuit(vkey);
-    } else {
-        error!("Unsupported Proving scheme");
-        return Err(anyhow::Error::msg(error_line!("Proving scheme unsupported")));
-    }
+    let circuit_build_result = build_reduction_circuit_from_user_circuit_data(&user_circuit_data)?;    
 
     // Check if circuit build was successful
     if !circuit_build_result.success {

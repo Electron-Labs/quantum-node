@@ -8,9 +8,22 @@ lazy_static! {
 
 pub async fn get_pool() -> &'static Pool<MySql> {
     POOL.get_or_init(|| async {
-        let username = std::env::var("DB_USER").expect("DB_USER must be set.");
-        let password = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set.");
-        let database = std::env::var("DB_NAME").expect("DB_NAME must be set.");
+    
+    let username:String;
+    let password:String;
+    let database: String;
+
+    let test_or_prod = std::env::var("CARGO").expect("CARGO must be set.");
+    if !test_or_prod.eq("test") {
+        username = "testuser".to_string();
+        password = "test".to_string();
+        database = "test_quantum".to_string();
+    }
+    else {
+        username = std::env::var("DB_USER").expect("DB_USER must be set.");
+        password = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set.");
+        database = std::env::var("DB_NAME").expect("DB_NAME must be set.")
+    }
 
         let connection_options = MySqlConnectOptions::new()
             .username(&username)

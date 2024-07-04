@@ -11,11 +11,12 @@ use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
     traits::{circuit_interactor::CircuitInteractor, pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::ConfigData,
-        db::proof::Proof as DBProof,
-        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey},
-        halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey},
-        snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
+        aggregator::AggregatorCircuitConfig, 
+        config::ConfigData, 
+        db::proof::Proof as DBProof, 
+        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, 
+        halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, 
+        snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
     },
 };
 use quantum_utils::{
@@ -28,6 +29,60 @@ use quantum_utils::{
 };
 use sqlx::{MySql, Pool};
 use tracing::info;
+
+pub fn get_aggregator_circuit_config(config: &ConfigData) -> AnyhowResult<AggregatorCircuitConfig> {
+    let aggregator_cs_path =
+    get_aggregation_circuit_constraint_system_path(&config.aggregated_circuit_data);
+    let aggregator_pkey_path =
+        get_aggregation_circuit_proving_key_path(&config.aggregated_circuit_data);
+    let aggregator_vkey_path = get_aggregation_circuit_vkey_path(&config.aggregated_circuit_data);
+    let aggregator_circuit_cs = read_bytes_from_file(&aggregator_cs_path)?;
+    let aggregator_circuit_pkey = read_bytes_from_file(&aggregator_pkey_path)?;
+    let aggregator_circuit_vkey = GnarkGroth16Vkey::read_vk(&aggregator_vkey_path)?;
+
+    Ok(
+        AggregatorCircuitConfig{
+        cs: aggregator_circuit_cs,
+        pkey: aggregator_circuit_pkey,
+        vkey: aggregator_circuit_vkey,
+        }   
+    )
+}
+
+pub fn insert_individual_protocol_vkey_and_pis_hash(
+    proving_scheme: ProvingSchemes, 
+    protocol_circuit_vkey_path: &str,  
+    protocol_pis_path: &str, 
+    protocol_vkey_hashes: &mut Vec<Vec<u8>>, 
+    protocol_pis_hashes: &mut Vec<Vec<u8>>
+) -> AnyhowResult<()>{
+
+    match proving_scheme {
+        ProvingSchemes::GnarkGroth16 => {
+            let protocol_vkey = GnarkGroth16Vkey::read_vk(protocol_circuit_vkey_path)?;
+            protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
+
+            let protocol_pis = GnarkGroth16Pis::read_pis(protocol_pis_path)?;
+            protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
+        }
+        ProvingSchemes::Groth16 => {
+            let protocol_vkey = SnarkJSGroth16Vkey::read_vk(protocol_circuit_vkey_path)?;
+            protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
+
+            let protocol_pis = SnarkJSGroth16Pis::read_pis(protocol_pis_path)?;
+            protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
+        }
+        ProvingSchemes::Halo2Plonk => {
+            let protocol_vkey = Halo2PlonkVkey::read_vk(protocol_circuit_vkey_path)?;
+            protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
+
+            let protocol_pis = Halo2PlonkPis::read_pis(protocol_pis_path)?;
+            protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
+        }
+        _ => todo!(),
+    }
+    Ok(())
+}
 
 pub async fn handle_aggregation(
     pool: &Pool<MySql>,
@@ -64,43 +119,13 @@ pub async fn handle_aggregation(
                 .await?
                 .vk_path;
         let protocol_pis_path = proof.pis_path.clone();
-
-        match user_circuit_data.proving_scheme {
-            ProvingSchemes::GnarkGroth16 => {
-                let protocol_vkey = GnarkGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
-                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
-
-                let protocol_pis = GnarkGroth16Pis::read_pis(&protocol_pis_path)?;
-                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
-            }
-            ProvingSchemes::Groth16 => {
-                let protocol_vkey = SnarkJSGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
-                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
-
-                let protocol_pis = SnarkJSGroth16Pis::read_pis(&protocol_pis_path)?;
-                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
-            }
-            ProvingSchemes::Halo2Plonk => {
-                let protocol_vkey = Halo2PlonkVkey::read_vk(&protocol_circuit_vkey_path)?;
-                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
-
-                let protocol_pis = Halo2PlonkPis::read_pis(&protocol_pis_path)?;
-                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
-            }
-            _ => todo!(),
-        }
+        insert_individual_protocol_vkey_and_pis_hash(user_circuit_data.proving_scheme, &protocol_circuit_vkey_path, &protocol_pis_path, &mut protocol_vkey_hashes, &mut protocol_pis_hashes)?;        
     }
     println!("superproof_id {:?}", superproof_id);
 
     // Read aggregator_circuit_pkey and aggregator_circuit_vkey from file
-    let aggregator_cs_path =
-        get_aggregation_circuit_constraint_system_path(&config.aggregated_circuit_data);
-    let aggregator_pkey_path =
-        get_aggregation_circuit_proving_key_path(&config.aggregated_circuit_data);
-    let aggregator_vkey_path = get_aggregation_circuit_vkey_path(&config.aggregated_circuit_data);
-    let aggregator_circuit_cs = read_bytes_from_file(&aggregator_cs_path)?;
-    let aggregator_circuit_pkey = read_bytes_from_file(&aggregator_pkey_path)?;
-    let aggregator_circuit_vkey = GnarkGroth16Vkey::read_vk(&aggregator_vkey_path)?;
+
+    let aggregator_circuit_config = get_aggregator_circuit_config(config)?;
 
     let aggregation_start = Instant::now();
 
@@ -110,9 +135,9 @@ pub async fn handle_aggregation(
         reduced_circuit_vkeys,
         protocol_vkey_hashes,
         protocol_pis_hashes,
-        aggregator_circuit_cs,
-        aggregator_circuit_pkey,
-        aggregator_circuit_vkey,
+        aggregator_circuit_config.cs,
+        aggregator_circuit_config.pkey,
+        aggregator_circuit_config.vkey,
     );
 
     let aggregation_time = aggregation_start.elapsed();
