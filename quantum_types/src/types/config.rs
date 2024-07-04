@@ -32,9 +32,6 @@ pub struct AMQPConfigData {
     pub agg_proof_queue: String,
     pub agg_proof_reply_to_queue: String,
     pub rabbitmq_endpoint: String,
-    pub agg_pk_path: String,
-    pub agg_cs_path: String,
-    pub agg_vk_path: String,
 }
 
 impl AMQPConfigData {
@@ -47,20 +44,11 @@ impl AMQPConfigData {
             .expect("`AGG_PROOF_REPLY_TO_QUEUE` env variable must be set");
         let rabbitmq_endpoint = std::env::var("RABBITMQ_ENDPOINT")
             .expect("`RABBITMQ_ENDPOINT` env variable must be set");
-        let agg_pk_path =
-            std::env::var("AGG_PK_PATH").expect("`AGG_PK_PATH` env variable must be set");
-        let agg_cs_path =
-            std::env::var("AGG_CS_PATH").expect("`AGG_CS_PATH` env variable must be set");
-        let agg_vk_path =
-            std::env::var("AGG_VK_PATH").expect("`AGG_VK_PATH` env variable must be set");
 
         AMQPConfigData {
             agg_proof_queue,
             agg_proof_reply_to_queue,
             rabbitmq_endpoint,
-            agg_pk_path,
-            agg_cs_path,
-            agg_vk_path,
         }
     }
 }
