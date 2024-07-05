@@ -53,8 +53,6 @@ const RETRY_COUNT: u64 = 3;
 const BATCH_SIZE: u8 = 10;
 const DIRECT_PROOF_VERIFICATION_GAS_COST: u64 = 350_000;
 
-static mut Total_GAS_SAVED: u64 = 0;
-static mut TOTAL_USD_SAVED: f64 = 0.0;
 
 async fn initialize_superproof_submission_loop(
     superproof_submission_duration: Duration,
@@ -192,9 +190,6 @@ async fn initialize_superproof_submission_loop(
 
         let total_gas_saved_batch = (DIRECT_PROOF_VERIFICATION_GAS_COST * BATCH_SIZE as u64) - gas_used;
         let total_usd_saved_batch = calc_total_cost_usd(total_gas_saved_batch, gas_cost, eth_price);
-
-        unsafe { Total_GAS_SAVED += total_gas_saved_batch };
-        unsafe { TOTAL_USD_SAVED += total_usd_saved_batch };
 
         udpate_cost_saved_data(get_pool().await, total_gas_saved_batch, total_usd_saved_batch).await?;
 
