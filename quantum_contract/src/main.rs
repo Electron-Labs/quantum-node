@@ -3,6 +3,8 @@ pub mod contract;
 pub mod contract_utils;
 pub mod quantum_contract;
 
+use std::time::Instant;
+
 use chrono::{DateTime, Utc};
 use connection::get_pool;
 use contract::{gen_quantum_structs, register_cricuit_in_contract};
@@ -43,7 +45,7 @@ use crate::{
     contract_utils::{get_eth_price, get_gas_cost},
 };
 
-const SUPERPROOF_SUBMISSION_DURATION: u64 = 15 * 60;
+const SUPERPROOF_SUBMISSION_DURATION: u64 = 20 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const REGISTER_CIRCUIT_LOOP_DURATION: u64 = 1*60;
 const RETRY_COUNT: u64 = 3;
@@ -116,7 +118,7 @@ async fn initialize_superproof_submission_loop(
 
         let proofs = get_proofs_in_superproof_id(get_pool().await, new_superproof_id).await?;
 
-        let mut protocols = [Protocol::default(); 10];
+        let mut protocols = [Protocol::default(); 20];
         for (i, proof) in proofs.clone().iter().enumerate() {
             let user_circuit =
                 get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash)
@@ -149,7 +151,7 @@ async fn initialize_superproof_submission_loop(
             };
         }
 
-        
+
 
         let current_time = get_current_time();
         update_superproof_onchain_submission_time(
@@ -183,7 +185,7 @@ async fn initialize_superproof_submission_loop(
     }
 }
 
-async fn make_smart_contract_call_with_retry(protocols: [Protocol; 10], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<String> {
+async fn make_smart_contract_call_with_retry(protocols: [Protocol; 20], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<String> {
     let mut retry_count = 0;
     let mut transaction_hash : AnyhowResult<String> = Ok(String::from("0x"));
     let quantum_contract = get_quantum_contract()?;

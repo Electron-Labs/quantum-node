@@ -56,6 +56,19 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "verifierAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setVerifier",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "verifier",
     "outputs": [
@@ -107,9 +120,9 @@
                 "type": "bytes32"
               }
             ],
-            "internalType": "struct Quantum.Protocol[10]",
+            "internalType": "struct Quantum.Protocol[20]",
             "name": "protocols",
-            "type": "tuple[10]"
+            "type": "tuple[20]"
           }
         ],
         "internalType": "struct Quantum.Batch",
