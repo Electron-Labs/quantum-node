@@ -280,7 +280,7 @@ pub async fn update_superproof_fields_after_onchain_submission(pool: &Pool<MySql
             .bind(transaction_hash).bind(status.as_u8()).bind(gas_cost).bind(eth_price).bind(total_cost_usd).bind(gas_used).bind(superproof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}, {}, {}, {}", transaction_hash, status.as_u8(), gas_cost, eth_price, total_cost_usd, superproof_id);
+    info!("arguments: {}, {}, {}, {}, {}, {}, {}", transaction_hash, status.as_u8(), gas_cost, eth_price, total_cost_usd, gas_used, superproof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
