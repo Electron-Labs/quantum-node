@@ -50,7 +50,6 @@ const SUPERPROOF_SUBMISSION_DURATION: u64 = 20 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const REGISTER_CIRCUIT_LOOP_DURATION: u64 = 1*60;
 const RETRY_COUNT: u64 = 3;
-const BATCH_SIZE: u8 = 10;
 const DIRECT_PROOF_VERIFICATION_GAS_COST: u64 = 350_000;
 
 
@@ -188,7 +187,7 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
-        let total_gas_saved_batch = (DIRECT_PROOF_VERIFICATION_GAS_COST * BATCH_SIZE as u64) - gas_used;
+        let total_gas_saved_batch = (DIRECT_PROOF_VERIFICATION_GAS_COST * 20) - gas_used;
         let total_usd_saved_batch = calc_total_cost_usd(total_gas_saved_batch, gas_cost, eth_price);
 
         udpate_cost_saved_data(get_pool().await, total_gas_saved_batch, total_usd_saved_batch).await?;
@@ -198,7 +197,7 @@ async fn initialize_superproof_submission_loop(
     }
 }
 
-async fn make_smart_contract_call_with_retry(protocols: [Protocol; BATCH_SIZE as usize], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
+async fn make_smart_contract_call_with_retry(protocols: [Protocol; 20], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
     let mut retry_count = 0;
     let transaction_hash;
     let quantum_contract = get_quantum_contract()?;
