@@ -12,13 +12,14 @@ use quantum_contract::{Batch, Protocol};
 // use ethers::utils::hex::traits::ToHex;
 use keccak_hash::keccak;
 use quantum_db::repository::{
-    proof_repository::{get_proofs_in_superproof_id, update_proof_status},
-    reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
+    cost_saved_repository::insert_cost_saved_data, 
+    proof_repository::{get_proofs_in_superproof_id, update_proof_status}, 
+    reduction_circuit_repository::get_reduction_circuit_for_user_circuit, 
     superproof_repository::{
         get_first_non_submitted_superproof, get_last_verified_superproof,
         update_superproof_fields_after_onchain_submission,
         update_superproof_onchain_submission_time,
-    },
+    }, 
     user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, get_user_circuits_by_circuit_status, update_user_circuit_data_reduction_status},
 };
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes}, types::halo2_plonk::Halo2PlonkPis};
@@ -47,6 +48,7 @@ const SUPERPROOF_SUBMISSION_DURATION: u64 = 15 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const REGISTER_CIRCUIT_LOOP_DURATION: u64 = 1*60;
 const RETRY_COUNT: u64 = 3;
+const TOTAL_GAS_USED_WITHOUT_QUANTUM: u64 = 350_000 * 10;
 
 async fn initialize_superproof_submission_loop(
     superproof_submission_duration: Duration,
@@ -181,6 +183,11 @@ async fn initialize_superproof_submission_loop(
             new_superproof_id,
         )
         .await?;
+
+        let total_gas_saved = TOTAL_GAS_USED_WITHOUT_QUANTUM - gas_used;
+        let total_usd_saved = calc_total_cost_usd(total_gas_saved, gas_cost, eth_price);
+
+        insert_cost_saved_data(get_pool().await, total_gas_saved, total_usd_saved).await?;
 
         info!("Sleeping for {:?}", superproof_submission_duration);
         sleep(superproof_submission_duration).await;
