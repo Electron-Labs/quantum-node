@@ -14,7 +14,7 @@ use quantum_contract::{Batch, Protocol};
 // use ethers::utils::hex::traits::ToHex;
 use keccak_hash::keccak;
 use quantum_db::repository::{
-    cost_saved_repository::insert_cost_saved_data, 
+    cost_saved_repository::udpate_cost_saved_data, 
     proof_repository::{get_proofs_in_superproof_id, update_proof_status}, 
     reduction_circuit_repository::get_reduction_circuit_for_user_circuit, 
     superproof_repository::{
@@ -50,7 +50,11 @@ const SUPERPROOF_SUBMISSION_DURATION: u64 = 20 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const REGISTER_CIRCUIT_LOOP_DURATION: u64 = 1*60;
 const RETRY_COUNT: u64 = 3;
-const TOTAL_GAS_USED_WITHOUT_QUANTUM: u64 = 350_000 * 10;
+const BATCH_SIZE: u8 = 10;
+const DIRECT_PROOF_VERIFICATION_GAS_COST: u64 = 350_000;
+
+static mut Total_GAS_SAVED: u64 = 0;
+static mut TOTAL_USD_SAVED: f64 = 0.0;
 
 async fn initialize_superproof_submission_loop(
     superproof_submission_duration: Duration,
@@ -186,17 +190,20 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
-        let total_gas_saved = TOTAL_GAS_USED_WITHOUT_QUANTUM - gas_used;
-        let total_usd_saved = calc_total_cost_usd(total_gas_saved, gas_cost, eth_price);
+        let total_gas_saved_batch = (DIRECT_PROOF_VERIFICATION_GAS_COST * BATCH_SIZE as u64) - gas_used;
+        let total_usd_saved_batch = calc_total_cost_usd(total_gas_saved_batch, gas_cost, eth_price);
 
-        insert_cost_saved_data(get_pool().await, total_gas_saved, total_usd_saved).await?;
+        unsafe { Total_GAS_SAVED += total_gas_saved_batch };
+        unsafe { TOTAL_USD_SAVED += total_usd_saved_batch };
+
+        udpate_cost_saved_data(get_pool().await, total_gas_saved_batch, total_usd_saved_batch).await?;
 
         info!("Sleeping for {:?}", superproof_submission_duration);
         sleep(superproof_submission_duration).await;
     }
 }
 
-async fn make_smart_contract_call_with_retry(protocols: [Protocol; 10], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
+async fn make_smart_contract_call_with_retry(protocols: [Protocol; BATCH_SIZE as usize], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
     let mut retry_count = 0;
     let transaction_hash;
     let quantum_contract = get_quantum_contract()?;
