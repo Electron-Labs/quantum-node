@@ -177,6 +177,7 @@ async fn initialize_superproof_submission_loop(
             eth_price,
             SuperproofStatus::SubmittedOnchain,
             total_cost_usd,
+            gas_used,
             new_superproof_id,
         )
         .await?;
@@ -198,7 +199,7 @@ async fn make_smart_contract_call_with_retry(protocols: [Protocol; 10], gnark_pr
                 let transaction_hash_string = receipt.transaction_hash.encode_hex();
                 let transaction_hash_string = String::from("0x") + &transaction_hash_string;
                 transaction_hash = transaction_hash_string;
-                gas_used = receipt.gas_used.unwrap().as_u64();
+                gas_used = receipt.gas_used.ok_or_else(|| anyhow::anyhow!("Gas used is not found"))?.as_u64();
                 return Ok((transaction_hash, gas_used));
             }
             Err(e) => {
