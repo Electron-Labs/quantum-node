@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use connection::get_pool;
 use contract::{gen_quantum_structs, register_cricuit_in_contract};
 use dotenv::dotenv;
-use ethers::utils::hex::ToHexExt;
+use ethers::{etherscan::gas, types::TransactionReceipt, utils::hex::ToHexExt};
 use quantum_contract::{Batch, Protocol};
 // use ethers::utils::hex::traits::ToHex;
 use keccak_hash::keccak;
@@ -33,7 +33,7 @@ use quantum_types::{
 };
 use quantum_utils::{error_line, logger::initialize_logger};
 
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::{anyhow, Error, Result as AnyhowResult};
 use sqlx::types::chrono::NaiveDateTime;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info};
@@ -159,10 +159,12 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
-        let gas_cost = get_gas_cost().await.unwrap();
-        let eth_price = get_eth_price().await.unwrap();
+        let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(protocols, &gnark_proof).await?;
 
-        let transaction_hash = make_smart_contract_call_with_retry(protocols, &gnark_proof).await?;
+        let gas_cost = get_gas_cost().await?;
+        let eth_price = get_eth_price().await?;
+
+        let total_cost_usd = calc_total_cost_usd(gas_used, gas_cost, eth_price);
 
         for proof in proofs {
             update_proof_status(get_pool().await, &proof.proof_hash, ProofStatus::Verified).await?;
@@ -174,6 +176,7 @@ async fn initialize_superproof_submission_loop(
             gas_cost,
             eth_price,
             SuperproofStatus::SubmittedOnchain,
+            total_cost_usd,
             new_superproof_id,
         )
         .await?;
@@ -183,26 +186,33 @@ async fn initialize_superproof_submission_loop(
     }
 }
 
-async fn make_smart_contract_call_with_retry(protocols: [Protocol; 10], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<String> {
+async fn make_smart_contract_call_with_retry(protocols: [Protocol; 10], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
     let mut retry_count = 0;
-    let mut transaction_hash : AnyhowResult<String> = Ok(String::from("0x"));
+    let transaction_hash;
     let quantum_contract = get_quantum_contract()?;
+    let gas_used;
+    let mut error = Err(anyhow!(error_line!("Error initialized")));
     while retry_count <= RETRY_COUNT {
         match update_quantum_contract_state(&quantum_contract, Batch { protocols }, &gnark_proof).await {
             Ok(receipt) =>{
                 let transaction_hash_string = receipt.transaction_hash.encode_hex();
                 let transaction_hash_string = String::from("0x") + &transaction_hash_string;
-                transaction_hash = Ok(transaction_hash_string);
-                break;
+                transaction_hash = transaction_hash_string;
+                gas_used = receipt.gas_used.unwrap().as_u64();
+                return Ok((transaction_hash, gas_used));
             }
             Err(e) => {
                 retry_count = retry_count+1;
                 error!("error occured in smart contract call, retrying count {:?}, error: {:?}",retry_count, error_line!(e));
-                transaction_hash = Err(anyhow!(error_line!(e)))
+                error =  Err(anyhow!(error_line!(e)));
             },
         }
     }
-    transaction_hash
+    error
+}
+
+fn calc_total_cost_usd(gas_used: u64, gas_cost: f64, eth_price: f64) -> f64 {
+    (gas_used as f64 * gas_cost * eth_price)/ 1e9
 }
 
 fn get_current_time() -> NaiveDateTime {
