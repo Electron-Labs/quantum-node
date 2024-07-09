@@ -1,21 +1,30 @@
+use std::sync::Arc;
 use lazy_static::lazy_static;
 use sqlx::{mysql::{MySqlConnectOptions, MySqlPoolOptions}, MySql, Pool};
-use tokio::sync::Mutex;
 use sqlx::MySqlPool;
+use async_rwlock::RwLock;
 
 
 lazy_static!{
-    static ref POOL: Mutex<Option<Pool<MySql>>> = Mutex::new(None);
+    static ref POOL: Arc<RwLock<Option<Pool<MySql>>>> = Arc::new(RwLock::new(None));    
 }
 
-pub async fn get_pool() -> &'static Mutex<Option<Pool<MySql>>> {
-    let mut pool = POOL.lock().await;
-    match &mut *pool {
-        None => {
-            *pool = Some(init_pool(5).await);
-        },
-        _ => {}
+pub async fn get_pool() -> &'static Arc<RwLock<Option<Pool<MySql>>>> {
+
+    // check if pool is already initialized
+    let pool_read_guard = POOL.read().await;
+    if !pool_read_guard.is_none() {
+        return &POOL;
     }
+
+    drop(pool_read_guard);
+    
+    
+    let mut pool_write_guard = POOL.write().await;
+    if pool_write_guard.is_none() { 
+        *pool_write_guard = Some(init_pool(5).await);
+    }
+    
     &POOL
 }
 
@@ -52,18 +61,23 @@ pub async fn connection_options() -> MySqlConnectOptions {
 }
 
 pub async fn terminate_pool() {
-
     let test_or_prod = std::env::var("CARGO").expect("CARGO must be set.");
     if !test_or_prod.eq("test"){
         println!("cannot terminate pool in production");
     }
-    let mut pool = POOL.lock().await;
+    let mut pool = POOL.write().await;
 
-    // closing pool
-    pool.as_mut().unwrap().close().await;
-    println!("previous pool: {:?}", pool);
-    // setting pool to None
-    *pool = None;
-    println!("new pool: {:?}", pool);
+    // Check if there is a pool to close
+    if let Some(pool_ref) = pool.as_mut() {
+        // Close the pool
+        let _ = pool_ref.close().await;
+        println!("previous pool closed");
+
+        // Reset the pool to None
+        *pool = None;
+        println!("new pool set to None");
+    } else {
+        println!("No pool found to close");
+    }
 
 }

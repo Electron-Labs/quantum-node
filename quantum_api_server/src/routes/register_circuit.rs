@@ -12,7 +12,7 @@ use crate::{connection::get_pool, error::error::CustomError, service::register_c
 #[post("/register_circuit", data = "<data>")]
 pub async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
     let response: AnyhowResult<RegisterCircuitResponse>;
-    let protocol = match get_protocol_by_auth_token(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &auth_token.0).await {
+    let protocol = match get_protocol_by_auth_token(get_pool().await.read().await.as_ref().as_ref().unwrap(), &auth_token.0).await {
         Ok(p) => Ok(p),
         Err(e) => {
             error!("error in db while fetching protocol");

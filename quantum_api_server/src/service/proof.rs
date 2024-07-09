@@ -35,8 +35,8 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     proof.dump_proof(&proof_full_path)?;
     pis.dump_pis(&pis_full_path)?;
 
-    insert_proof(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash).await?;
-    create_proof_task(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await?;
+    insert_proof(get_pool().await.read().await.as_ref().as_ref().unwrap(), &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash).await?;
+    create_proof_task(get_pool().await.read().await.as_ref().as_ref().unwrap(), &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await?;
 
     Ok(SubmitProofResponse {
         proof_id
@@ -50,7 +50,7 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
         transaction_hash: None,
         verification_contract: config_data.verification_contract_address.clone()
     };
-    let proof = get_proof_by_proof_hash(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &proof_id).await;
+    let proof = get_proof_by_proof_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), &proof_id).await;
     if proof.is_err() {
         return Ok(response);
     }
@@ -59,7 +59,7 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
     response.status = proof.proof_status.to_string();
     if proof.superproof_id.is_some() {
         let superproof_id = proof.superproof_id.unwrap_or(0);
-        let superproof = get_superproof_by_id(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), superproof_id).await;
+        let superproof = get_superproof_by_id(get_pool().await.read().await.as_ref().as_ref().unwrap(), superproof_id).await;
         let superproof = match superproof {
             Ok(sp) => Ok(sp),
             Err(e) => {
@@ -78,7 +78,7 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
 }
 
 async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest) -> AnyhowResult<()>{
-    let circuit_data = get_user_circuit_data_by_circuit_hash(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &data.circuit_hash).await;
+    let circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), &data.circuit_hash).await;
     let circuit_data = match circuit_data {
         Ok(cd) => Ok(cd),
         Err(e) => {
@@ -103,7 +103,7 @@ async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest
 }
 
 pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str) -> AnyhowResult<()> {
-    let proof = match get_latest_proof_by_circuit_hash(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), circuit_hash).await {
+    let proof = match get_latest_proof_by_circuit_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), circuit_hash).await {
         Ok(p) => Ok(p),
         Err(e) => {
             error!("error in finding the last proof for circuit hash {:?}: {:?}", circuit_hash, error_line!(e));
@@ -123,7 +123,7 @@ pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str
 }
 
 pub async fn check_if_proof_already_exist(proof_id: &str) -> AnyhowResult<()> {
-    let proof = get_proof_by_proof_hash(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), proof_id).await;
+    let proof = get_proof_by_proof_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), proof_id).await;
     let is_proof_already_registered = match proof {
         Ok(_) => true,
         Err(_) => false
@@ -136,14 +136,14 @@ pub async fn check_if_proof_already_exist(proof_id: &str) -> AnyhowResult<()> {
 }
 
 pub async fn get_protocol_proof_exec(proof_id: &str) -> AnyhowResult<ProtocolProofResponse> {
-    let proof = get_proof_by_proof_hash(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), proof_id).await?;
+    let proof = get_proof_by_proof_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), proof_id).await?;
     if proof.proof_status != ProofStatus::Verified {
         return Err(anyhow!(CustomError::Internal(error_line!("proof is not verified".to_string()))))
     }
-    let reduction_circuit = get_reduction_circuit_for_user_circuit(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &proof.user_circuit_hash).await?;
+    let reduction_circuit = get_reduction_circuit_for_user_circuit(get_pool().await.read().await.as_ref().as_ref().unwrap(), &proof.user_circuit_hash).await?;
     let proof_hash = proof_id;
     let reduction_circuit_hash = reduction_circuit.circuit_id;
-    let latest_verififed_superproof = match get_last_verified_superproof(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await? {
+    let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await.read().await.as_ref().as_ref().unwrap()).await? {
         Some(superproof) => Ok(superproof),
         None => Err(anyhow!(CustomError::Internal(error_line!("last super proof verified not found".to_string())))),
     }?;

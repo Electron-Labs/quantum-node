@@ -26,8 +26,8 @@ async fn before_test(client: &Client) -> String{
 
 
 async fn after_test() {
-    let _ = delete_all_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
-    let _ = delete_all_task_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_user_circuit_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
+    let _ = delete_all_task_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
 }
 
 #[tokio::test]
@@ -52,7 +52,7 @@ async fn test_get_circuit_reduction_status_with_invalid_circuit_hash(){
 async fn test_get_circuit_reduction_status_with_invalid_proof_type(){
     let client = setup().await;
     let circuit_hash = "0x6d42821632517e2b28b39b33aaf268a0785df7d68cccd3e01737c8de3f3ff6d7";
-    let _ = insert_random_protocol_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), circuit_hash);
+    let _ = insert_random_protocol_user_circuit_data(get_pool().await.read().await.as_ref().as_ref().unwrap(), circuit_hash);
     let response = client.get(format!("/circuit/{}/status", circuit_hash)).header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
 
     println!("response: {:?}", response);

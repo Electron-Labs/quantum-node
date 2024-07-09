@@ -8,7 +8,7 @@ pub fn rocket_builder() -> Rocket<Build> {
         ..Default::default()
     }.to_cors().unwrap();
 
-    let config_data = ConfigData::new("/home/aditya/work/quantum-node/config.yaml");
+    let config_data = ConfigData::new("../../quantum-node/config.yaml");
     let t = rocket::Config::figment();
 
     rocket::custom(t).manage(config_data)

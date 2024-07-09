@@ -27,7 +27,7 @@ async fn before_test(client: &Client) -> String{
 
     // updating proof status to complete
     let circuit_hash = res.circuit_hash;
-    let _ = update_circuit_redn_status_user_circuit_data_completed(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &circuit_hash).await;
+    let _ = update_circuit_redn_status_user_circuit_data_completed(get_pool().await.read().await.as_ref().as_ref().unwrap(), &circuit_hash).await;
 
     // submitting correctproof
 
@@ -52,9 +52,9 @@ async fn before_test(client: &Client) -> String{
 }
 
 async fn after_test() {
-    let _ = delete_all_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
-    let _ = delete_all_task_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
-    let _ = delete_all_proof_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_user_circuit_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
+    let _ = delete_all_task_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
+    let _ = delete_all_proof_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
 }
 
 #[tokio::test]
@@ -85,7 +85,7 @@ async fn test_proof_status_with_valid_proof_id_invalid_superproof_id(){
     let proof_id = before_test(client).await;
     let invalid_superproof_id: u32 = 32;
     
-    let _ = update_superproof_id(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &proof_id, invalid_superproof_id).await;
+    let _ = update_superproof_id(get_pool().await.read().await.as_ref().as_ref().unwrap(), &proof_id, invalid_superproof_id).await;
 
     let response = client.get(format!("/proof/{}", proof_id)).header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
 

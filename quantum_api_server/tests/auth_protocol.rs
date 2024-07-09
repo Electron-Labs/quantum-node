@@ -6,7 +6,7 @@ use rocket::http::{ContentType, Header, Status};
 const MASTER_AUTH_TOKEN: &str = "random";
 
 async fn after_test(protocol_name: &str){
-    let _ = delete_protocol_from_protocol_name(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), protocol_name).await;
+    let _ = delete_protocol_from_protocol_name(get_pool().await.read().await.as_ref().as_ref().unwrap(), protocol_name).await;
 }
 
 #[tokio::test]

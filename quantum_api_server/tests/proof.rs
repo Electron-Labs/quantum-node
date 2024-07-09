@@ -21,13 +21,13 @@ async fn before_test(client: &Client){
 
     // update reduction status to completed
     let circuit_hash = res.circuit_hash;
-    let _ = update_circuit_redn_status_user_circuit_data_completed(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &circuit_hash).await;
+    let _ = update_circuit_redn_status_user_circuit_data_completed(get_pool().await.read().await.as_ref().as_ref().unwrap(), &circuit_hash).await;
 }
 
 async fn after_test() {
-    let _ = delete_all_task_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
-    let _ = delete_all_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
-    let _ = delete_all_proof_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_task_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
+    let _ = delete_all_user_circuit_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
+    let _ = delete_all_proof_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
 }
 
 #[tokio::test]

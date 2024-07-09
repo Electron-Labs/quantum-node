@@ -9,8 +9,8 @@ use crate::common::setup;
 const  AUTH_TOKEN: &str = "b3047d47c5d6551744680f5c3ba77de90acb84055eefdcbb";
 
 pub async fn after_test() {
-    let _ = delete_all_user_circuit_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
-    let _ = delete_all_task_data(&get_pool().await.lock().await.as_ref().expect("DB uninitialized")).await;
+    let _ = delete_all_user_circuit_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
+    let _ = delete_all_task_data(get_pool().await.read().await.as_ref().as_ref().unwrap()).await;
 }
 
 #[tokio::test]
@@ -116,7 +116,7 @@ async fn test_register_circuit_should_return_saved_reduction_circuit(){
     .header(ContentType::JSON).body(payload).dispatch().await;
 
     // fetching from task table
-    let result = get_task_data_count_from_circuit_hash(&get_pool().await.lock().await.as_ref().expect("DB uninitialized"), &circuit_hash).await.expect("Error in fetching from task table");
+    let result = get_task_data_count_from_circuit_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), &circuit_hash).await.expect("Error in fetching from task table");
 
     // still there should be one entry
     assert_eq!(result, 1);
