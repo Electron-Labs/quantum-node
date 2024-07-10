@@ -48,8 +48,8 @@ use sqlx::{MySql, Pool};
 use std::{thread::sleep, time::Duration};
 use tracing::{info, error};
 
-pub const BATCH_SIZE: u64 = 10; // Number of proofs to be included in 1 batch
-pub const WORKER_SLEEP_SECS: u64 = 10;
+pub const BATCH_SIZE: u64 = 20; // Number of proofs to be included in 1 batch
+pub const WORKER_SLEEP_SECS: u64 = 1;
 
 pub async fn regsiter_circuit(
     pool: &Pool<MySql>,

@@ -1,5 +1,5 @@
 use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, get_proof_by_proof_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{circuit_interactor::{IMT_Tree, KeccakHashOut}, pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis, hash::KeccakHashOut, imt::IMT_Tree}};
 use quantum_utils::{keccak::{convert_string_to_be_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
 use rocket::State;
 use anyhow::{anyhow, Context, Result as AnyhowResult};
@@ -35,7 +35,8 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     proof.dump_proof(&proof_full_path)?;
     pis.dump_pis(&pis_full_path)?;
 
-    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash).await?;
+    let public_inputs_json_string =  serde_json::to_string(&pis_data).unwrap();
+    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash, &public_inputs_json_string).await?;
     create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await?;
 
     Ok(SubmitProofResponse {
@@ -92,7 +93,7 @@ async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest
         info!("circuit reduction not completed");
         return Err(anyhow!(CustomError::BadRequest(error_line!("circuit reduction not completed".to_string()))));
     }
-    
+
     if data.proof_type != circuit_data.proving_scheme {
         info!("prove type is not correct");
         return Err(anyhow!(CustomError::BadRequest(error_line!("prove type is not correct".to_string()))));
@@ -118,7 +119,7 @@ pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str
     let proof = proof?;
     if proof.proof_status == ProofStatus::Registered || proof.proof_status == ProofStatus::Reducing || proof.proof_status == ProofStatus::Reduced {
         return Err(anyhow!(CustomError::BadRequest(error_line!(format!("last proof for circuit id {:?} hasn't been verified, rejecting proof submission request", circuit_hash)))))
-    } 
+    }
     Ok(())
 }
 

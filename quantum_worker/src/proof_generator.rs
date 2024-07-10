@@ -2,7 +2,7 @@ use std::{fs, str::FromStr};
 
 use anyhow::{Ok, Result as AnyhowResult};
 use num_bigint::BigUint;
-use quantum_circuits_ffi::interactor::QuantumV2CircuitInteractor;
+use quantum_circuits_interface::ffi::interactor::QuantumV2CircuitInteractor;
 use quantum_db::repository::{
     proof_repository::{get_proof_by_proof_hash, update_reduction_data},
     reduction_circuit_repository::get_reduction_circuit_data_by_id,
@@ -11,7 +11,7 @@ use quantum_db::repository::{
 use quantum_types::{
     enums::{proving_schemes::ProvingSchemes, task_type::TaskType},
     traits::{
-        circuit_interactor::{CircuitInteractor, GenerateReductionProofResult},
+        circuit_interactor::{CircuitInteractorFFI, GenerateReductionProofResult},
         pis::Pis,
         proof::Proof,
         vkey::Vkey,
@@ -107,8 +107,10 @@ pub async fn handle_proof_generation_task(
         println!("pis2 {:?}", pis2);
         println!("p1 {:?}", prove_result.reduced_pis.0[0]);
         println!("p2 {:?}", prove_result.reduced_pis.0[1]);
-        assert_eq!(pis1, prove_result.reduced_pis.0[0]);
-        assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        if prove_result.success {
+            assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+            assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        }
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Groth16 {
         // 1.Reconstruct inner proof
         let snarkjs_inner_proof: SnarkJSGroth16Proof =
@@ -138,8 +140,10 @@ pub async fn handle_proof_generation_task(
         println!("pis2 {:?}", pis2);
         println!("p1 {:?}", prove_result.reduced_pis.0[0]);
         println!("p2 {:?}", prove_result.reduced_pis.0[1]);
-        assert_eq!(pis1, prove_result.reduced_pis.0[0]);
-        assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        if prove_result.success {
+            assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+            assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        }
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
         let inner_proof = Halo2PlonkProof::read_proof(&inner_proof_path)?;
         let inner_vk = Halo2PlonkVkey::read_vk(&inner_vk_path)?;
@@ -163,8 +167,10 @@ pub async fn handle_proof_generation_task(
         let pis2 = BigUint::from_bytes_be(&hash[16..32]).to_string();
         println!("pis1 {:?}", pis1);
         println!("pis2 {:?}", pis2);
-        assert_eq!(pis1, prove_result.reduced_pis.0[0]);
-        assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        if prove_result.success {
+            assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+            assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        }
     } else {
         return Ok(());
     }

@@ -361,6 +361,13 @@ impl Pis for GnarkGroth16Pis {
     }
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct GnarkVerifier {
+    pub Proof: GnarkGroth16Proof,
+    pub VK: GnarkGroth16Vkey,
+    pub PubInputs: Vec<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::GnarkGroth16Vkey;
