@@ -17,7 +17,7 @@ lazy_static!{
 pub async fn setup() -> &'static Client{
     dotenv().ok();
     println!("setting up");
-    let _db_initialize = get_pool().await.read().await.as_ref().unwrap();
+    let _db_initialize = get_pool().await;
     CLIENT.get_or_init(|| async{
         Client::tracked(rocket_builder()).await.expect("Invalid rocket instance")
     }).await

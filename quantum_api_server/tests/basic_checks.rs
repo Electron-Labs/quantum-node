@@ -1,4 +1,3 @@
-use quantum_api_server::connection::terminate_pool;
 use rocket::http::{ContentType, Header, Status};
 
 mod common;
@@ -14,7 +13,6 @@ async fn test_invalid_path(){
     assert_ne!(response.status(), Status::Ok);
     assert_eq!(response.status(), Status::NotFound);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
-    terminate_pool().await;
 }
 
 
@@ -26,7 +24,6 @@ async fn test_invalid_auth_token(){
     assert_ne!(response.status(), Status::Ok);
     assert_eq!(response.status(), Status::Unauthorized);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
-    terminate_pool().await;
 }
 
 #[tokio::test]
@@ -36,7 +33,6 @@ async fn test_ping(){
     assert_eq!(response.status(), Status::Ok);
     assert_eq!(response.content_type().unwrap(), ContentType::Plain);
     assert_eq!(response.into_string().await.unwrap(), "pong");
-    terminate_pool().await;
 }
 
 #[tokio::test]
@@ -45,5 +41,4 @@ async fn test_index(){
     let response = client.get("/").header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
     assert_eq!(response.status(), Status::Ok);
     assert_eq!(response.into_string().await.unwrap(), "Hello, world!");
-    terminate_pool().await;
 }

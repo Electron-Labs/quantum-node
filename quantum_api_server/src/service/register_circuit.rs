@@ -50,7 +50,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     println!("reduction_circuit_id {:?}", reduction_circuit_id);
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await.read().await.as_ref().as_ref().unwrap(), &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,if reduction_circuit_id.is_some() {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,if reduction_circuit_id.is_some() {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
     println!("insert_user_circuit_data DONE");
     // Create a reduction task for Async worker to pick up later on
     create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
@@ -72,7 +72,7 @@ pub fn get_public_input_count(data: &RegisterCircuitRequest) -> AnyhowResult<u8>
 }
 
 pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResult<CircuitRegistrationStatusResponse> {
-    let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), circuit_hash.as_str()).await?;
+    let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash.as_str()).await?;
     let status = user_circuit.circuit_reduction_status;
     return Ok(CircuitRegistrationStatusResponse {
         circuit_registration_status: status.to_string(),
@@ -81,7 +81,7 @@ pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResu
 }
 
 // pub async fn get_reduction_circuit_hash_exec(circuit_hash: String) -> AnyhowResult<> {
-//     let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), &circuit_hash).await?;
+//     let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, &circuit_hash).await?;
 //     return GetReductionCircuitHash {
 //         reduction_circuit_hash: user_circuit.reduction_circuit_id
 //     }
@@ -99,7 +99,7 @@ async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSch
 
 async fn create_circuit_reduction_task(reduction_circuit_id: Option<String>, circuit_hash: &str) -> AnyhowResult<()> {
     if reduction_circuit_id.is_none() {
-        task_repository::create_circuit_reduction_task(get_pool().await.read().await.as_ref().as_ref().unwrap(), circuit_hash, TaskType::CircuitReduction , TaskStatus::NotPicked).await?;
+        task_repository::create_circuit_reduction_task(get_pool().await, circuit_hash, TaskType::CircuitReduction , TaskStatus::NotPicked).await?;
     }
     Ok(())
 }
@@ -107,7 +107,7 @@ async fn create_circuit_reduction_task(reduction_circuit_id: Option<String>, cir
 async fn get_existing_compatible_reduction_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> Option<ReductionCircuit> {
     let mut reduction_circuit = None;
     if proving_scheme == ProvingSchemes::Groth16 {
-        reduction_circuit =  check_if_pis_len_compatible_reduction_circuit_exist(get_pool().await.read().await.as_ref().as_ref().unwrap(), num_public_inputs, proving_scheme).await;
+        reduction_circuit =  check_if_pis_len_compatible_reduction_circuit_exist(get_pool().await, num_public_inputs, proving_scheme).await;
     }
     reduction_circuit
 }
@@ -115,7 +115,7 @@ async fn get_existing_compatible_reduction_circuit(num_public_inputs: u8, provin
 
 
 async fn check_if_circuit_has_already_registered(circuit_hash_string: &str) -> bool {
-    let circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await.read().await.as_ref().as_ref().unwrap(), circuit_hash_string).await;
+    let circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash_string).await;
     let is_circuit_already_registered = match circuit_data {
         Ok(_) => true,
         Err(_) => false

@@ -1,12 +1,12 @@
 mod common;
 use common::{repository::protocol_repository::delete_protocol_from_protocol_name, setup};
-use quantum_api_server::{connection::{get_pool, terminate_pool}, types::generate_auth_token::GenerateAuthTokenResponse};
+use quantum_api_server::{connection::get_pool, types::generate_auth_token::GenerateAuthTokenResponse};
 use rocket::http::{ContentType, Header, Status};
 
 const MASTER_AUTH_TOKEN: &str = "random";
 
 async fn after_test(protocol_name: &str){
-    let _ = delete_protocol_from_protocol_name(get_pool().await.read().await.as_ref().as_ref().unwrap(), protocol_name).await;
+    let _ = delete_protocol_from_protocol_name(get_pool().await, protocol_name).await;
 }
 
 #[tokio::test]
@@ -16,7 +16,6 @@ async fn test_get_auth_token_with_missing_payload(){
 
     assert_eq!(response.status(), Status::UnsupportedMediaType);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
-    terminate_pool().await;
 }
 
 #[tokio::test]
@@ -30,8 +29,6 @@ async fn test_get_auth_token_with_invalid_payload(){
     
     assert_eq!(response.status(), Status::InternalServerError);
     assert_ne!(response.content_type().unwrap(), ContentType::JSON);
-
-    terminate_pool().await;
 }
 
 
@@ -61,7 +58,6 @@ async fn test_get_auth_token_with_repeated_protocol_registration(){
     assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 
     after_test("new_protocol").await;
-    terminate_pool().await;
 }
 
 #[tokio::test]
@@ -81,5 +77,4 @@ async fn test_get_auth_token_with_valid_payload(){
     assert!(!res.auth_token.is_empty());
 
     after_test("new_protocol").await;
-    terminate_pool().await;
 }

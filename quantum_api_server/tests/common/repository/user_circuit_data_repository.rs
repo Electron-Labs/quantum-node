@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result as AnyhowResult};
 use quantum_db::error::error::CustomError;
 use quantum_types::types::db::reduction_circuit;
 use quantum_utils::error_line;
-use sqlx::{Any, Execute, MySql, Pool};
+use sqlx::{Execute, MySql, Pool};
 use tracing::info;
 
 pub async fn delete_all_user_circuit_data(pool: &Pool<MySql>) -> AnyhowResult<()> {
