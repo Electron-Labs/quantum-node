@@ -89,6 +89,8 @@ CREATE TABLE IF NOT EXISTS superproof (
   total_cost_usd decimal(18,2) DEFAULT NULL,
   total_proving_time decimal(18,2) DEFAULT NULL,
   previous_superproof_root varchar(255) DEFAULT NULL
+  imt_proof_path VARCHAR(255) DEFAULT NULL,
+  imt_pis_path VARCHAR(255) DEFAULT NULL,
 );
 
 CREATE TABLE IF NOT EXISTS proof_submission_config (

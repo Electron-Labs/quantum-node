@@ -12,7 +12,7 @@
 
 pub mod aggregator;
 pub mod connection;
-pub mod imt_aggregator;
+pub mod imt;
 pub mod proof_generator;
 pub mod registration;
 pub mod utils;
@@ -20,6 +20,7 @@ pub mod utils;
 use aggregator::handle_aggregation;
 use anyhow::{anyhow, Result as AnyhowResult};
 use dotenv::dotenv;
+use imt::handle_imt;
 use quantum_db::{
     error::error::CustomError,
     repository::{
@@ -46,10 +47,7 @@ use quantum_types::{
 use quantum_utils::{error_line, logger::initialize_logger};
 use sqlx::{MySql, Pool};
 use std::{thread::sleep, time::Duration};
-use tracing::{info, error};
-
-pub const BATCH_SIZE: u64 = 10; // Number of proofs to be included in 1 batch
-pub const WORKER_SLEEP_SECS: u64 = 10;
+use tracing::{error, info};
 
 pub async fn regsiter_circuit(
     pool: &Pool<MySql>,
@@ -111,32 +109,15 @@ pub async fn aggregate_proofs(
     pool: &Pool<MySql>,
     proofs: Vec<Proof>,
     config: &ConfigData,
+    superproof_id: u64,
 ) -> AnyhowResult<()> {
-    let mut proof_ids: Vec<u64> = vec![];
-    for proof in &proofs {
-        let proof_id = match proof.id {
-            Some(id) => Ok(id),
-            None => Err(anyhow!(error_line!("not able to find proofId"))),
-        };
-        let proof_id = proof_id?;
-        proof_ids.push(proof_id);
-    }
-
-    let proof_json_string = serde_json::to_string(&proof_ids)?;
-    println!("1");
     for proof in &proofs {
         update_proof_status(pool, &proof.proof_hash, ProofStatus::Aggregating).await?;
     }
-    println!("2");
-    let superproof_id =
-        insert_new_superproof(pool, &proof_json_string, SuperproofStatus::InProgress).await?;
 
-    println!("3");
     for proof in &proofs {
         update_superproof_id_in_proof(pool, &proof.proof_hash, superproof_id).await?;
     }
-
-    println!("4");
     // 4. superproof_status -> (0: Not Started, 1: IN_PROGRESS, 2: PROVING_DONE, 3: SUBMITTED_ONCHAIN, 4: FAILED)
 
     let aggregation_request = handle_aggregation(pool, proofs.clone(), superproof_id, config).await;
@@ -236,13 +217,49 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
     loop {
         println!("Running worker loop");
         // let aggregation_awaiting_tasks = get_aggregation_waiting_tasks_num(pool).await?;
-        let aggregation_awaiting_proofs = get_n_reduced_proofs(pool, BATCH_SIZE).await?;
+        let aggregation_awaiting_proofs =
+            get_n_reduced_proofs(pool, config_data.batch_size).await?;
         println!(
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
         );
-        if aggregation_awaiting_proofs.len() == BATCH_SIZE as usize {
-            aggregate_proofs(pool, aggregation_awaiting_proofs, config_data).await?;
+        if aggregation_awaiting_proofs.len() == config_data.batch_size as usize {
+            // INSERT NEW SUPERPROOF RECORD
+            let mut proof_ids: Vec<u64> = vec![];
+            for proof in &aggregation_awaiting_proofs {
+                let proof_id = match proof.id {
+                    Some(id) => Ok(id),
+                    None => Err(anyhow!(error_line!("not able to find proofId"))),
+                };
+                let proof_id = proof_id?;
+                proof_ids.push(proof_id);
+            }
+            let proof_json_string = serde_json::to_string(&proof_ids)?;
+            let superproof_id =
+                insert_new_superproof(pool, &proof_json_string, SuperproofStatus::InProgress)
+                    .await?;
+            info!(
+                "added new superproof record => superproof_id={}",
+                superproof_id
+            );
+
+            // IMT
+            handle_imt(
+                pool,
+                aggregation_awaiting_proofs.clone(),
+                superproof_id,
+                config_data,
+            )
+            .await?;
+
+            // Aggregation
+            aggregate_proofs(
+                pool,
+                aggregation_awaiting_proofs,
+                config_data,
+                superproof_id,
+            )
+            .await?;
         }
 
         let unpicked_task = get_unpicked_task(pool).await?;
@@ -268,15 +285,15 @@ async fn main() {
     dotenv().ok();
     info!(" --- Starting worker --- ");
     let _guard = initialize_logger("qunatum_node_worker.log");
-    let worker_sleep_duration = Duration::from_secs(WORKER_SLEEP_SECS);
     let config_data = ConfigData::new("./config.yaml");
+    let worker_sleep_duration = Duration::from_secs(config_data.worker_sleep_secs);
     match worker(worker_sleep_duration, &config_data).await {
         Ok(_) => {
             info!("stopping worker");
-        },
+        }
         Err(e) => {
             error!("error encountered in worker: {}", e);
             error!("worker stopped");
-        },    
+        }
     };
 }

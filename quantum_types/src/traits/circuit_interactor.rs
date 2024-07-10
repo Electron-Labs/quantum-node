@@ -1,5 +1,5 @@
 use crate::types::{
-    config::{AMQPConfigData, ConfigData},
+    config::AMQPConfigData,
     gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, GnarkVerifier},
     halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey},
     hash::KeccakHashOut,
@@ -29,15 +29,20 @@ pub struct GenerateAggregatedProofResult {
     pub success: bool,
     pub msg: String,
     pub aggregated_proof: GnarkGroth16Proof,
+    pub old_root: Vec<u8>,
+    pub new_root: Vec<u8>,
+    pub pub_inputs: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
-pub struct GenerateIMTAggregatedProofResult {
+pub struct GenerateImtProofResult {
     pub success: bool,
     pub msg: String,
     pub aggregated_proof: GnarkGroth16Proof,
+    pub old_root: KeccakHashOut,
     pub new_root: KeccakHashOut,
     pub new_leaves: Vec<QuantumLeaf>,
+    pub pub_inputs: Vec<String>,
 }
 
 pub trait CircuitInteractorFFI {
@@ -74,36 +79,31 @@ pub trait CircuitInteractorFFI {
         outer_vk: GnarkGroth16Vkey,
         outer_pk_bytes: Vec<u8>,
     ) -> GenerateReductionProofResult;
-    // Generate IMT Aggregated Proof corresponding to bunch of reduced proofs
-    fn generate_imt_aggregated_proof(
-        reduced_proofs: Vec<GnarkGroth16Proof>,
-        reduced_pis: Vec<GnarkGroth16Pis>,
-        reduction_circuit_vkeys: Vec<GnarkGroth16Vkey>,
-        old_root: KeccakHashOut,
-        old_leaves: Vec<QuantumLeaf>,
-        aggregator_circuit_pkey: Vec<u8>,
-        aggregator_circuit_vkey: GnarkGroth16Vkey,
-    ) -> AnyhowResult<GenerateIMTAggregatedProofResult>;
-    // Generate Aggregated Proof corresponding to bunch of reduced proofs
-    fn generate_aggregated_proof(
-        generate_aggregated_proof: Vec<GnarkVerifier>,
-        protocol_vkey_hashes: Vec<Vec<u8>>,
-        protocol_pis_hashes: Vec<Vec<u8>>,
-        aggregator_circuit_cs: Vec<u8>,
-        aggregator_circuit_pkey: Vec<u8>,
-        aggregator_circuit_vkey: GnarkGroth16Vkey,
-    ) -> GenerateReductionProofResult;
 }
 
 pub trait CircuitInteractorAMQP {
     // Generate Aggregated Proof corresponding to bunch of reduced proofs
     fn generate_aggregated_proof(
         config_data: &AMQPConfigData,
+        batch_size: u64,
+        cur_leaves: Vec<QuantumLeaf>,
         reduced_circuit_data_vec: Vec<GnarkVerifier>,
+        imt_reduction_circuit_data: GnarkVerifier,
         protocol_vkey_hashes: Vec<Vec<u8>>,
         protocol_pis_hashes: Vec<Vec<u8>>,
         superproof_id: u64,
-    ) -> AnyhowResult<GenerateReductionProofResult>;
+    ) -> AnyhowResult<GenerateAggregatedProofResult>;
+
+    // Generate IMT corresponding to bunch of reduced proofs
+    fn generate_imt_proof(
+        config_data: &AMQPConfigData,
+        batch_size: u64,
+        cur_leaves: Vec<QuantumLeaf>,
+        reduced_vkey_hashes: Vec<Vec<u8>>,
+        protocol_vkey_hashes: Vec<Vec<u8>>,
+        protocol_pis_hashes: Vec<Vec<u8>>,
+        superproof_id: u64,
+    ) -> AnyhowResult<GenerateImtProofResult>;
 }
 
 #[cfg(test)]
@@ -117,13 +117,13 @@ mod tests {
         traits::{circuit_interactor::KeccakHashOut, pis::Pis, vkey::Vkey},
         types::{
             gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey},
-            imt::IMT_Tree,
+            imt::ImtTree,
         },
     };
 
     #[test]
     pub fn test() {
-        // let tree = IMT_Tree::read_tree("/home/ubuntu/quantum/quantum-node/storage/superproofs/6/leaves.bin").unwrap();
+        // let tree = ImtTree::read_tree("/home/ubuntu/quantum/quantum-node/storage/superproofs/6/leaves.bin").unwrap();
         // println!("{:?}", tree.leafs[1]);
 
         // let val: [u8; 32] = tree.leafs[1].next_value.0;
@@ -154,7 +154,7 @@ mod tests {
 
         let final_hash = keccak_hash::keccak(keccak_ip).0;
 
-        let tree = IMT_Tree::read_tree(
+        let tree = ImtTree::read_tree(
             "/home/ubuntu/quantum/quantum-node/storage/superproofs/12/leaves.bin",
         )
         .unwrap();

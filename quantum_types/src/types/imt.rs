@@ -28,11 +28,11 @@ impl QuantumLeaf {
 }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub struct IMT_Tree {
-    pub leafs: Vec<QuantumLeaf>,
+pub struct ImtTree {
+    pub leaves: Vec<QuantumLeaf>,
 }
 
-impl IMT_Tree {
+impl ImtTree {
     pub fn serialise_imt_tree(&self) -> AnyhowResult<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         BorshSerialize::serialize(&self, &mut buffer)?;
@@ -40,7 +40,7 @@ impl IMT_Tree {
     }
 
     pub fn deserialise_imt_tree(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let imt_tree: IMT_Tree =
+        let imt_tree: ImtTree =
             BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(imt_tree)
     }
@@ -53,12 +53,12 @@ impl IMT_Tree {
 
     pub fn read_tree(path: &str) -> AnyhowResult<Self> {
         let imt_bytes = read_bytes_from_file(path)?;
-        let imt_tree = IMT_Tree::deserialise_imt_tree(&mut imt_bytes.as_slice())?;
+        let imt_tree = ImtTree::deserialise_imt_tree(&mut imt_bytes.as_slice())?;
         Ok(imt_tree)
     }
 
     pub fn get_mtree(&self) -> MerkleTree<KeccakHasher> {
-        let leaves_structs = self.leafs.clone();
+        let leaves_structs = self.leaves.clone();
         let leaves = leaves_structs
             .iter()
             .map(|leaf_struct| keccak(&leaf_struct.serialize()).0)
@@ -70,7 +70,7 @@ impl IMT_Tree {
         &self,
         leaf_val: KeccakHashOut,
     ) -> AnyhowResult<(Vec<Vec<u8>>, Vec<u8>, QuantumLeaf)> {
-        let leafs = self.leafs.clone();
+        let leafs = self.leaves.clone();
         let mut leaf_asked: Option<QuantumLeaf> = None;
         for leaf in leafs {
             if leaf.value == leaf_val {

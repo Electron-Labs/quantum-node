@@ -66,6 +66,48 @@ pub async fn update_superproof_leaves_path(pool: &Pool<MySql>, superproof_leaves
     row_affected
 }
 
+pub async fn update_imt_proof_path(pool: &Pool<MySql>, imt_proof_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set imt_proof_path = ? where id = ?")
+                .bind(imt_proof_path).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", imt_proof_path, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+pub async fn update_imt_pis_path(pool: &Pool<MySql>, imt_pis_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set imt_pis_path = ? where id = ?")
+                .bind(imt_pis_path).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", imt_pis_path, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+pub async fn update_previous_superproof_root(pool: &Pool<MySql>, previous_superproof_root: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set previous_superproof_root = ? where id = ?")
+                .bind(previous_superproof_root).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", previous_superproof_root, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
 pub async fn update_superproof_root(pool: &Pool<MySql>, superproof_root: &str, superproof_id: u64) -> AnyhowResult<()>{
     let query  = sqlx::query("UPDATE superproof set superproof_root = ? where id = ?")
                 .bind(superproof_root).bind(superproof_id);
@@ -137,6 +179,20 @@ pub async fn update_superproof_proof_path(pool: &Pool<MySql>, superproof_proof_p
     row_affected
 }
 
+pub async fn update_superproof_pis_path(pool: &Pool<MySql>, superproof_pis_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set superproof_pis_path = ? where id = ?")
+                .bind(superproof_pis_path).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", superproof_pis_path, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
 pub async fn update_superproof_onchain_submission_time(pool: &Pool<MySql>, onchain_submission_time: NaiveDateTime, superproof_id: u64) -> AnyhowResult<()>{
     let query  = sqlx::query("UPDATE superproof set onchain_submission_time = ? where id = ?")
                 .bind(onchain_submission_time).bind(superproof_id);
@@ -182,29 +238,10 @@ fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
         superproof_leaves_path: row.try_get_unchecked("superproof_leaves_path")?,
         onchain_submission_time: row.try_get_unchecked("onchain_submission_time")?,
         eth_price: row.try_get_unchecked("eth_price")?,
+        imt_proof_path: row.try_get_unchecked("imt_proof_path")?,
+        imt_pis_path: row.try_get_unchecked("imt_pis_path")?,
     };
 
-    Ok(superproof)
-}
-
-
-pub async fn get_last_superproof(pool: &Pool<MySql>) -> AnyhowResult<Option<Superproof>> {
-    let query  = sqlx::query("SELECT * from superproof order by id desc LIMIT 1 OFFSET 1");
-
-    info!("{}", query.sql());
-    let superproof = match query.fetch_optional(pool).await{
-        Ok(t) => Ok(t),
-        Err(e) => {
-            info!("error in super proof fetch");
-            Err(anyhow!(CustomError::DB(error_line!(e))))
-        }
-    };
-    let superproof = superproof?;
-
-    let superproof = match superproof {
-        Some(t) => Some(get_superproof_from_row(t)?),
-        None =>  None,
-    };
     Ok(superproof)
 }
 
