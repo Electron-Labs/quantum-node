@@ -108,5 +108,13 @@ CREATE TABLE IF NOT EXISTS protocol_ui (
 CREATE TABLE IF NOT EXISTS superproof_contract_config (
   address varchar(255) DEFAULT NULL
 );
+
+CREATE TABLE IF NOT EXISTS cost_saved (
+  total_gas_saved DECIMAL(18,2) DEFAULT 0,
+  total_usd_saved DECIMAL(18,2) DEFAULT 0
+);
+
+INSERT INTO cost_saved VALUES (0,0);
+
 "
 

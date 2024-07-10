@@ -2,6 +2,7 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 use tracing::info;
+use dotenv::dotenv;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConfigData {
@@ -14,7 +15,8 @@ pub struct ConfigData {
     pub reduced_circuit_path: String,
     pub aggregated_circuit_data: String,
     pub supperproof_path: String,
-    pub verification_contract_address: String,
+    pub verification_contract_address: String
+
 }
 
 impl ConfigData {
@@ -23,5 +25,30 @@ impl ConfigData {
         let config_data = serde_yaml::from_str(&config_contents_str).unwrap();
         info!("config data loaded: {:?}", config_data);
         return config_data;
+    }
+}
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct AMQPConfigData {
+    pub agg_proof_queue: String,
+    pub agg_proof_reply_to_queue: String,
+    pub rabbitmq_endpoint: String,
+}
+
+impl AMQPConfigData {
+    pub fn get_config() -> AMQPConfigData {
+        dotenv().ok();
+
+        let agg_proof_queue =
+            std::env::var("AGG_PROOF_QUEUE").expect("`AGG_PROOF_QUEUE` env variable must be set");
+        let agg_proof_reply_to_queue = std::env::var("AGG_PROOF_REPLY_TO_QUEUE")
+            .expect("`AGG_PROOF_REPLY_TO_QUEUE` env variable must be set");
+        let rabbitmq_endpoint = std::env::var("RABBITMQ_ENDPOINT")
+            .expect("`RABBITMQ_ENDPOINT` env variable must be set");
+
+        AMQPConfigData {
+            agg_proof_queue,
+            agg_proof_reply_to_queue,
+            rabbitmq_endpoint,
+        }
     }
 }

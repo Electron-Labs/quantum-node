@@ -105,6 +105,26 @@ pub mod quantum {
                     ],
                 ),
                 (
+                    ::std::borrow::ToOwned::to_owned("setVerifier"),
+                    ::std::vec![
+                        ::ethers::core::abi::ethabi::Function {
+                            name: ::std::borrow::ToOwned::to_owned("setVerifier"),
+                            inputs: ::std::vec![
+                                ::ethers::core::abi::ethabi::Param {
+                                    name: ::std::borrow::ToOwned::to_owned("verifierAddress"),
+                                    kind: ::ethers::core::abi::ethabi::ParamType::Address,
+                                    internal_type: ::core::option::Option::Some(
+                                        ::std::borrow::ToOwned::to_owned("address"),
+                                    ),
+                                },
+                            ],
+                            outputs: ::std::vec![],
+                            constant: ::core::option::Option::None,
+                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
+                        },
+                    ],
+                ),
+                (
                     ::std::borrow::ToOwned::to_owned("verifier"),
                     ::std::vec![
                         ::ethers::core::abi::ethabi::Function {
@@ -171,7 +191,7 @@ pub mod quantum {
                                                         ],
                                                     ),
                                                 ),
-                                                10usize,
+                                                20usize,
                                             ),
                                         ],
                                     ),
@@ -263,6 +283,15 @@ pub mod quantum {
                 .method_hash([186, 160, 48, 98], vk_hash)
                 .expect("method not found (this should never happen)")
         }
+        ///Calls the contract's `setVerifier` (0x5437988d) function
+        pub fn set_verifier(
+            &self,
+            verifier_address: ::ethers::core::types::Address,
+        ) -> ::ethers::contract::builders::ContractCall<M, ()> {
+            self.0
+                .method_hash([84, 55, 152, 141], verifier_address)
+                .expect("method not found (this should never happen)")
+        }
         ///Calls the contract's `verifier` (0x2b7ac3f3) function
         pub fn verifier(
             &self,
@@ -274,14 +303,14 @@ pub mod quantum {
                 .method_hash([43, 122, 195, 243], ())
                 .expect("method not found (this should never happen)")
         }
-        ///Calls the contract's `verifySuperproof` (0xeea83ab3) function
+        ///Calls the contract's `verifySuperproof` (0x5a075629) function
         pub fn verify_superproof(
             &self,
             proof: Proof,
             batch: Batch,
         ) -> ::ethers::contract::builders::ContractCall<M, ()> {
             self.0
-                .method_hash([238, 168, 58, 179], (proof, batch))
+                .method_hash([90, 7, 86, 41], (proof, batch))
                 .expect("method not found (this should never happen)")
         }
     }
@@ -332,6 +361,21 @@ pub mod quantum {
     pub struct RegisterProtocolCall {
         pub vk_hash: [u8; 32],
     }
+    ///Container type for all input parameters for the `setVerifier` function with signature `setVerifier(address)` and selector `0x5437988d`
+    #[derive(
+        Clone,
+        ::ethers::contract::EthCall,
+        ::ethers::contract::EthDisplay,
+        Default,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash
+    )]
+    #[ethcall(name = "setVerifier", abi = "setVerifier(address)")]
+    pub struct SetVerifierCall {
+        pub verifier_address: ::ethers::core::types::Address,
+    }
     ///Container type for all input parameters for the `verifier` function with signature `verifier()` and selector `0x2b7ac3f3`
     #[derive(
         Clone,
@@ -345,7 +389,7 @@ pub mod quantum {
     )]
     #[ethcall(name = "verifier", abi = "verifier()")]
     pub struct VerifierCall;
-    ///Container type for all input parameters for the `verifySuperproof` function with signature `verifySuperproof((uint256[8],uint256[2],uint256[2]),((bytes32,bytes32)[10]))` and selector `0xeea83ab3`
+    ///Container type for all input parameters for the `verifySuperproof` function with signature `verifySuperproof((uint256[8],uint256[2],uint256[2]),((bytes32,bytes32)[20]))` and selector `0x5a075629`
     #[derive(
         Clone,
         ::ethers::contract::EthCall,
@@ -358,7 +402,7 @@ pub mod quantum {
     )]
     #[ethcall(
         name = "verifySuperproof",
-        abi = "verifySuperproof((uint256[8],uint256[2],uint256[2]),((bytes32,bytes32)[10]))"
+        abi = "verifySuperproof((uint256[8],uint256[2],uint256[2]),((bytes32,bytes32)[20]))"
     )]
     pub struct VerifySuperproofCall {
         pub proof: Proof,
@@ -370,6 +414,7 @@ pub mod quantum {
         Owner(OwnerCall),
         PubInputsHashes(PubInputsHashesCall),
         RegisterProtocol(RegisterProtocolCall),
+        SetVerifier(SetVerifierCall),
         Verifier(VerifierCall),
         VerifySuperproof(VerifySuperproofCall),
     }
@@ -392,6 +437,11 @@ pub mod quantum {
                 data,
             ) {
                 return Ok(Self::RegisterProtocol(decoded));
+            }
+            if let Ok(decoded) = <SetVerifierCall as ::ethers::core::abi::AbiDecode>::decode(
+                data,
+            ) {
+                return Ok(Self::SetVerifier(decoded));
             }
             if let Ok(decoded) = <VerifierCall as ::ethers::core::abi::AbiDecode>::decode(
                 data,
@@ -416,6 +466,9 @@ pub mod quantum {
                 Self::RegisterProtocol(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
+                Self::SetVerifier(element) => {
+                    ::ethers::core::abi::AbiEncode::encode(element)
+                }
                 Self::Verifier(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
@@ -431,6 +484,7 @@ pub mod quantum {
                 Self::Owner(element) => ::core::fmt::Display::fmt(element, f),
                 Self::PubInputsHashes(element) => ::core::fmt::Display::fmt(element, f),
                 Self::RegisterProtocol(element) => ::core::fmt::Display::fmt(element, f),
+                Self::SetVerifier(element) => ::core::fmt::Display::fmt(element, f),
                 Self::Verifier(element) => ::core::fmt::Display::fmt(element, f),
                 Self::VerifySuperproof(element) => ::core::fmt::Display::fmt(element, f),
             }
@@ -449,6 +503,11 @@ pub mod quantum {
     impl ::core::convert::From<RegisterProtocolCall> for QuantumCalls {
         fn from(value: RegisterProtocolCall) -> Self {
             Self::RegisterProtocol(value)
+        }
+    }
+    impl ::core::convert::From<SetVerifierCall> for QuantumCalls {
+        fn from(value: SetVerifierCall) -> Self {
+            Self::SetVerifier(value)
         }
     }
     impl ::core::convert::From<VerifierCall> for QuantumCalls {
@@ -497,7 +556,7 @@ pub mod quantum {
         Hash
     )]
     pub struct VerifierReturn(pub ::ethers::core::types::Address);
-    ///`Batch((bytes32,bytes32)[10])`
+    ///`Batch((bytes32,bytes32)[20])`
     #[derive(
         Clone,
         ::ethers::contract::EthAbiType,
@@ -509,7 +568,7 @@ pub mod quantum {
         Hash
     )]
     pub struct Batch {
-        pub protocols: [Protocol; 10],
+        pub protocols: [Protocol; 20],
     }
     ///`Proof(uint256[8],uint256[2],uint256[2])`
     #[derive(
@@ -539,6 +598,7 @@ pub mod quantum {
         Hash,
         Copy
     )]
+
     pub struct Protocol {
         pub vk_hash: [u8; 32],
         pub pub_inputs_hash: [u8; 32],
