@@ -1,18 +1,41 @@
 use std::{fs, str::FromStr};
 
-use num_bigint::BigUint;
-use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, update_reduction_data}, reduction_circuit_repository::get_reduction_circuit_data_by_id, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{proving_schemes::ProvingSchemes, task_type::TaskType}, traits::{circuit_interactor::{CircuitInteractor, GenerateReductionProofResult}, pis::Pis, proof::Proof, vkey::Vkey}, types::{config::ConfigData, db::{task::Task, user_circuit_data}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}}};
-use quantum_utils::{error_line, file::read_bytes_from_file, keccak::{self, convert_string_to_le_bytes}};
-use sqlx::{MySql, Pool};
 use anyhow::{Ok, Result as AnyhowResult};
-use quantum_circuits_ffi:: interactor::QuantumV2CircuitInteractor;
+use num_bigint::BigUint;
+use quantum_circuits_interface::ffi::interactor::QuantumV2CircuitInteractor;
+use quantum_db::repository::{
+    proof_repository::{get_proof_by_proof_hash, update_reduction_data},
+    reduction_circuit_repository::get_reduction_circuit_data_by_id,
+    user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
+};
+use quantum_types::{
+    enums::{proving_schemes::ProvingSchemes, task_type::TaskType},
+    traits::{
+        circuit_interactor::{CircuitInteractorFFI, GenerateReductionProofResult},
+        pis::Pis,
+        proof::Proof,
+        vkey::Vkey,
+    },
+    types::{
+        config::ConfigData,
+        db::{task::Task, user_circuit_data},
+        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey},
+        halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey},
+        snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
+    },
+};
+use quantum_utils::{error_line, file::read_bytes_from_file};
+use sqlx::{MySql, Pool};
 use tokio::time::Instant;
 use tracing::info;
 
 use crate::utils::dump_reduction_proof_data;
 
-pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_task: Task, config: &ConfigData) -> AnyhowResult<()> {
+pub async fn handle_proof_generation_task(
+    pool: &Pool<MySql>,
+    proof_generation_task: Task,
+    config: &ConfigData,
+) -> AnyhowResult<()> {
     assert_eq!(proof_generation_task.task_type, TaskType::ProofGeneration);
     let user_circuit_hash = proof_generation_task.user_circuit_hash;
     let proof_hash = proof_generation_task.proof_id.unwrap();
@@ -25,7 +48,8 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
 
     // Get corresponding reduction circuit
     let reduction_circuit_id = user_circuit_data.reduction_circuit_id.unwrap();
-    let reduction_circuit_data = get_reduction_circuit_data_by_id(pool, &reduction_circuit_id).await?;
+    let reduction_circuit_data =
+        get_reduction_circuit_data_by_id(pool, &reduction_circuit_id).await?;
 
     // Get inner_proof
     let inner_proof_path = proof_data.proof_path;
@@ -56,11 +80,18 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
     let reduction_start_time = Instant::now();
     if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
         // 1.Reconstruct inner proof
-        let gnark_inner_proof: GnarkGroth16Proof = GnarkGroth16Proof::read_proof(&inner_proof_path)?;
+        let gnark_inner_proof: GnarkGroth16Proof =
+            GnarkGroth16Proof::read_proof(&inner_proof_path)?;
         let gnark_inner_vk: GnarkGroth16Vkey = GnarkGroth16Vkey::read_vk(&inner_vk_path)?;
         let gnark_inner_pis: GnarkGroth16Pis = GnarkGroth16Pis::read_pis(&inner_pis_path)?;
         // 2.Call reduced proof generator for gnark inner proof
-        prove_result = QuantumV2CircuitInteractor::generate_gnark_groth16_reduced_proof(gnark_inner_proof, gnark_inner_vk.clone(), gnark_inner_pis.clone(), outer_vk, outer_pk_bytes);
+        prove_result = QuantumV2CircuitInteractor::generate_gnark_groth16_reduced_proof(
+            gnark_inner_proof,
+            gnark_inner_vk.clone(),
+            gnark_inner_pis.clone(),
+            outer_vk,
+            outer_pk_bytes,
+        );
 
         let mut keccak_ip = Vec::<u8>::new();
         let vkey_hash = gnark_inner_vk.keccak_hash()?;
@@ -70,21 +101,30 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
         println!("pis_hash {:?}", pis_hash);
         keccak_ip.extend(pis_hash);
         let hash = keccak_hash::keccak(keccak_ip).0;
-        let pis1 = BigUint::from_bytes_le(&hash[0..16]).to_string();
-        let pis2 = BigUint::from_bytes_le(&hash[16..32]).to_string();
+        let pis1 = BigUint::from_bytes_be(&hash[0..16]).to_string();
+        let pis2 = BigUint::from_bytes_be(&hash[16..32]).to_string();
         println!("pis1 {:?}", pis1);
         println!("pis2 {:?}", pis2);
         println!("p1 {:?}", prove_result.reduced_pis.0[0]);
         println!("p2 {:?}", prove_result.reduced_pis.0[1]);
-        assert_eq!(pis1, prove_result.reduced_pis.0[0]);
-        assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        if prove_result.success {
+            assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+            assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        }
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Groth16 {
         // 1.Reconstruct inner proof
-        let snarkjs_inner_proof: SnarkJSGroth16Proof = SnarkJSGroth16Proof::read_proof(&inner_proof_path)?;
+        let snarkjs_inner_proof: SnarkJSGroth16Proof =
+            SnarkJSGroth16Proof::read_proof(&inner_proof_path)?;
         let snarkjs_inner_vk: SnarkJSGroth16Vkey = SnarkJSGroth16Vkey::read_vk(&inner_vk_path)?;
         let snarkjs_inner_pis: SnarkJSGroth16Pis = SnarkJSGroth16Pis::read_pis(&inner_pis_path)?;
         // 2. Call reduced proof generator for circom inner proof
-        prove_result = QuantumV2CircuitInteractor::generate_snarkjs_groth16_reduced_proof(snarkjs_inner_proof, snarkjs_inner_vk.clone(), snarkjs_inner_pis.clone(), outer_vk, outer_pk_bytes);
+        prove_result = QuantumV2CircuitInteractor::generate_snarkjs_groth16_reduced_proof(
+            snarkjs_inner_proof,
+            snarkjs_inner_vk.clone(),
+            snarkjs_inner_pis.clone(),
+            outer_vk,
+            outer_pk_bytes,
+        );
 
         let mut keccak_ip = Vec::<u8>::new();
         let vkey_hash = snarkjs_inner_vk.keccak_hash()?;
@@ -94,14 +134,43 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
         println!("pis_hash {:?}", pis_hash);
         keccak_ip.extend(pis_hash);
         let hash = keccak_hash::keccak(keccak_ip).0;
-        let pis1 = BigUint::from_bytes_le(&hash[0..16]).to_string();
-        let pis2 = BigUint::from_bytes_le(&hash[16..32]).to_string();
+        let pis1 = BigUint::from_bytes_be(&hash[0..16]).to_string();
+        let pis2 = BigUint::from_bytes_be(&hash[16..32]).to_string();
         println!("pis1 {:?}", pis1);
         println!("pis2 {:?}", pis2);
         println!("p1 {:?}", prove_result.reduced_pis.0[0]);
         println!("p2 {:?}", prove_result.reduced_pis.0[1]);
-        assert_eq!(pis1, prove_result.reduced_pis.0[0]);
-        assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        if prove_result.success {
+            assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+            assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        }
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
+        let inner_proof = Halo2PlonkProof::read_proof(&inner_proof_path)?;
+        let inner_vk = Halo2PlonkVkey::read_vk(&inner_vk_path)?;
+        let inner_pis = Halo2PlonkPis::read_pis(&inner_pis_path)?;
+        prove_result = QuantumV2CircuitInteractor::generate_halo2_plonk_reduced_proof(
+            inner_pis.clone(),
+            inner_proof,
+            inner_vk.clone(),
+            outer_vk,
+            outer_pk_bytes,
+        );
+        let mut keccak_ip = Vec::<u8>::new();
+        let vkey_hash = inner_vk.keccak_hash()?;
+        println!("vkey_hash {:?}", vkey_hash);
+        keccak_ip.extend(vkey_hash);
+        let pis_hash = inner_pis.keccak_hash()?;
+        println!("pis_hash {:?}", pis_hash);
+        keccak_ip.extend(pis_hash);
+        let hash = keccak_hash::keccak(keccak_ip).0;
+        let pis1 = BigUint::from_bytes_be(&hash[0..16]).to_string();
+        let pis2 = BigUint::from_bytes_be(&hash[16..32]).to_string();
+        println!("pis1 {:?}", pis1);
+        println!("pis2 {:?}", pis2);
+        if prove_result.success {
+            assert_eq!(pis1, prove_result.reduced_pis.0[0]);
+            assert_eq!(pis2, prove_result.reduced_pis.0[1]);
+        }
     } else {
         return Ok(());
     }
@@ -109,19 +178,35 @@ pub async fn handle_proof_generation_task(pool: &Pool<MySql>, proof_generation_t
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     // Check if build was done successfully
-    if !prove_result.success{
-        return Err(anyhow::Error::msg(error_line!( prove_result.msg)));
+    if !prove_result.success {
+        return Err(anyhow::Error::msg(error_line!(prove_result.msg)));
     }
 
-    info!("Reduced Proof successfully generated in {:?}", reduction_time);
+    info!(
+        "Reduced Proof successfully generated in {:?}",
+        reduction_time
+    );
 
     // Dump reduced proof and public inputs
     // TODO change proof bytes and pis bytes values
-    let (reduced_proof_path, reduced_pis_path) = dump_reduction_proof_data(config, &user_circuit_hash, &proof_hash, prove_result.reduced_proof, prove_result.reduced_pis)?;
+    let (reduced_proof_path, reduced_pis_path) = dump_reduction_proof_data(
+        config,
+        &user_circuit_hash,
+        &proof_hash,
+        prove_result.reduced_proof,
+        prove_result.reduced_pis,
+    )?;
     info!("Dumped reduced proof and pis");
 
     // update reduction data corresponding to proof
-    update_reduction_data(pool, &proof_hash, &reduced_proof_path, &reduced_pis_path, reduction_time).await?;
+    update_reduction_data(
+        pool,
+        &proof_hash,
+        &reduced_proof_path,
+        &reduced_pis_path,
+        reduction_time,
+    )
+    .await?;
     info!("Updated reduction data to corresponding proof");
 
     Ok(())

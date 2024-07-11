@@ -13,7 +13,7 @@ use num_bigint::BigUint;
 use quantum_utils::{
     error_line,
     file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file},
-    keccak::convert_string_to_le_bytes,
+    keccak::convert_string_to_be_bytes,
 };
 use serde::{Deserialize, Serialize};
 use tracing::info;
@@ -198,13 +198,13 @@ impl Vkey for GnarkGroth16Vkey {
         // -- K --
         for i in 0..self.G1.K.len() {
             keccak_ip.extend(
-                convert_string_to_le_bytes(&self.G1.K[i].X)
+                convert_string_to_be_bytes(&self.G1.K[i].X)
                     .to_vec()
                     .iter()
                     .cloned(),
             );
             keccak_ip.extend(
-                convert_string_to_le_bytes(&self.G1.K[i].Y)
+                convert_string_to_be_bytes(&self.G1.K[i].Y)
                     .to_vec()
                     .iter()
                     .cloned(),
@@ -229,50 +229,50 @@ impl Vkey for GnarkGroth16Vkey {
 
         // -- CommitmentKey --
         keccak_ip.extend(
-            convert_string_to_le_bytes(&self.CommitmentKey.G.X.A0)
+            convert_string_to_be_bytes(&self.CommitmentKey.G.X.A0)
                 .to_vec()
                 .iter()
                 .cloned(),
         );
         keccak_ip.extend(
-            convert_string_to_le_bytes(&self.CommitmentKey.G.X.A1)
+            convert_string_to_be_bytes(&self.CommitmentKey.G.X.A1)
                 .to_vec()
                 .iter()
                 .cloned(),
         );
         keccak_ip.extend(
-            convert_string_to_le_bytes(&self.CommitmentKey.G.Y.A0)
+            convert_string_to_be_bytes(&self.CommitmentKey.G.Y.A0)
                 .to_vec()
                 .iter()
                 .cloned(),
         );
         keccak_ip.extend(
-            convert_string_to_le_bytes(&self.CommitmentKey.G.Y.A1)
+            convert_string_to_be_bytes(&self.CommitmentKey.G.Y.A1)
                 .to_vec()
                 .iter()
                 .cloned(),
         );
 
         keccak_ip.extend(
-            convert_string_to_le_bytes(&self.CommitmentKey.GRootSigmaNeg.X.A0)
+            convert_string_to_be_bytes(&self.CommitmentKey.GRootSigmaNeg.X.A0)
                 .to_vec()
                 .iter()
                 .cloned(),
         );
         keccak_ip.extend(
-            convert_string_to_le_bytes(&self.CommitmentKey.GRootSigmaNeg.X.A1)
+            convert_string_to_be_bytes(&self.CommitmentKey.GRootSigmaNeg.X.A1)
                 .to_vec()
                 .iter()
                 .cloned(),
         );
         keccak_ip.extend(
-            convert_string_to_le_bytes(&self.CommitmentKey.GRootSigmaNeg.Y.A0)
+            convert_string_to_be_bytes(&self.CommitmentKey.GRootSigmaNeg.Y.A0)
                 .to_vec()
                 .iter()
                 .cloned(),
         );
         keccak_ip.extend(
-            convert_string_to_le_bytes(&self.CommitmentKey.GRootSigmaNeg.Y.A1)
+            convert_string_to_be_bytes(&self.CommitmentKey.GRootSigmaNeg.Y.A1)
                 .to_vec()
                 .iter()
                 .cloned(),
@@ -350,7 +350,7 @@ impl Pis for GnarkGroth16Pis {
         let mut keccak_ip = Vec::<u8>::new();
 
         for pub_str in self.0.clone() {
-            keccak_ip.extend(convert_string_to_le_bytes(&pub_str));
+            keccak_ip.extend(convert_string_to_be_bytes(&pub_str));
         }
         let hash = keccak(keccak_ip);
         Ok(hash.0)
@@ -359,6 +359,13 @@ impl Pis for GnarkGroth16Pis {
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
         Ok(self.0.clone())
     }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct GnarkVerifier {
+    pub Proof: GnarkGroth16Proof,
+    pub VK: GnarkGroth16Vkey,
+    pub PubInputs: Vec<String>,
 }
 
 #[cfg(test)]

@@ -1,15 +1,15 @@
-use quantum_db::repository::{proof_repository::{get_proof_by_proof_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{circuit_interactor::{IMT_Tree, KeccakHashOut}, pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis}};
-use quantum_utils::{keccak::{convert_string_to_le_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
+use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, get_proof_by_proof_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis, hash::KeccakHashOut, imt::IMT_Tree}};
+use quantum_utils::{keccak::{convert_string_to_be_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
 use rocket::State;
 use anyhow::{anyhow, Context, Result as AnyhowResult};
-use tracing::info;
+use tracing::{error, info};
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, protocol_proof::ProtocolProofResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 use keccak_hash::keccak;
 
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
-    
+
     let proof: T = T::deserialize_proof(&mut data.proof.as_slice())?;
 
     let pis: F = F::deserialize_pis(&mut data.pis.as_slice())?;
@@ -20,7 +20,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     let pis_data = pis.get_data()?;
     for i in 0..pis_data.len() {
         let pi = pis_data[i].clone();
-        proof_id_ip.extend(convert_string_to_le_bytes(&pi).to_vec().iter().cloned());
+        proof_id_ip.extend(convert_string_to_be_bytes(&pi).to_vec().iter().cloned());
     }
 
     let proof_id_hash = keccak(proof_id_ip).0;
@@ -35,7 +35,8 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     proof.dump_proof(&proof_full_path)?;
     pis.dump_pis(&pis_full_path)?;
 
-    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash).await?;
+    let public_inputs_json_string =  serde_json::to_string(&pis_data).unwrap();
+    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash, &public_inputs_json_string).await?;
     create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await?;
 
     Ok(SubmitProofResponse {
@@ -92,11 +93,33 @@ async fn validate_circuit_data_in_submit_proof_request(data: &SubmitProofRequest
         info!("circuit reduction not completed");
         return Err(anyhow!(CustomError::BadRequest(error_line!("circuit reduction not completed".to_string()))));
     }
+
     if data.proof_type != circuit_data.proving_scheme {
         info!("prove type is not correct");
         return Err(anyhow!(CustomError::BadRequest(error_line!("prove type is not correct".to_string()))));
     }
-    
+
+    validate_on_ongoing_proof_with_same_circuit_hash(&data.circuit_hash).await?;
+    Ok(())
+}
+
+pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str) -> AnyhowResult<()> {
+    let proof = match get_latest_proof_by_circuit_hash(get_pool().await, circuit_hash).await {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            error!("error in finding the last proof for circuit hash {:?}: {:?}", circuit_hash, error_line!(e));
+            Err(e)
+        },
+    };
+
+    if proof.is_err() {
+        return Ok(())
+    }
+
+    let proof = proof?;
+    if proof.proof_status == ProofStatus::Registered || proof.proof_status == ProofStatus::Reducing || proof.proof_status == ProofStatus::Reduced {
+        return Err(anyhow!(CustomError::BadRequest(error_line!(format!("last proof for circuit id {:?} hasn't been verified, rejecting proof submission request", circuit_hash)))))
+    }
     Ok(())
 }
 
@@ -137,7 +160,7 @@ pub async fn get_protocol_proof_exec(proof_id: &str) -> AnyhowResult<ProtocolPro
     keccak_ip.extend([0u8; 16].to_vec().iter().cloned());
     let leaf_val = keccak_hash::keccak(keccak_ip).0;
     let mt_proof = imt_tree.get_imt_proof(KeccakHashOut(leaf_val))?;
-    
+
     let mt_proof_encoded = mt_proof.0.iter().map(|x| encode_keccak_hash(x.as_slice()[0..32].try_into().unwrap()).unwrap()).collect::<Vec<String>>();
 
     let mut merkle_proof_position: u64 = 0;

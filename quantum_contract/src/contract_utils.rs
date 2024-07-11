@@ -6,6 +6,7 @@ pub fn get_f64_from_json_value_object(json_value: serde_json::Value) -> Option<f
     Some(json_value.as_number()?.as_f64()?)
 }
 
+// gas cost in gwei
 pub async fn get_gas_cost() -> AnyhowResult<f64> {
     let gas_cost_rpc = &std::env::var("GAS_COST_RPC")?;
     let gas_cost_api_key = &std::env::var("GAS_COST_API_KEY")?;
@@ -33,6 +34,7 @@ pub async fn get_gas_cost() -> AnyhowResult<f64> {
     Ok(base_fees)
 }
 
+// eth_price in USD
 pub async fn get_eth_price() -> AnyhowResult<f64> {
     let eth_price_rpc = &std::env::var("ETH_PRICE_RPC")?;
     info!("{}", format!("Fetching Ethereum Price: {eth_price_rpc}"));

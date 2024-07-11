@@ -9,7 +9,7 @@ edition = "2021"
 quantum_types = {path = "../quantum_types"}
 quantum_db = {path = "../quantum_db"}
 quantum_utils = {path = "../quantum_utils"}
-sqlx = { version = "0.7", features = [ "runtime-tokio", "mysql", "chrono", "macros" ] }
+sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono", "macros" ] }
 lazy_static = "1.4.0"
 tokio = { version = "1.12.0", features = ["full"] }
 dotenv = "0.15.0"
@@ -20,7 +20,7 @@ tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
 tracing-appender = "0.2.3"
 
 #[TODO] Change this to git repo
-quantum_circuits_ffi = {path = "../../quantum-circuits/quantum_circuits_ffi"}
+quantum_circuits_interface = {path = "../../quantum-circuits/quantum_circuits_interface"}
 num-bigint = "0.4.5"
 keccak-hash = "0.10.0"
 chrono = { version = "0.4.38", features = ["serde"] }

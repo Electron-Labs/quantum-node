@@ -46,7 +46,7 @@ impl<'r> FromData<'r> for RegisterCircuitRequest {
 
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct RegisterCircuitResponse {
     pub circuit_hash: String,

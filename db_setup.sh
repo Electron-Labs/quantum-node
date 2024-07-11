@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS proof (
   reduction_time INT,
   proof_status INT,
   user_circuit_hash VARCHAR(255),
+  public_inputs varchar(1200) DEFAULT NULL,
   FOREIGN KEY (user_circuit_hash) REFERENCES user_circuit_data(circuit_hash)
 );
 
@@ -83,7 +84,37 @@ CREATE TABLE IF NOT EXISTS superproof (
   status INT,
   superproof_root VARCHAR(255),
   superproof_leaves_path VARCHAR(255),
-  onchain_submission_time datetime DEFAULT NULL
+  onchain_submission_time datetime DEFAULT NULL,
+  total_proof_ver_cost decimal(18,2) DEFAULT NULL,
+  total_cost_usd decimal(18,2) DEFAULT NULL,
+  total_proving_time decimal(18,2) DEFAULT NULL,
+  previous_superproof_root varchar(255) DEFAULT NULL
 );
+
+CREATE TABLE IF NOT EXISTS proof_submission_config (
+  proof_submission_time int DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS proof_system (
+  proof_system varchar(255) DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS protocol_ui (
+  protocol_name varchar(255) DEFAULT NULL,
+  is_aggregated int DEFAULT '0',
+  display_name varchar(255) DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS superproof_contract_config (
+  address varchar(255) DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cost_saved (
+  total_gas_saved DECIMAL(18,2) DEFAULT 0,
+  total_usd_saved DECIMAL(18,2) DEFAULT 0
+);
+
+INSERT INTO cost_saved VALUES (0,0);
+
 "
 

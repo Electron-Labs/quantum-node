@@ -6,6 +6,7 @@ pub enum CircuitReductionStatus {
     InProgress = 2,
     Completed = 3,
     Failed = 4,
+    SmartContractRgistrationPending = 5
 }
 
 impl CircuitReductionStatus {
@@ -14,7 +15,8 @@ impl CircuitReductionStatus {
             CircuitReductionStatus::NotPicked => 1,
             CircuitReductionStatus::InProgress => 2,
             CircuitReductionStatus::Completed => 3,
-            CircuitReductionStatus::Failed => 4
+            CircuitReductionStatus::Failed => 4,
+            CircuitReductionStatus::SmartContractRgistrationPending => 5
         }
     }
 
@@ -37,6 +39,7 @@ impl From<u8> for CircuitReductionStatus {
             2 => CircuitReductionStatus::InProgress,
             3 => CircuitReductionStatus::Completed,
             4 => CircuitReductionStatus::Failed,
+            5 => CircuitReductionStatus::SmartContractRgistrationPending,
             // TODO: remove panic
             _ => panic!("Invalid enum value"),
         }
@@ -50,6 +53,7 @@ impl ToString for CircuitReductionStatus {
             CircuitReductionStatus::InProgress => String::from("InProgress"),
             CircuitReductionStatus::Completed => String::from("Completed"),
             CircuitReductionStatus::Failed => String::from("Failed"),
+            CircuitReductionStatus::SmartContractRgistrationPending => String::from("SmartContractRgistrationPending"),
         }
     }
 }

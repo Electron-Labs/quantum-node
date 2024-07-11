@@ -151,6 +151,22 @@ pub async fn update_superproof_onchain_submission_time(pool: &Pool<MySql>, oncha
     row_affected
 }
 
+pub async fn update_superproof_total_proving_time(pool: &Pool<MySql>, total_proving_time: u64, superproof_id: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE superproof set total_proving_time = ? where id = ?")
+                .bind(total_proving_time).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", total_proving_time, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+
+
 fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
     let superproof_status_as_u8: u8 = row.try_get_unchecked("status")?;
     let superproof_status =  SuperproofStatus::from(superproof_status_as_u8);
@@ -259,12 +275,12 @@ pub async fn get_first_non_submitted_superproof(pool: &Pool<MySql>) -> AnyhowRes
     Ok(superproof)
 }
 
-pub async fn update_superproof_fields_after_onchain_submission(pool: &Pool<MySql>, transaction_hash: &str, gas_cost: f64, eth_price: f64, status: SuperproofStatus, superproof_id: u64) -> AnyhowResult<()> {
-    let query = sqlx::query("UPDATE superproof SET transaction_hash = ?, status = ?, gas_cost = ?, eth_price = ? WHERE id = ?")
-            .bind(transaction_hash).bind(status.as_u8()).bind(gas_cost).bind(eth_price).bind(superproof_id);
+pub async fn update_superproof_fields_after_onchain_submission(pool: &Pool<MySql>, transaction_hash: &str, gas_cost: f64, eth_price: f64, status: SuperproofStatus, total_cost_usd: f64, gas_used: u64, superproof_id: u64) -> AnyhowResult<()> {
+    let query = sqlx::query("UPDATE superproof SET transaction_hash = ?, status = ?, gas_cost = ?, eth_price = ?, total_cost_usd = ?, total_proof_ver_cost = ? WHERE id = ?")
+            .bind(transaction_hash).bind(status.as_u8()).bind(gas_cost).bind(eth_price).bind(total_cost_usd).bind(gas_used).bind(superproof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}, {}, {}", transaction_hash, status.as_u8(), gas_cost, eth_price, superproof_id);
+    info!("arguments: {}, {}, {}, {}, {}, {}, {}", transaction_hash, status.as_u8(), gas_cost, eth_price, total_cost_usd, gas_used, superproof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),

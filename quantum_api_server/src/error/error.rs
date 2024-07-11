@@ -1,4 +1,5 @@
 use serde::Serialize;
+use tracing::info;
 use std::io::Cursor;
 use rocket::http::Status;
 use rocket::request::Request;
