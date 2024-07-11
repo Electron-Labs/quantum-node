@@ -23,7 +23,7 @@ async fn rocket() -> _ {
     }.to_cors().unwrap();
 
     let _guard = initialize_logger("qunatum_node_api.log");
-    let config_data = ConfigData::new("../config.yaml");
+    let config_data = ConfigData::new("./config.yaml");
     let _db_initialize = get_pool().await;
 
     let t = rocket::Config::figment();
