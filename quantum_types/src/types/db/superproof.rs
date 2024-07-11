@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use rust_decimal::Decimal;
+use sqlx::types::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::enums::superproof_status::SuperproofStatus;

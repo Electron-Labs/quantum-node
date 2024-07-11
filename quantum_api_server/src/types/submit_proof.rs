@@ -42,7 +42,7 @@ impl<'r> FromData<'r> for SubmitProofRequest {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct SubmitProofResponse {
     pub proof_id: String,
