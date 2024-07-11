@@ -18,6 +18,9 @@ lazy_static!{
 pub async fn setup() -> &'static Client{
     dotenv().ok();
     println!("setting up");
+
+    std::env::set_var("enviroment", "test");
+    
     let _db_initialize = get_pool().await;
 
     // inserting auth token and protocol for testing

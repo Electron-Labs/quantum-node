@@ -1,12 +1,7 @@
 mod common;
-
-use std::any::Any;
-
-use anyhow::Result as AnyhowResult;
 use common::{repository::{proof::delete_all_proof_data, task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, update_circuit_redn_status_user_circuit_data_completed}}, setup};
 use quantum_api_server::{connection::get_pool, types::{register_circuit::RegisterCircuitResponse, submit_proof::SubmitProofResponse}};
 use rocket::{http::{ContentType, Header, Status}, local::asynchronous::Client};
-use serde_json::Value;
 
 const  AUTH_TOKEN: &str = "b3047d47c5d6551744680f5c3ba77de90acb84055eefdcbb";
 

@@ -11,8 +11,10 @@ pub async fn get_pool() -> &'static Pool<MySql> {
         let username:String;
         let password:String;
         let database: String;
- 
-        if cfg!(feature = "test") {
+
+        let env = std::env::var("enviroment");
+        if env.is_ok() && env.unwrap() == "test" {
+            println!("Running tests: using test database");
             username = "testuser".to_string();
             password = "test".to_string();
             database = "test_quantum".to_string();

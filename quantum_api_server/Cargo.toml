@@ -28,8 +28,3 @@ tracing-appender = "0.2.3"
 hex = "0.4.3"
 rocket_cors = "0.6.0"
 chrono = { version = "0.4.38", features = ["serde"] }
-
-[features]
-default = ["production"]
-production = []
-test = []

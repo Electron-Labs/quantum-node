@@ -1,5 +1,5 @@
 mod common;
-use common::{repository::{proof::{delete_all_proof_data, update_proof_status_to_verified, update_superproof_id}, task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, update_circuit_redn_status_user_circuit_data_completed}}, setup};
+use common::{repository::{proof::{delete_all_proof_data, update_superproof_id}, task_repository::delete_all_task_data, user_circuit_data_repository::{delete_all_user_circuit_data, update_circuit_redn_status_user_circuit_data_completed}}, setup};
 use quantum_api_server::{connection::get_pool, types::{proof_data::ProofDataResponse, register_circuit::RegisterCircuitResponse, submit_proof::SubmitProofResponse}};
 use quantum_types::{enums::proof_status::ProofStatus, types::config::ConfigData};
 use rocket::{form::validate::Contains, http::{ContentType, Header, Status}, local::asynchronous::Client};
