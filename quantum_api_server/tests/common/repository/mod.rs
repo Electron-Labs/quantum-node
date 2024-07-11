@@ -1,3 +1,4 @@
+pub mod auth_repository;
 pub mod user_circuit_data_repository;
 pub mod task_repository;
 pub mod proof;

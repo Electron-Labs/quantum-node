@@ -15,3 +15,15 @@ pub async fn delete_protocol_from_protocol_name(pool: &Pool<MySql>, protocol_nam
     };
     row_affected
 }
+
+pub async fn insert_electron_protocol(pool: &Pool<MySql>) -> AnyhowResult<()>{
+    let query = sqlx::query("INSERT INTO protocol (protocol_name, auth_token) VALUES ('electron', 'b3047d47c5d6551744680f5c3ba77de90acb84055eefdcbb')");
+
+    info!("{}", query.sql());
+
+    let row_affected = match query.execute(&mut *pool.acquire().await.unwrap()).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}

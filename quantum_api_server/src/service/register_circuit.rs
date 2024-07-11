@@ -50,7 +50,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     println!("reduction_circuit_id {:?}", reduction_circuit_id);
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), data.num_public_inputs, data.proof_type,if reduction_circuit_id.is_some() {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), num_public_inputs, data.proof_type,if reduction_circuit_id.is_some() {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
     println!("insert_user_circuit_data DONE");
     // Create a reduction task for Async worker to pick up later on
     create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;

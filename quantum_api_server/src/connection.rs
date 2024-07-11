@@ -11,9 +11,8 @@ pub async fn get_pool() -> &'static Pool<MySql> {
         let username:String;
         let password:String;
         let database: String;
-    
-        let test_or_prod = std::env::var("CARGO").expect("CARGO must be set.");
-        if !test_or_prod.eq("test") {
+ 
+        if cfg!(feature = "test") {
             username = "testuser".to_string();
             password = "test".to_string();
             database = "test_quantum".to_string();
