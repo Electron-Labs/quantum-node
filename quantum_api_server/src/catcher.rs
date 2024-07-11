@@ -6,7 +6,7 @@ use crate::error::error::ErrorResponse;
 pub fn unsupported_media_type() -> Json<ErrorResponse> {
     Json(ErrorResponse {
         error_type: "Unsupported Media Type".to_string(),
-        message: "May be missing payload".to_string(),
+        message: "Unsupported Media Type".to_string(),
     })
 }
 
@@ -14,6 +14,6 @@ pub fn unsupported_media_type() -> Json<ErrorResponse> {
 pub fn internal_server_error() -> Json<ErrorResponse> {
     Json(ErrorResponse {
         error_type: "Internal Server Error".to_string(),
-        message: "May be invalid payload".to_string(),
+        message: "Internal Server Error".to_string(),
     })
 }
