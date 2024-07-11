@@ -33,7 +33,7 @@ async fn test_submit_proof_with_missing_payload() {
     let response = client.post("/proof").header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
 
     assert_eq!(response.status(), Status::UnsupportedMediaType);
-    assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 }
 
 
@@ -46,7 +46,7 @@ async fn test_submit_proof_with_invalid_payload(){
                                                               .header(ContentType::JSON).body(payload).dispatch().await;
 
     assert_eq!(response.status(), Status::InternalServerError);
-    assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 }
 
 

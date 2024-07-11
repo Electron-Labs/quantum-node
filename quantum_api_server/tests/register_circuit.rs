@@ -18,7 +18,7 @@ async fn test_register_circuit_with_missing_payload(){
     let client = setup().await;
     let response = client.post("/register_circuit").header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN))).dispatch().await;
     assert_eq!(response.status(), Status::UnsupportedMediaType);   
-    assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 }
 
 
@@ -32,7 +32,7 @@ async fn test_register_circuit_with_missing_data_fields(){
     let response = client.post("/register_circuit").header(Header::new("Authorization", format!("Bearer {}", AUTH_TOKEN)))
     .header(ContentType::JSON).body(payload).dispatch().await;
     assert_eq!(response.status(), Status::InternalServerError);
-    assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 }
 
 #[tokio::test]
@@ -75,7 +75,7 @@ async fn test_register_circuit_with_invalid_vkey() {
 
     // validating status
     assert_eq!(response.status(), Status::InternalServerError);
-    assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 }
 
 
@@ -114,7 +114,7 @@ async fn test_register_circuit_with_invalid_proof_type(){
 
     // validating status
     assert_eq!(response.status(), Status::InternalServerError);
-    assert_ne!(response.content_type().unwrap(), ContentType::JSON);
+    assert_eq!(response.content_type().unwrap(), ContentType::JSON);
 }
 
 
