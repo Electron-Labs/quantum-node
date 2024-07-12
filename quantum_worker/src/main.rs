@@ -1,8 +1,8 @@
 /*
     Quantum Worker: Responsibilities (Regsiters Circuit, Generate Proof, Aggregate Proofs + Submit on Ethereum)
     Task Table :  id, user_circuit_hash, task_type, proof_id, task_status
-    User Circuit Table: id, vk_path, reduction_circuit_id, pis_len, proving_scheme, circuit_reduction_status
-    Redn Circuit Table: id, proving_key_path, vk_path, pis_len
+    User Circuit Table: id, vk_path, reduction_circuit_id, n_pis, n_commitments, proving_scheme, circuit_reduction_status
+    Redn Circuit Table: id, proving_key_path, vk_path, n_inner_pis, n_inner_commitments
     Proof Table: id, user_circuit_id(FK), proof_hash, pis_path, proof_path, reduction_proof_path, reduction_proof_pis_path, superproof_id, reduction_time, proof_status
 
     Task worker keeps running in loop, as soon as it comes to top of the loop, does following stuff in same priority order:
@@ -216,7 +216,6 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
     let pool = connection::get_pool().await;
     loop {
         println!("Running worker loop");
-        // let aggregation_awaiting_tasks = get_aggregation_waiting_tasks_num(pool).await?;
         let aggregation_awaiting_proofs =
             get_n_reduced_proofs(pool, config_data.batch_size).await?;
         println!(

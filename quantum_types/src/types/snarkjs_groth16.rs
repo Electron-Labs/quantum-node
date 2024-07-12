@@ -7,7 +7,8 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use quantum_utils::{
     error_line,
-    file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::convert_string_to_be_bytes,
+    file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file},
+    keccak::convert_string_to_be_bytes,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +20,10 @@ use anyhow::{anyhow, Result as AnyhowResult};
 use keccak_hash::keccak;
 use tracing::info;
 
-use super::{config::ConfigData, gnark_groth16::GnarkGroth16Vkey};
+use super::{
+    config::ConfigData,
+    gnark_groth16::{GnarkGroth16Vkey, MAX_PUB_INPUTS},
+};
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
@@ -205,6 +209,12 @@ impl Vkey for SnarkJSGroth16Vkey {
 
         Ok(gnark_converted_vkey.keccak_hash()?)
     }
+
+    fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
+        let gnark_converted_vkey = self.convert_to_gnark_vkey();
+
+        gnark_converted_vkey.extended_keccak_hash(Some(0))
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -279,6 +289,12 @@ impl Pis for SnarkJSGroth16Pis {
         }
         let hash = keccak(keccak_ip);
         Ok(hash.0)
+    }
+
+    fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
+        let mut extended_pis = self.clone();
+        (extended_pis.0.len()..MAX_PUB_INPUTS).for_each(|i| extended_pis.0.push("0".to_string()));
+        extended_pis.keccak_hash()
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {

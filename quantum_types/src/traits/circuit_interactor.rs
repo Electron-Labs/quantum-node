@@ -49,10 +49,10 @@ pub trait CircuitInteractorFFI {
     // Build reducer circuit when inner circuit is gnark groth16
     fn build_gnark_groth16_circuit(
         inner_vk: GnarkGroth16Vkey,
-        pis_len: usize,
+        n_pis: usize,
     ) -> ReductionCircuitBuildResult;
     // Build reducer circuit when inner circuit is circom groth16
-    fn build_snarkjs_groth16_circuit(inner_vk: SnarkJSGroth16Vkey) -> ReductionCircuitBuildResult;
+    fn build_snarkjs_groth16_circuit() -> ReductionCircuitBuildResult;
     // Build reducer circuit when inner circuit is halo2 plonk
     fn build_halo2_plonk_circuit(vk: Halo2PlonkVkey) -> ReductionCircuitBuildResult;
     // Generate reduction circuit proof corresponding to inner gnark groth16 proof

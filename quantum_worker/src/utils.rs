@@ -1,9 +1,12 @@
 use anyhow::Result as AnyhowResult;
 use quantum_circuits_interface::imt::get_init_tree_data;
-use quantum_db::repository::superproof_repository::get_superproof_by_id;
+use quantum_db::repository::superproof_repository::{
+    get_last_verified_superproof, get_superproof_by_id,
+};
 use quantum_types::traits::pis::Pis;
 use quantum_types::traits::proof::Proof;
 use quantum_types::types::config::ConfigData;
+use quantum_types::types::db::superproof::Superproof;
 use quantum_types::types::gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey};
 use quantum_types::types::imt::ImtTree;
 use quantum_types::{traits::vkey::Vkey, types::gnark_groth16::GnarkGroth16Proof};
@@ -94,22 +97,30 @@ pub fn dump_imt_proof_data(
 }
 
 // returns empty tree root if leaves not found
-pub async fn get_leaves_for_superproof_id(
+pub async fn get_last_superproof_leaves(
     config: &ConfigData,
     pool: &Pool<MySql>,
-    superproof_id: u64,
 ) -> AnyhowResult<ImtTree> {
-    let superproof = get_superproof_by_id(pool, superproof_id).await?;
+    let some_superproof = get_last_verified_superproof(pool).await?;
     let last_leaves: ImtTree;
-    match superproof.superproof_leaves_path {
-        Some(superproof_leaves_path) => {
-            last_leaves = ImtTree::read_tree(&superproof_leaves_path)?;
-        }
+    match some_superproof {
+        Some(superproof) => match superproof.superproof_leaves_path {
+            Some(superproof_leaves_path) => {
+                last_leaves = ImtTree::read_tree(&superproof_leaves_path)?;
+            }
+            _ => {
+                info!(
+                    "No superproof_leaves_path for superproof_id={} => using last empty tree root",
+                    superproof.id.unwrap() // can't be null
+                );
+                let (zero_leaves, _) = get_init_tree_data(config.imt_depth as u8)?;
+                last_leaves = ImtTree {
+                    leaves: zero_leaves,
+                };
+            }
+        },
         _ => {
-            info!(
-                "No superproof_leaves_path for superproof_id={} => using last empty tree root",
-                superproof_id
-            );
+            info!("No superproof => using last empty tree root");
             let (zero_leaves, _) = get_init_tree_data(config.imt_depth as u8)?;
             last_leaves = ImtTree {
                 leaves: zero_leaves,

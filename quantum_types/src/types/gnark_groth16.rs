@@ -21,6 +21,8 @@ use tracing::info;
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
 use super::config::ConfigData;
+
+pub const MAX_PUB_INPUTS: usize = 20;
 /*
 type VerifyingKey struct {
     // [α]₁, [Kvk]₁
@@ -47,6 +49,15 @@ type VerifyingKey struct {
 pub struct Fq {
     pub X: String, // Since we dont wanna do any field operations on this serve, String should work
     pub Y: String,
+}
+
+impl Fq {
+    pub fn zero() -> Self {
+        Self {
+            X: "0".to_string(),
+            Y: "0".to_string(),
+        }
+    }
 }
 
 #[derive(Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -281,6 +292,24 @@ impl Vkey for GnarkGroth16Vkey {
         let keccak_h = keccak(keccak_ip.clone());
         Ok(keccak_h.0)
     }
+
+    fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
+        let some_n_commitments = n_commitments.ok_or(anyhow!(error_line!("missing n_commitments")))?;
+        let mut extended_vkey = self.clone();
+        let mut k = extended_vkey.G1.K.clone();
+        let mut commitments_k: Vec<Fq> = vec![];
+        (0..some_n_commitments).for_each(|i| {
+            let idx = k.len() - some_n_commitments as usize + i as usize;
+            commitments_k.push(k[idx].clone());
+            k[idx] = Fq::zero();
+        });
+
+        (k.len() - 1..MAX_PUB_INPUTS).for_each(|_| k.push(Fq::zero()));
+        k.extend(commitments_k);
+
+        extended_vkey.G1.K = k;
+        extended_vkey.keccak_hash()
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -354,6 +383,12 @@ impl Pis for GnarkGroth16Pis {
         }
         let hash = keccak(keccak_ip);
         Ok(hash.0)
+    }
+
+    fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
+        let mut extended_pis = self.clone();
+        (extended_pis.0.len()..MAX_PUB_INPUTS).for_each(|i| extended_pis.0.push("0".to_string()));
+        extended_pis.keccak_hash()
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {

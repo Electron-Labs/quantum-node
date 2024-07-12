@@ -71,6 +71,10 @@ impl Vkey for Halo2PlonkVkey {
                 ))
             })
     }
+
+    fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
+        unimplemented!()
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -138,6 +142,10 @@ impl Pis for Halo2PlonkPis {
         }
         let hash = keccak(keccak_ip);
         Ok(hash.0)
+    }
+
+    fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
+        self.keccak_hash()
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {

@@ -17,7 +17,7 @@ pub fn dump_json_file<T: Serialize>(file_path: &str, file_name: &str, value: T) 
 }
 
 pub fn create_dir(full_path: &str) -> AnyhowResult<()>{
-    let res = fs::create_dir_all(full_path).map_err(|err| anyhow!(error_line!(err)))?;
+    let res = fs::create_dir_all(full_path).map_err(|err| anyhow!(error_line!(format!("{full_path}::{err}"))))?;
     Ok(res)
 }
 
@@ -47,7 +47,7 @@ pub fn write_bytes_to_file(bytes: &Vec<u8>, path: &str) -> AnyhowResult<()> {
 // Read bytes from file
 pub fn read_bytes_from_file(path: &str) -> AnyhowResult<Vec<u8>> {
     let mut buffer = Vec::<u8>::new();
-    let mut file = File::open(path).map_err(|err| anyhow!(error_line!(err)))?;
+    let mut file = File::open(path).map_err(|err| anyhow!(error_line!(format!("{path}::{err}"))))?;
     file.read_to_end(&mut buffer).map_err(|err| anyhow!(error_line!(err)))?;
     Ok(buffer)
 }

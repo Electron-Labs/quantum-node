@@ -26,7 +26,7 @@ use quantum_utils::{error_line, keccak::encode_keccak_hash, paths::get_superproo
 use sqlx::{MySql, Pool};
 use tracing::info;
 
-use crate::utils::{dump_imt_proof_data, get_leaves_for_superproof_id};
+use crate::utils::{dump_imt_proof_data, get_last_superproof_leaves};
 
 pub const IMT_DEPTH: usize = 10;
 
@@ -56,7 +56,7 @@ pub async fn handle_imt(
         reduced_circuit_vkeys.push(reduced_vkey);
     }
     info!("superproof_id {:?}", superproof_id);
-    let last_leaves = get_leaves_for_superproof_id(config, pool, superproof_id - 1).await?;
+    let last_leaves = get_last_superproof_leaves(config, pool).await?;
 
     let mut protocol_vkey_hashes: Vec<Vec<u8>> = vec![];
     let mut protocol_pis_hashes: Vec<Vec<u8>> = vec![];
@@ -81,24 +81,24 @@ pub async fn handle_imt(
         match user_circuit_data.proving_scheme {
             ProvingSchemes::GnarkGroth16 => {
                 let protocol_vkey = GnarkGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
-                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
+                protocol_vkey_hashes.push(protocol_vkey.extended_keccak_hash(user_circuit_data.n_commitments)?.to_vec());
 
                 let protocol_pis = GnarkGroth16Pis::read_pis(&protocol_pis_path)?;
-                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
+                protocol_pis_hashes.push(protocol_pis.extended_keccak_hash()?.to_vec());
             }
             ProvingSchemes::Groth16 => {
                 let protocol_vkey = SnarkJSGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
-                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
+                protocol_vkey_hashes.push(protocol_vkey.extended_keccak_hash(user_circuit_data.n_commitments)?.to_vec());
 
                 let protocol_pis = SnarkJSGroth16Pis::read_pis(&protocol_pis_path)?;
-                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
+                protocol_pis_hashes.push(protocol_pis.extended_keccak_hash()?.to_vec());
             }
             ProvingSchemes::Halo2Plonk => {
                 let protocol_vkey = Halo2PlonkVkey::read_vk(&protocol_circuit_vkey_path)?;
-                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?.to_vec());
+                protocol_vkey_hashes.push(protocol_vkey.extended_keccak_hash(user_circuit_data.n_commitments)?.to_vec());
 
                 let protocol_pis = Halo2PlonkPis::read_pis(&protocol_pis_path)?;
-                protocol_pis_hashes.push(protocol_pis.keccak_hash()?.to_vec());
+                protocol_pis_hashes.push(protocol_pis.extended_keccak_hash()?.to_vec());
             }
             _ => todo!(),
         }
@@ -116,7 +116,8 @@ pub async fn handle_imt(
         superproof_id,
     )?;
     let imt_proving_time = imt_start.elapsed();
-    info!("imt_prove_result {:?}", imt_prove_result);
+    info!("imt_prove_result {:?}", imt_prove_result.success);
+    info!("imt_prove_result success {:?}", imt_prove_result.success);
     info!("imt_proving_time {:?}", imt_proving_time);
 
     if !imt_prove_result.success {

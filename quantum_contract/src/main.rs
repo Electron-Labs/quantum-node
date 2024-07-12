@@ -126,13 +126,13 @@ async fn initialize_superproof_submission_loop(
             let pis_hash: [u8; 32];
             match user_circuit.proving_scheme {
                 ProvingSchemes::GnarkGroth16 => {
-                    pis_hash = GnarkGroth16Pis::read_pis(&proof.pis_path)?.keccak_hash()?
+                    pis_hash = GnarkGroth16Pis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
                 }
                 ProvingSchemes::Groth16 => {
-                    pis_hash = SnarkJSGroth16Pis::read_pis(&proof.pis_path)?.keccak_hash()?
+                    pis_hash = SnarkJSGroth16Pis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
                 }
                 ProvingSchemes::Halo2Plonk => {
-                    pis_hash = Halo2PlonkPis::read_pis(&proof.pis_path)?.keccak_hash()?
+                    pis_hash = Halo2PlonkPis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
                 }
                 _ => {
                     error!("{:?}",error_line!("unsupoorted proving scheme"));
@@ -149,7 +149,7 @@ async fn initialize_superproof_submission_loop(
             };
         }
 
-        
+
 
         let current_time = get_current_time();
         update_superproof_onchain_submission_time(
@@ -232,7 +232,7 @@ async fn initialize_circuit_registration_loop() -> AnyhowResult<()> {
         sleep(Duration::from_secs(REGISTER_CIRCUIT_LOOP_DURATION)).await;
     }
 }
- 
+
 #[tokio::main]
 async fn main() {
     // gen_quantum_structs().unwrap();
@@ -257,5 +257,5 @@ async fn main() {
     });
 
     tokio::join!(task1, task2);
-    
+
 }

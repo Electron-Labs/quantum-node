@@ -8,12 +8,12 @@ use std::str::FromStr;
 
 use crate::error::error::CustomError;
 
-pub async fn get_reduction_circuit_by_pis_len(pool: &Pool<MySql>, num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<ReductionCircuit>{
-    let query  = sqlx::query("SELECT * from reduction_circuit where pis_len = ? and proving_scheme = ?")
-                .bind(num_public_inputs).bind(proving_scheme.to_string());
+pub async fn get_reduction_circuit_by_n_inner_commitments(pool: &Pool<MySql>, n_inner_commitments: u8) -> AnyhowResult<ReductionCircuit>{
+    let query  = sqlx::query("SELECT * from reduction_circuit where n_inner_commitments = ?")
+                .bind(n_inner_commitments);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}", num_public_inputs, proving_scheme.to_string());
+    info!("arguments: {}", n_inner_commitments);
 
     let reduction_circuit = match query.fetch_one(pool).await{
         Ok(t) => get_reduction_circuit_data_from_mysql_row(t),
@@ -35,9 +35,9 @@ pub async fn get_reduction_circuit_for_user_circuit(pool: &Pool<MySql>, user_cir
     };
     reduction_circuit
 }
-
-pub async fn check_if_pis_len_compatible_reduction_circuit_exist(pool: &Pool<MySql>, num_public_inputs: u8, proving_scheme: ProvingSchemes) -> Option<ReductionCircuit>{
-    let rc = get_reduction_circuit_by_pis_len(pool, num_public_inputs, proving_scheme).await;
+// applies only for circom and gnark circuits
+pub async fn check_if_n_inner_commitments_compatible_reduction_circuit_id_exist(pool: &Pool<MySql>, n_inner_commitments: u8) -> Option<ReductionCircuit>{
+    let rc = get_reduction_circuit_by_n_inner_commitments(pool, n_inner_commitments).await;
     match rc {
         Ok(rc) => Some(rc),
         Err(_) => None
@@ -53,7 +53,9 @@ fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<Redu
         circuit_id: row.try_get_unchecked("circuit_id")?,
         proving_key_path: row.try_get_unchecked("proving_key_path")?,
         vk_path: row.try_get_unchecked("vk_path")?,
-        pis_len: row.try_get_unchecked("pis_len")?,
+        // TODO: n_inner_pis needed in db?
+        n_inner_pis: row.try_get_unchecked("n_inner_pis")?,
+        n_inner_commitments: row.try_get_unchecked("n_inner_commitments")?,
         proving_scheme: proving_scheme?
     };
     Ok(reduction_circuit)
@@ -61,11 +63,11 @@ fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<Redu
 
 // Sending ReductionCircuit type with reduction_circuit.id = None, return id
 pub async fn add_reduction_circuit_row(pool: &Pool<MySql>, reduction_circuit: ReductionCircuit) -> AnyhowResult<u64, Error> {
-    let query  = sqlx::query("INSERT into reduction_circuit(circuit_id, proving_key_path, vk_path, pis_len, proving_scheme) VALUES(?,?,?,?,?)")
-                .bind(reduction_circuit.circuit_id.clone()).bind(reduction_circuit.proving_key_path.clone()).bind(reduction_circuit.vk_path.clone()).bind(reduction_circuit.pis_len).bind(reduction_circuit.proving_scheme.to_string());
+    let query  = sqlx::query("INSERT into reduction_circuit(circuit_id, proving_key_path, vk_path, n_inner_pis, n_inner_commitments, proving_scheme) VALUES(?,?,?,?,?,?)")
+                .bind(reduction_circuit.circuit_id.clone()).bind(reduction_circuit.proving_key_path.clone()).bind(reduction_circuit.vk_path.clone()).bind(reduction_circuit.n_inner_pis).bind(reduction_circuit.n_inner_commitments).bind(reduction_circuit.proving_scheme.to_string());
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}, {}, {}", reduction_circuit.circuit_id, reduction_circuit.proving_key_path, reduction_circuit.vk_path, reduction_circuit.pis_len, reduction_circuit.proving_scheme.to_string());
+    info!("arguments: {}, {}, {}, {}, {:?}, {}", reduction_circuit.circuit_id, reduction_circuit.proving_key_path, reduction_circuit.vk_path, reduction_circuit.n_inner_pis, reduction_circuit.n_inner_commitments, reduction_circuit.proving_scheme.to_string());
 
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),

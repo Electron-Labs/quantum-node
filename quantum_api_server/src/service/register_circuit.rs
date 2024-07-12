@@ -1,7 +1,6 @@
-use quantum_db::repository::{reduction_circuit_repository::{check_if_pis_len_compatible_reduction_circuit_exist, get_reduction_circuit_for_user_circuit}, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, vkey::Vkey}, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}}};
+use quantum_db::repository::{reduction_circuit_repository::{check_if_n_inner_commitments_compatible_reduction_circuit_id_exist, get_reduction_circuit_for_user_circuit}, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, vkey::Vkey}, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}, gnark_groth16::GnarkGroth16Vkey, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}}};
 use quantum_utils::{keccak::encode_keccak_hash, paths::get_user_vk_path};
-use quantum_utils::error_line;
 use rocket::State;
 
 use anyhow::{anyhow, Result as AnyhowResult};
@@ -10,10 +9,15 @@ use tracing::info;
 use crate::{connection::get_pool, error::error::CustomError, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
 pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: Protocol) -> AnyhowResult<RegisterCircuitResponse> {
+    let num_public_inputs = get_public_input_count(&data)?;
+
+    // get n_commitments
+    let n_commitments = get_n_commitments(&data, num_public_inputs, data.proof_type)?;
+
     // Retreive verification key bytes
     let vkey_bytes: Vec<u8> = data.vkey.clone();
 
-    // Borsh deserialise to corresponding vkey struct 
+    // Borsh deserialise to corresponding vkey struct
     let vkey: T = T::deserialize_vkey(&mut vkey_bytes.as_slice())?;
     let _ = match vkey.validate(data.num_public_inputs) {
         Ok(_) => Ok(()),
@@ -23,8 +27,8 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
         },
     }?;
     println!("validated");
-    // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit 
-    let circuit_hash = vkey.keccak_hash()?;
+    // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit
+    let circuit_hash = vkey.extended_keccak_hash(n_commitments)?;
     let circuit_hash_string = encode_keccak_hash(&circuit_hash)?;
     println!("circuit_hash_string {:?}", circuit_hash_string);
 
@@ -38,23 +42,32 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     }
     println!("already registered {:?}", is_circuit_already_registered);
 
-    let num_public_inputs = get_public_input_count(&data)?;
+
     // dump vkey
     let vkey_path = get_user_vk_path(&config_data.storage_folder_path, &config_data.user_data_path, &circuit_hash_string);
     println!("User vkey path {:?}", vkey_path);
     vkey.dump_vk(&vkey_path)?;
     println!("User vkey path dumped");
 
-    // Get a reduction circuit id
-    let reduction_circuit_id = handle_reduce_circuit(num_public_inputs, data.proof_type).await?;
+    let mut reduction_circuit_id = None;
+
+    // try to get some existing reduction circuit id
+    match n_commitments {
+        Some(some_n_commitments) => reduction_circuit_id = get_reduction_circuit_id(some_n_commitments).await?,
+        _=> {}
+    }
+
     println!("reduction_circuit_id {:?}", reduction_circuit_id);
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), num_public_inputs, data.proof_type,if reduction_circuit_id.is_some() {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, reduction_circuit_id.clone(), num_public_inputs, n_commitments, data.proof_type,if reduction_circuit_id.is_some() {CircuitReductionStatus::Completed} else {CircuitReductionStatus::NotPicked}, &protocol.protocol_name).await?;
     println!("insert_user_circuit_data DONE");
+
     // Create a reduction task for Async worker to pick up later on
-    create_circuit_reduction_task(reduction_circuit_id, &circuit_hash_string).await?;
-    println!("create_circuit_reduction_task DONE");
+    if reduction_circuit_id.is_none() {
+        create_circuit_reduction_task(&circuit_hash_string).await?;
+    }
+
     Ok(
         RegisterCircuitResponse{ circuit_hash: circuit_hash_string }
     )
@@ -87,8 +100,8 @@ pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResu
 //     }
 // }
 
-async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<Option<String>>{
-    let reduction_circuit = get_existing_compatible_reduction_circuit(num_public_inputs, proving_scheme).await;
+async fn get_reduction_circuit_id(n_commitments: u8) -> AnyhowResult<Option<String>>{
+    let reduction_circuit = check_if_n_inner_commitments_compatible_reduction_circuit_id_exist(get_pool().await, n_commitments).await;
     let reduction_circuit_id = match reduction_circuit {
         Some(rc) => Some(rc.circuit_id),
         None => None
@@ -97,22 +110,27 @@ async fn handle_reduce_circuit(num_public_inputs: u8, proving_scheme: ProvingSch
     Ok(reduction_circuit_id)
 }
 
-async fn create_circuit_reduction_task(reduction_circuit_id: Option<String>, circuit_hash: &str) -> AnyhowResult<()> {
-    if reduction_circuit_id.is_none() {
-        task_repository::create_circuit_reduction_task(get_pool().await, circuit_hash, TaskType::CircuitReduction , TaskStatus::NotPicked).await?;
-    }
+async fn create_circuit_reduction_task(circuit_hash: &str) -> AnyhowResult<()> {
+    task_repository::create_circuit_reduction_task(get_pool().await, circuit_hash, TaskType::CircuitReduction , TaskStatus::NotPicked).await?;
+    println!("create_circuit_reduction_task DONE");
     Ok(())
 }
 
-async fn get_existing_compatible_reduction_circuit(num_public_inputs: u8, proving_scheme: ProvingSchemes) -> Option<ReductionCircuit> {
-    let mut reduction_circuit = None;
-    if proving_scheme == ProvingSchemes::Groth16 {
-        reduction_circuit =  check_if_pis_len_compatible_reduction_circuit_exist(get_pool().await, num_public_inputs, proving_scheme).await;
+
+fn get_n_commitments(request_data: &RegisterCircuitRequest, num_public_inputs: u8, proving_scheme: ProvingSchemes) -> AnyhowResult<Option<u8>> {
+    let mut n_commitments = None;
+    match proving_scheme {
+        ProvingSchemes::Groth16 => {
+            n_commitments = Some(0u8);
+        },
+        ProvingSchemes::GnarkGroth16 => {
+            let vkey = GnarkGroth16Vkey::deserialize_vkey(&mut request_data.vkey.as_slice())?;
+            n_commitments = Some(vkey.G1.K.len() as u8 - (num_public_inputs + 1));
+        },
+        _ => {}
     }
-    reduction_circuit
+    Ok(n_commitments)
 }
-
-
 
 async fn check_if_circuit_has_already_registered(circuit_hash_string: &str) -> bool {
     let circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash_string).await;

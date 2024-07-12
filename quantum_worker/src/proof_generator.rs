@@ -94,10 +94,10 @@ pub async fn handle_proof_generation_task(
         );
 
         let mut keccak_ip = Vec::<u8>::new();
-        let vkey_hash = gnark_inner_vk.keccak_hash()?;
+        let vkey_hash = gnark_inner_vk.extended_keccak_hash(user_circuit_data.n_commitments)?;
         println!("vkey_hash {:?}", vkey_hash);
         keccak_ip.extend(vkey_hash);
-        let pis_hash = gnark_inner_pis.keccak_hash()?;
+        let pis_hash = gnark_inner_pis.extended_keccak_hash()?;
         println!("pis_hash {:?}", pis_hash);
         keccak_ip.extend(pis_hash);
         let hash = keccak_hash::keccak(keccak_ip).0;
@@ -127,10 +127,10 @@ pub async fn handle_proof_generation_task(
         );
 
         let mut keccak_ip = Vec::<u8>::new();
-        let vkey_hash = snarkjs_inner_vk.keccak_hash()?;
+        let vkey_hash = snarkjs_inner_vk.extended_keccak_hash(user_circuit_data.n_commitments)?;
         println!("vkey_hash {:?}", vkey_hash);
         keccak_ip.extend(vkey_hash);
-        let pis_hash = snarkjs_inner_pis.keccak_hash()?;
+        let pis_hash = snarkjs_inner_pis.extended_keccak_hash()?;
         println!("pis_hash {:?}", pis_hash);
         keccak_ip.extend(pis_hash);
         let hash = keccak_hash::keccak(keccak_ip).0;
@@ -156,10 +156,10 @@ pub async fn handle_proof_generation_task(
             outer_pk_bytes,
         );
         let mut keccak_ip = Vec::<u8>::new();
-        let vkey_hash = inner_vk.keccak_hash()?;
+        let vkey_hash = inner_vk.extended_keccak_hash(user_circuit_data.n_commitments)?;
         println!("vkey_hash {:?}", vkey_hash);
         keccak_ip.extend(vkey_hash);
-        let pis_hash = inner_pis.keccak_hash()?;
+        let pis_hash = inner_pis.extended_keccak_hash()?;
         println!("pis_hash {:?}", pis_hash);
         keccak_ip.extend(pis_hash);
         let hash = keccak_hash::keccak(keccak_ip).0;
