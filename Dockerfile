@@ -1,4 +1,4 @@
-FROM rust:1.79 AS build
+FROM rustlang/rust:nightly AS build
 
 # Copying the source code
 WORKDIR /quantum-node
@@ -28,13 +28,13 @@ ENV LIBCLANG_PATH=/usr/lib/llvm-14/lib
 
 # cloning quantum circuits
 WORKDIR /
-RUN git clone https://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@github.com/Electron-Labs/quantum-circuits.git
+RUN git clone https://${GITHUB_PAT}@github.com/Electron-Labs/quantum-circuits.git
 WORKDIR /quantum-circuits
 RUN go mod tidy
-WORKDIR /quantum-circuits/quantum_circuits_ffi
+WORKDIR /quantum-circuits/quantum_circuits_interface
 RUN cargo install rust2go-cli
 WORKDIR /quantum-circuits
-RUN rust2go-cli --src quantum_circuits_ffi/src/circuit_builder.rs --dst ./gen.go
+RUN  rust2go-cli --src quantum_circuits_interface/src/ffi/circuit_builder.rs --dst ./gen.go
 
 
 
@@ -46,7 +46,7 @@ RUN cargo build --release
 RUN ls -la /quantum-node/target/release/quantum_api_server
 
 # quantum_api_server image
-FROM rust:1.79 AS quantum_api_server
+FROM rustlang/rust:nightly AS quantum_api_server
 COPY --from=build /quantum-node/target/release/quantum_api_server .
 COPY --from=build /quantum-node/Rocket.toml .
 EXPOSE 8000
@@ -55,7 +55,7 @@ CMD ["./quantum_api_server"]
 LABEL service=quantum_api_server
 
 # quantum_worker image
-FROM rust:1.79 AS quantum_worker
+FROM rustlang/rust:nightly AS quantum_worker
 COPY --from=build /quantum-node/target/release/quantum_worker .
 COPY --from=build /quantum-node/config.yaml /quantum-node/config.yaml
 CMD ["./quantum_worker"]

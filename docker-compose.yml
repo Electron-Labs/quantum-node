@@ -3,7 +3,6 @@ version: '3.8'
 services:
 
   quantum_api_server:
-    image: aditya700/quantum_api_server
     build:
       context: .
       dockerfile: Dockerfile
@@ -23,6 +22,9 @@ services:
       ETH_PRICE_RPC: https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD
       GAS_COST_RPC:  https://api.blocknative.com/gasprices/blockprices
       GAS_COST_API_KEY: e33ccc1f-8baa-4862-ac89-2d216743ba22
+    
+    volumes:
+      - D:\office-work\docker_storage:/log
 
   quantum_worker:
     build:
@@ -42,18 +44,32 @@ services:
       ETH_PRICE_RPC: https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD
       GAS_COST_RPC:  https://api.blocknative.com/gasprices/blockprices
       GAS_COST_API_KEY: e33ccc1f-8baa-4862-ac89-2d216743ba22
+    volumes:
+      - D:\office-work\docker_storage:/log
 
   db:
     image: mysql:latest
-    restart: always
+    restart: on-failure
     ports:
       - "3307:3306"
     volumes:
       - db:/var/lib/mysql
-      - .docker/db_init.sql:/docker-entrypoint-initdb.d/db_init.sql
+      - .docker/db_setup.sh:/docker-entrypoint-initdb.d/db_setup.sh
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+  RabbitMQ:
+    image: rabbitmq:3.13.4-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: on-failure
 
 volumes:
   db:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      # point my.ini file of mysql to below path. Change datadir field
+      device: D:\office-work\sql

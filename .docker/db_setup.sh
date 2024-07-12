@@ -2,7 +2,7 @@
 
 # MySQL/MariaDB connection parameters
 DB_USER="root"
-DB_PASS="temp123"
+DB_PASS="${MYSQL_ROOT_PASSWORD}"
 DB_NAME="quantum"
 
 # Create the database and tables
@@ -114,7 +114,5 @@ CREATE TABLE IF NOT EXISTS cost_saved (
   total_usd_saved DECIMAL(18,2) DEFAULT 0
 );
 
-INSERT INTO cost_saved VALUES (0,0);
-
-"
+INSERT INTO cost_saved VALUES (0,0);"
 
