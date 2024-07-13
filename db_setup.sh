@@ -15,9 +15,10 @@ CREATE TABLE IF NOT EXISTS reduction_circuit (
   circuit_id VARCHAR(255) PRIMARY KEY,
   proving_key_path VARCHAR(255),
   vk_path VARCHAR(255),
-  pis_len INT,
+  n_inner_pis INT,
+  n_inner_commitments INT DEFAULT NULL,
   proving_scheme VARCHAR(255),
-  KEY idx_pis_len (pis_len)
+  KEY idx_n_inner_commitments (n_inner_commitments)
 );
 
 CREATE TABLE IF NOT EXISTS protocol (
@@ -36,7 +37,8 @@ CREATE TABLE IF NOT EXISTS user_circuit_data (
   circuit_hash VARCHAR(255) PRIMARY KEY,
   vk_path VARCHAR(255),
   reduction_circuit_id VARCHAR(255) DEFAULT NULL,
-  pis_len INT,
+  n_pis INT,
+  n_commitments INT DEFAULT NULL,
   proving_scheme VARCHAR(255),
   circuit_reduction_status INT,
   protocol_name VARCHAR(255),
@@ -89,6 +91,8 @@ CREATE TABLE IF NOT EXISTS superproof (
   total_cost_usd decimal(18,2) DEFAULT NULL,
   total_proving_time decimal(18,2) DEFAULT NULL,
   previous_superproof_root varchar(255) DEFAULT NULL
+  imt_proof_path VARCHAR(255) DEFAULT NULL,
+  imt_pis_path VARCHAR(255) DEFAULT NULL,
 );
 
 CREATE TABLE IF NOT EXISTS proof_submission_config (

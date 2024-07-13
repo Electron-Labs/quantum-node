@@ -7,7 +7,8 @@ pub struct UserCircuitData{
     pub circuit_hash: String,
     pub vk_path: String,
     pub reduction_circuit_id: Option<String>,
-    pub pis_len: u8,
+    pub n_pis: u8,
+    pub n_commitments: Option<u8>,
     pub proving_scheme: ProvingSchemes,
     pub circuit_reduction_status: CircuitReductionStatus,
     pub protocol_name: String

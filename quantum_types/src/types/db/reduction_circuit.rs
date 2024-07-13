@@ -7,6 +7,7 @@ pub struct ReductionCircuit {
     pub circuit_id: String,
     pub proving_key_path: String,
     pub vk_path: String,
-    pub pis_len: u8,
+    pub n_inner_pis: u8,
+    pub n_inner_commitments: Option<u8>,
     pub proving_scheme: ProvingSchemes
 }

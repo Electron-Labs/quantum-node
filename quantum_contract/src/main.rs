@@ -14,14 +14,14 @@ use quantum_contract::{Batch, Protocol};
 // use ethers::utils::hex::traits::ToHex;
 use keccak_hash::keccak;
 use quantum_db::repository::{
-    cost_saved_repository::udpate_cost_saved_data, 
-    proof_repository::{get_proofs_in_superproof_id, update_proof_status}, 
-    reduction_circuit_repository::get_reduction_circuit_for_user_circuit, 
+    cost_saved_repository::udpate_cost_saved_data,
+    proof_repository::{get_proofs_in_superproof_id, update_proof_status},
+    reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
     superproof_repository::{
         get_first_non_submitted_superproof, get_last_verified_superproof,
         update_superproof_fields_after_onchain_submission,
         update_superproof_onchain_submission_time,
-    }, 
+    },
     user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, get_user_circuits_by_circuit_status, update_user_circuit_data_reduction_status},
 };
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes}, types::halo2_plonk::Halo2PlonkPis};
@@ -131,13 +131,13 @@ async fn initialize_superproof_submission_loop(
             let pis_hash: [u8; 32];
             match user_circuit.proving_scheme {
                 ProvingSchemes::GnarkGroth16 => {
-                    pis_hash = GnarkGroth16Pis::read_pis(&proof.pis_path)?.keccak_hash()?
+                    pis_hash = GnarkGroth16Pis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
                 }
                 ProvingSchemes::Groth16 => {
-                    pis_hash = SnarkJSGroth16Pis::read_pis(&proof.pis_path)?.keccak_hash()?
+                    pis_hash = SnarkJSGroth16Pis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
                 }
                 ProvingSchemes::Halo2Plonk => {
-                    pis_hash = Halo2PlonkPis::read_pis(&proof.pis_path)?.keccak_hash()?
+                    pis_hash = Halo2PlonkPis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
                 }
                 _ => {
                     error!("{:?}",error_line!("unsupoorted proving scheme"));
@@ -253,7 +253,7 @@ async fn initialize_circuit_registration_loop() -> AnyhowResult<()> {
         sleep(Duration::from_secs(REGISTER_CIRCUIT_LOOP_DURATION)).await;
     }
 }
- 
+
 #[tokio::main]
 async fn main() {
     // gen_quantum_structs().unwrap();
@@ -278,5 +278,5 @@ async fn main() {
     });
 
     tokio::join!(task1, task2);
-    
+
 }

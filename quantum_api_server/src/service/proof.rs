@@ -1,5 +1,5 @@
 use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, get_proof_by_proof_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis, hash::KeccakHashOut, imt::IMT_Tree}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis, hash::KeccakHashOut, imt::ImtTree}};
 use quantum_utils::{keccak::{convert_string_to_be_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
 use rocket::State;
 use anyhow::{anyhow, Context, Result as AnyhowResult};
@@ -60,6 +60,7 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
     response.status = proof.proof_status.to_string();
     if proof.superproof_id.is_some() {
         let superproof_id = proof.superproof_id.unwrap_or(0);
+        // TODO: get it back
         let superproof = get_superproof_by_id(get_pool().await, superproof_id).await;
         let superproof = match superproof {
             Ok(sp) => Ok(sp),
@@ -149,7 +150,7 @@ pub async fn get_protocol_proof_exec(proof_id: &str) -> AnyhowResult<ProtocolPro
         None => Err(anyhow!(CustomError::Internal(error_line!("last super proof verified not found".to_string())))),
     }?;
     let leaf_path = latest_verififed_superproof.superproof_leaves_path.unwrap();
-    let imt_tree = IMT_Tree::read_tree(&leaf_path)?;
+    let imt_tree = ImtTree::read_tree(&leaf_path)?;
     let proof_hash_bytes = decode_keccak_hex(&proof_hash)?;
     let reduction_hash_bytes = decode_keccak_hex(&reduction_circuit_hash)?;
     let mut keccak_ip = Vec::<u8>::new();
