@@ -60,7 +60,6 @@ pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> 
     response.status = proof.proof_status.to_string();
     if proof.superproof_id.is_some() {
         let superproof_id = proof.superproof_id.unwrap_or(0);
-        // TODO: get it back
         let superproof = get_superproof_by_id(get_pool().await, superproof_id).await;
         let superproof = match superproof {
             Ok(sp) => Ok(sp),

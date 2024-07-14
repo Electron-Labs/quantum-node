@@ -8,9 +8,10 @@ use std::time::Instant;
 use chrono::{DateTime, Utc};
 use connection::get_pool;
 use contract::{gen_quantum_structs, register_cricuit_in_contract};
+use contract_utils::get_bytes_from_hex_string;
 use dotenv::dotenv;
 use ethers::{etherscan::gas, types::TransactionReceipt, utils::hex::ToHexExt};
-use quantum_contract::{Batch, Protocol};
+use quantum_contract::{Batch, Protocol, TreeUpdate};
 // use ethers::utils::hex::traits::ToHex;
 use keccak_hash::keccak;
 use quantum_db::repository::{
@@ -154,7 +155,12 @@ async fn initialize_superproof_submission_loop(
             };
         }
 
-
+        let new_root =
+            get_bytes_from_hex_string(&first_superproof_not_verfied.superproof_root.ok_or(
+                anyhow!(error_line!(
+                    "missing first_superproof_not_verfied.superproof_root"
+                )),
+            )?)?;
 
         let current_time = get_current_time();
         update_superproof_onchain_submission_time(
@@ -164,7 +170,7 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
-        let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(protocols, &gnark_proof).await?;
+        let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(protocols, new_root, &gnark_proof).await?;
 
         let gas_cost = get_gas_cost().await?;
         let eth_price = get_eth_price().await?;
@@ -197,14 +203,14 @@ async fn initialize_superproof_submission_loop(
     }
 }
 
-async fn make_smart_contract_call_with_retry(protocols: [Protocol; 20], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
+async fn make_smart_contract_call_with_retry(protocols: [Protocol; 20], new_root: [u8; 32], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
     let mut retry_count = 0;
     let transaction_hash;
     let quantum_contract = get_quantum_contract()?;
     let gas_used;
     let mut error = Err(anyhow!(error_line!("Error initialized")));
     while retry_count <= RETRY_COUNT {
-        match update_quantum_contract_state(&quantum_contract, Batch { protocols }, &gnark_proof).await {
+        match update_quantum_contract_state(&quantum_contract, Batch { protocols }, TreeUpdate { new_root }, &gnark_proof).await {
             Ok(receipt) =>{
                 let transaction_hash_string = receipt.transaction_hash.encode_hex();
                 let transaction_hash_string = String::from("0x") + &transaction_hash_string;

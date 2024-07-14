@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::contract_utils::get_bytes_from_hex_string;
-use crate::quantum_contract::{Batch, Proof, Quantum};
+use crate::quantum_contract::{Batch, Proof, Quantum, TreeUpdate};
 
 pub fn gen_quantum_structs() -> Result<(), Box<dyn std::error::Error>> {
     Abigen::new("Quantum", "quantum_contract/src/abi/Quantum.json")?
@@ -46,13 +46,14 @@ pub fn get_quantum_contract(
 pub async fn update_quantum_contract_state(
     contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
     batch: Batch,
+    tree_update: TreeUpdate,
     gnark_proof: &GnarkGroth16Proof,
 ) -> AnyhowResult<TransactionReceipt> {
     let proof = get_proof_from_gnark_groth16_proof(&gnark_proof)?;
 
     info!("calling verify_superproof");
     let receipt = contract
-        .verify_superproof(proof, batch)
+        .verify_superproof(proof, batch, tree_update)
         .send()
         .await?
         .await?

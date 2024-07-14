@@ -5,6 +5,11 @@
         "internalType": "address",
         "name": "verifier_",
         "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "initRoot",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "nonpayable",
@@ -70,6 +75,19 @@
   },
   {
     "inputs": [],
+    "name": "treeRoot",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "verifier",
     "outputs": [
       {
@@ -127,6 +145,18 @@
         ],
         "internalType": "struct Quantum.Batch",
         "name": "batch",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "newRoot",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct Quantum.TreeUpdate",
+        "name": "treeUpdate",
         "type": "tuple"
       }
     ],

@@ -53,7 +53,6 @@ fn get_reduction_circuit_data_from_mysql_row(row: MySqlRow) -> AnyhowResult<Redu
         circuit_id: row.try_get_unchecked("circuit_id")?,
         proving_key_path: row.try_get_unchecked("proving_key_path")?,
         vk_path: row.try_get_unchecked("vk_path")?,
-        // TODO: n_inner_pis needed in db?
         n_inner_pis: row.try_get_unchecked("n_inner_pis")?,
         n_inner_commitments: row.try_get_unchecked("n_inner_commitments")?,
         proving_scheme: proving_scheme?
