@@ -28,11 +28,10 @@ use quantum_utils::{
 };
 use sqlx::{MySql, Pool};
 use tracing::info;
-
+use crate::connection::get_pool;
 use crate::utils::get_last_superproof_leaves;
 
 pub async fn handle_aggregation(
-    pool: &Pool<MySql>,
     proofs: Vec<DBProof>,
     superproof_id: u64,
     config: &ConfigData,
@@ -52,10 +51,7 @@ pub async fn handle_aggregation(
         let reduced_pis_path = proof.reduction_proof_pis_path.clone().unwrap();
         let reduced_pis = GnarkGroth16Pis::read_pis(&reduced_pis_path)?;
 
-        let reduced_circuit_vkey_path =
-            get_reduction_circuit_for_user_circuit(pool, &proof.user_circuit_hash)
-                .await?
-                .vk_path;
+        let reduced_circuit_vkey_path = get_reduction_circuit_for_user_circuit(get_pool().await, &proof.user_circuit_hash).await?.vk_path;
         let reduced_vkey = GnarkGroth16Vkey::read_vk(&reduced_circuit_vkey_path)?;
 
         let gnark_verifier = GnarkVerifier {
@@ -65,12 +61,8 @@ pub async fn handle_aggregation(
         };
         reduction_circuit_data_vec.push(gnark_verifier);
 
-        let user_circuit_data =
-            get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash).await?;
-        let protocol_circuit_vkey_path =
-            get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash)
-                .await?
-                .vk_path;
+        let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash).await?;
+        let protocol_circuit_vkey_path = get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash).await?.vk_path;
         let protocol_pis_path = proof.pis_path.clone();
 
         match user_circuit_data.proving_scheme {
@@ -99,16 +91,12 @@ pub async fn handle_aggregation(
         }
     }
 
-    let last_leaves = get_last_superproof_leaves(config, pool).await?;
+    let last_leaves = get_last_superproof_leaves(config).await?;
 
     // prepare imt_reduction_circuit_data
-    let superproof = get_superproof_by_id(pool, superproof_id).await?;
-    let imt_proof_path = superproof
-        .imt_proof_path
-        .ok_or(anyhow!("missing imt proof path"))?;
-    let imt_pis_path = superproof
-        .imt_pis_path
-        .ok_or(anyhow!("missing imt pis path"))?;
+    let superproof = get_superproof_by_id(get_pool().await, superproof_id).await?;
+    let imt_proof_path = superproof.imt_proof_path.ok_or(anyhow!("missing imt proof path"))?;
+    let imt_pis_path = superproof.imt_pis_path.ok_or(anyhow!("missing imt pis path"))?;
     let imt_vkey_path = get_imt_vkey_path(&config.aggregated_circuit_data);
     let imt_proof = GnarkGroth16Proof::read_proof(&imt_proof_path)?;
     let imt_pis = GnarkGroth16Pis::read_pis(&imt_pis_path)?;
@@ -148,7 +136,7 @@ pub async fn handle_aggregation(
         superproof_id,
     );
     superproof_proof.dump_proof(&superproof_proof_path)?;
-    update_superproof_proof_path(pool, &superproof_proof_path, superproof_id).await?;
+    update_superproof_proof_path(get_pool().await, &superproof_proof_path, superproof_id).await?;
 
     // Dump superproof pis and add to the DB
     let superproof_pis = GnarkGroth16Pis(aggregation_result.pub_inputs);
@@ -158,10 +146,10 @@ pub async fn handle_aggregation(
         superproof_id,
     );
     superproof_pis.dump_pis(&superproof_pis_path)?;
-    update_superproof_pis_path(pool, &superproof_pis_path, superproof_id).await?;
+    update_superproof_pis_path(get_pool().await, &superproof_pis_path, superproof_id).await?;
 
     // Add agg_time to the db
-    update_superproof_agg_time(pool, aggregation_time.as_secs(), superproof_id).await?;
+    update_superproof_agg_time(get_pool().await, aggregation_time.as_secs(), superproof_id).await?;
 
     let proof_with_max_reduction_time = proofs.iter().max_by_key(|proof| proof.reduction_time);
     let total_proving_time = proof_with_max_reduction_time
@@ -169,7 +157,7 @@ pub async fn handle_aggregation(
         .reduction_time
         .unwrap()
         + aggregation_time.as_secs();
-    update_superproof_total_proving_time(pool, total_proving_time, superproof_id).await?;
+    update_superproof_total_proving_time(get_pool().await, total_proving_time, superproof_id).await?;
 
     Ok(())
 }

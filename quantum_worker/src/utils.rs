@@ -19,6 +19,7 @@ use quantum_utils::paths::{
 };
 use sqlx::{MySql, Pool};
 use tracing::info;
+use crate::connection::get_pool;
 
 // Returns circuit_id, pk_path, vk_path
 pub fn dump_reduction_circuit_data(
@@ -99,9 +100,8 @@ pub fn dump_imt_proof_data(
 // returns empty tree root if leaves not found
 pub async fn get_last_superproof_leaves(
     config: &ConfigData,
-    pool: &Pool<MySql>,
 ) -> AnyhowResult<ImtTree> {
-    let some_superproof = get_last_verified_superproof(pool).await?;
+    let some_superproof = get_last_verified_superproof(get_pool().await).await?;
     let last_leaves: ImtTree;
     match some_superproof {
         Some(superproof) => match superproof.superproof_leaves_path {

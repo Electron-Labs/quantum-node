@@ -25,13 +25,12 @@ use quantum_types::{
 use quantum_utils::{error_line, keccak::encode_keccak_hash, paths::get_superproof_leaves_path};
 use sqlx::{MySql, Pool};
 use tracing::info;
-
+use crate::connection::get_pool;
 use crate::utils::{dump_imt_proof_data, get_last_superproof_leaves};
 
 pub const IMT_DEPTH: usize = 10;
 
 pub async fn handle_imt(
-    pool: &Pool<MySql>,
     proofs: Vec<DBProof>,
     superproof_id: u64,
     config: &ConfigData,
@@ -49,14 +48,14 @@ pub async fn handle_imt(
         let reduced_pis = GnarkGroth16Pis::read_pis(&reduced_pis_path)?;
         reduced_pis_vec.push(reduced_pis);
         let reduced_circuit_vkey_path =
-            get_reduction_circuit_for_user_circuit(pool, &proof.user_circuit_hash)
+            get_reduction_circuit_for_user_circuit(get_pool().await, &proof.user_circuit_hash)
                 .await?
                 .vk_path;
         let reduced_vkey = GnarkGroth16Vkey::read_vk(&reduced_circuit_vkey_path)?;
         reduced_circuit_vkeys.push(reduced_vkey);
     }
     info!("superproof_id {:?}", superproof_id);
-    let last_leaves = get_last_superproof_leaves(config, pool).await?;
+    let last_leaves = get_last_superproof_leaves(config).await?;
 
     let mut protocol_vkey_hashes: Vec<Vec<u8>> = vec![];
     let mut protocol_pis_hashes: Vec<Vec<u8>> = vec![];
@@ -64,16 +63,16 @@ pub async fn handle_imt(
 
     for proof in &proofs {
         let reduced_circuit_vkey_path =
-            get_reduction_circuit_for_user_circuit(pool, &proof.user_circuit_hash)
+            get_reduction_circuit_for_user_circuit(get_pool().await, &proof.user_circuit_hash)
                 .await?
                 .vk_path;
         let reduced_vkey = GnarkGroth16Vkey::read_vk(&reduced_circuit_vkey_path)?;
         reduced_vkey_hashes.push(reduced_vkey.keccak_hash()?.to_vec());
 
         let user_circuit_data =
-            get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash).await?;
+            get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash).await?;
         let protocol_circuit_vkey_path =
-            get_user_circuit_data_by_circuit_hash(pool, &proof.user_circuit_hash)
+            get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash)
                 .await?
                 .vk_path;
         let protocol_pis_path = proof.pis_path.clone();
@@ -134,7 +133,7 @@ pub async fn handle_imt(
         superproof_id,
     );
     superproof_leaves.dump_tree(&superproof_leaves_path)?;
-    update_superproof_leaves_path(pool, &superproof_leaves_path, superproof_id).await?;
+    update_superproof_leaves_path(get_pool().await, &superproof_leaves_path, superproof_id).await?;
 
     // Dump imt proof and pis and add to the DB
     let (imt_proof_path, imt_pis_path) = dump_imt_proof_data(
@@ -143,16 +142,16 @@ pub async fn handle_imt(
         imt_prove_result.aggregated_proof,
         GnarkGroth16Pis(imt_prove_result.pub_inputs),
     )?;
-    update_imt_proof_path(pool, &imt_proof_path, superproof_id).await?;
-    update_imt_pis_path(pool, &imt_pis_path, superproof_id).await?;
+    update_imt_proof_path(get_pool().await, &imt_proof_path, superproof_id).await?;
+    update_imt_pis_path(get_pool().await, &imt_pis_path, superproof_id).await?;
 
     // Add previous superproof root to the db
     let old_root = encode_keccak_hash(&imt_prove_result.old_root.0)?;
-    update_previous_superproof_root(pool, &old_root, superproof_id).await?;
+    update_previous_superproof_root(get_pool().await, &old_root, superproof_id).await?;
 
     // Add superproof root to the db
     let new_root = encode_keccak_hash(&imt_prove_result.new_root.0)?;
-    update_superproof_root(pool, &new_root, superproof_id).await?;
+    update_superproof_root(get_pool().await, &new_root, superproof_id).await?;
 
     Ok(())
 }
