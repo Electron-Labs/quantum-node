@@ -33,32 +33,19 @@ use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use crate::connection::get_pool;
 use crate::utils::dump_reduction_proof_data;
 
-pub async fn handle_proof_generation_task(
-    proof_generation_task: Task,
+pub async fn handle_proof_generation_and_updation(
+    proof_hash: &str,
+    user_circuit_hash: &str,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
-    let user_circuit_hash = proof_generation_task.user_circuit_hash;
-    let proof_hash = proof_generation_task.proof_id.unwrap();
 
-    let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &user_circuit_hash).await?;
-    let proof_data = get_proof_by_proof_hash(get_pool().await, &proof_hash).await?;
-
-    // TODO: remove the unwrap from here
-    let reduction_circuit_id = user_circuit_data.reduction_circuit_id.clone().unwrap();
-    let reduction_circuit_data = get_reduction_circuit_data_by_id(get_pool().await, &reduction_circuit_id).await?;
-
-    // Call proof generation to quantum_reduction_circuit
-    let (prove_result, reduction_time) = generate_reduced_proof(&user_circuit_data, &proof_data, &reduction_circuit_data).await?;
-
-    if !prove_result.success {
-        return Err(anyhow::Error::msg(error_line!(prove_result.msg)));
-    }
+    let (prove_result, reduction_time) = handle_proof_generation(proof_hash).await?;
 
     // Dump reduced proof and public inputs
     // TODO change proof bytes and pis bytes values
     let (reduced_proof_path, reduced_pis_path) = dump_reduction_proof_data(
         config,
-        &user_circuit_hash,
+        user_circuit_hash,
         &proof_hash,
         prove_result.reduced_proof,
         prove_result.reduced_pis,
@@ -76,6 +63,26 @@ pub async fn handle_proof_generation_task(
     .await?;
     info!("Updated reduction data to corresponding proof");
     Ok(())
+}
+
+async fn handle_proof_generation(proof_hash: &str) ->AnyhowResult<(GenerateReductionProofResult, u64)>{
+    let proof_data = get_proof_by_proof_hash(get_pool().await, &proof_hash).await?;
+    let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &proof_data.user_circuit_hash).await?;
+
+    let reduction_circuit_id = match user_circuit_data.reduction_circuit_id.clone() {
+        None => Err(anyhow!(error_line!("reduction circuit id not present in user circuit while proof reduction"))),
+        Some(r) => Ok(r)
+    }?;
+
+    let reduction_circuit_data = get_reduction_circuit_data_by_id(get_pool().await, &reduction_circuit_id).await?;
+
+    // Call proof generation to quantum_reduction_circuit
+    let (prove_result, reduction_time) = generate_reduced_proof(&user_circuit_data, &proof_data, &reduction_circuit_data).await?;
+
+    if !prove_result.success {
+        return Err(anyhow::Error::msg(error_line!(prove_result.msg)));
+    }
+    return Ok((prove_result, reduction_time))
 }
 
 async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, reduction_circuit_data: &ReductionCircuit ) -> AnyhowResult<(GenerateReductionProofResult, u64)> {
@@ -216,4 +223,19 @@ fn verify_proof_reduction_result<V: Vkey, P: Pis>(prove_result: &GenerateReducti
     Ok(())
 }
 
-
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dotenv::dotenv;
+    #[tokio::test]
+    #[ignore]
+    pub async fn test_proof_reduction_by_proof_hash() {
+        // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
+        // dotenv::from_filename("../.env.test").ok();
+        dotenv().ok();
+        let proof_hash = "0x"; // insert your circuit hash
+        let (result, reduction_time) = handle_proof_generation(proof_hash).await.unwrap();
+        println!("{:?}", result);
+        assert_eq!(result.success, true);
+    }
+}

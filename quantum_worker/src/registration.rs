@@ -11,7 +11,7 @@ use tracing::{info, error};
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use crate::{connection::get_pool, utils::dump_reduction_circuit_data};
 
-pub async fn handle_registration_task(registration_task: Task, config: &ConfigData) -> AnyhowResult<()> {
+pub async fn handle_circuit_registration(registration_task: Task, config: &ConfigData) -> AnyhowResult<()> {
     let user_circuit_hash = registration_task.user_circuit_hash;
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &user_circuit_hash).await?;
 
@@ -63,7 +63,7 @@ async fn get_reduction_circuit_id(n_commitments: u8) -> AnyhowResult<Option<Stri
     Ok(reduction_circuit_id)
 }
 
-async fn build_reduction_circuit(user_circuit_data: &UserCircuitData) -> AnyhowResult<ReductionCircuitBuildResult>{
+pub async fn build_reduction_circuit(user_circuit_data: &UserCircuitData) -> AnyhowResult<ReductionCircuitBuildResult>{
     let circuit_build_result: ReductionCircuitBuildResult;
     info!("Calling gnark groth16 reduction circuit");
     if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
@@ -81,16 +81,28 @@ async fn build_reduction_circuit(user_circuit_data: &UserCircuitData) -> AnyhowR
     }
     Ok(circuit_build_result)
 }
-// #[cfg(test)]
-// mod tests {
-//     use std::fs;
 
-//     use quantum_reduction_circuits_ffi::circuit_builder::GnarkVK;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use dotenv::dotenv;
+    use quantum_db::repository::user_circuit_data_repository::get_user_circuit_data_by_circuit_hash;
+    // use quantum_reduction_circuits_ffi::circuit_builder::GnarkVK;
+    use crate::connection::get_pool;
+    use crate::registration::build_reduction_circuit;
 
-//     #[test]
-//     pub fn test_ffi() {
-//         let json_data = fs::read_to_string("/Users/utsavjain/Desktop/electron_labs/quantum/quantum-node/dumps/gnark_vkey.json").expect("Failed to read file");
-// 		let gnark_vkey: GnarkVK = serde_json::from_str(&json_data).expect("Failed to deserialize JSON data");
-//         let x = gnark_vkey.build(1);
-//     }
-// }
+    #[tokio::test]
+    #[ignore]
+    pub async fn test_circuit_build_by_circuit_hash() {
+        // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
+        // dotenv::from_filename("../.env.test").ok();
+        dotenv().ok();
+        let user_circuit_hash = "0x"; // insert your circuit hash
+        let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, user_circuit_hash).await.unwrap();
+        let result = build_reduction_circuit(&user_circuit).await;
+        println!("{:?}", result);
+        result.unwrap();
+    }
+}
+

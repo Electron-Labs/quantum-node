@@ -152,12 +152,12 @@ pub async fn handle_aggregation(
     update_superproof_agg_time(get_pool().await, aggregation_time.as_secs(), superproof_id).await?;
 
     let proof_with_max_reduction_time = proofs.iter().max_by_key(|proof| proof.reduction_time);
+    // TODO: remove unwrap
     let total_proving_time = proof_with_max_reduction_time
         .unwrap()
         .reduction_time
         .unwrap()
         + aggregation_time.as_secs();
     update_superproof_total_proving_time(get_pool().await, total_proving_time, superproof_id).await?;
-
     Ok(())
 }
