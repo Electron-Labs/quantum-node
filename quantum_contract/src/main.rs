@@ -170,6 +170,26 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
+        // TODO: remove
+        let old_root = get_bytes_from_hex_string(
+            &first_superproof_not_verfied
+                .previous_superproof_root
+                .ok_or(anyhow!(error_line!(
+                    "missing first_superproof_not_verfied.previous_superproof_root"
+                )))?,
+        )?;
+        let zero_leaves_root: [u8; 32] = [133, 27, 23, 145, 79, 228, 224, 227, 7, 173, 86, 21, 96, 202, 212, 76, 109, 0, 10, 109, 158, 64, 92, 46, 211, 186, 116, 105, 60, 22, 42, 118];
+        if old_root == zero_leaves_root {
+            let quantum_contract = get_quantum_contract()?;
+            info!("quantum on-chain init root");
+            let receipt = quantum_contract
+                .set_tree_root(zero_leaves_root)
+                .send()
+                .await?
+                .await?
+                .ok_or(anyhow!("could not reset tree root on-chain"));
+        }
+
         let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(protocols, new_root, &gnark_proof).await?;
 
         let gas_cost = get_gas_cost().await?;
@@ -263,6 +283,7 @@ async fn initialize_circuit_registration_loop() -> AnyhowResult<()> {
 #[tokio::main]
 async fn main() {
     // gen_quantum_structs().unwrap();
+
     dotenv().ok();
     info!(" --- Starting quantum contract --- ");
     let _guard = initialize_logger("quantum_contract.log");
@@ -284,5 +305,4 @@ async fn main() {
     });
 
     tokio::join!(task1, task2);
-
 }

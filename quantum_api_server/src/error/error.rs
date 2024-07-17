@@ -53,10 +53,10 @@ impl std::error::Error for CustomError {}
 impl<'r> Responder<'r, 'static> for CustomError {
     fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
         // serialize struct into json string
-        
+
         let err_response = serde_json::to_string(&ErrorResponse{
             error_type: self.get_http_status().to_string(),
-            message: self.to_string(), 
+            message: self.to_string(),
         }).unwrap();
 
         Response::build()
@@ -64,5 +64,11 @@ impl<'r> Responder<'r, 'static> for CustomError {
             .header(ContentType::JSON)
             .sized_body(err_response.len(), Cursor::new(err_response))
             .ok()
+    }
+}
+
+impl From<anyhow::Error> for CustomError {
+    fn from(error: anyhow::Error) -> Self {
+        CustomError::Internal(error.to_string())
     }
 }

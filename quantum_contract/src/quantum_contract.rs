@@ -114,6 +114,28 @@ pub mod quantum {
                     ],
                 ),
                 (
+                    ::std::borrow::ToOwned::to_owned("setTreeRoot"),
+                    ::std::vec![
+                        ::ethers::core::abi::ethabi::Function {
+                            name: ::std::borrow::ToOwned::to_owned("setTreeRoot"),
+                            inputs: ::std::vec![
+                                ::ethers::core::abi::ethabi::Param {
+                                    name: ::std::borrow::ToOwned::to_owned("treeRoot_"),
+                                    kind: ::ethers::core::abi::ethabi::ParamType::FixedBytes(
+                                        32usize,
+                                    ),
+                                    internal_type: ::core::option::Option::Some(
+                                        ::std::borrow::ToOwned::to_owned("bytes32"),
+                                    ),
+                                },
+                            ],
+                            outputs: ::std::vec![],
+                            constant: ::core::option::Option::None,
+                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
+                        },
+                    ],
+                ),
+                (
                     ::std::borrow::ToOwned::to_owned("setVerifier"),
                     ::std::vec![
                         ::ethers::core::abi::ethabi::Function {
@@ -327,6 +349,15 @@ pub mod quantum {
                 .method_hash([186, 160, 48, 98], vk_hash)
                 .expect("method not found (this should never happen)")
         }
+        ///Calls the contract's `setTreeRoot` (0xa5a329c0) function
+        pub fn set_tree_root(
+            &self,
+            tree_root: [u8; 32],
+        ) -> ::ethers::contract::builders::ContractCall<M, ()> {
+            self.0
+                .method_hash([165, 163, 41, 192], tree_root)
+                .expect("method not found (this should never happen)")
+        }
         ///Calls the contract's `setVerifier` (0x5437988d) function
         pub fn set_verifier(
             &self,
@@ -414,6 +445,21 @@ pub mod quantum {
     pub struct RegisterProtocolCall {
         pub vk_hash: [u8; 32],
     }
+    ///Container type for all input parameters for the `setTreeRoot` function with signature `setTreeRoot(bytes32)` and selector `0xa5a329c0`
+    #[derive(
+        Clone,
+        ::ethers::contract::EthCall,
+        ::ethers::contract::EthDisplay,
+        Default,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash
+    )]
+    #[ethcall(name = "setTreeRoot", abi = "setTreeRoot(bytes32)")]
+    pub struct SetTreeRootCall {
+        pub tree_root: [u8; 32],
+    }
     ///Container type for all input parameters for the `setVerifier` function with signature `setVerifier(address)` and selector `0x5437988d`
     #[derive(
         Clone,
@@ -481,6 +527,7 @@ pub mod quantum {
         Owner(OwnerCall),
         PubInputsHashes(PubInputsHashesCall),
         RegisterProtocol(RegisterProtocolCall),
+        SetTreeRoot(SetTreeRootCall),
         SetVerifier(SetVerifierCall),
         TreeRoot(TreeRootCall),
         Verifier(VerifierCall),
@@ -505,6 +552,11 @@ pub mod quantum {
                 data,
             ) {
                 return Ok(Self::RegisterProtocol(decoded));
+            }
+            if let Ok(decoded) = <SetTreeRootCall as ::ethers::core::abi::AbiDecode>::decode(
+                data,
+            ) {
+                return Ok(Self::SetTreeRoot(decoded));
             }
             if let Ok(decoded) = <SetVerifierCall as ::ethers::core::abi::AbiDecode>::decode(
                 data,
@@ -539,6 +591,9 @@ pub mod quantum {
                 Self::RegisterProtocol(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
+                Self::SetTreeRoot(element) => {
+                    ::ethers::core::abi::AbiEncode::encode(element)
+                }
                 Self::SetVerifier(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
@@ -560,6 +615,7 @@ pub mod quantum {
                 Self::Owner(element) => ::core::fmt::Display::fmt(element, f),
                 Self::PubInputsHashes(element) => ::core::fmt::Display::fmt(element, f),
                 Self::RegisterProtocol(element) => ::core::fmt::Display::fmt(element, f),
+                Self::SetTreeRoot(element) => ::core::fmt::Display::fmt(element, f),
                 Self::SetVerifier(element) => ::core::fmt::Display::fmt(element, f),
                 Self::TreeRoot(element) => ::core::fmt::Display::fmt(element, f),
                 Self::Verifier(element) => ::core::fmt::Display::fmt(element, f),
@@ -580,6 +636,11 @@ pub mod quantum {
     impl ::core::convert::From<RegisterProtocolCall> for QuantumCalls {
         fn from(value: RegisterProtocolCall) -> Self {
             Self::RegisterProtocol(value)
+        }
+    }
+    impl ::core::convert::From<SetTreeRootCall> for QuantumCalls {
+        fn from(value: SetTreeRootCall) -> Self {
+            Self::SetTreeRoot(value)
         }
     }
     impl ::core::convert::From<SetVerifierCall> for QuantumCalls {

@@ -63,6 +63,19 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "treeRoot_",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setTreeRoot",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "verifierAddress",
         "type": "address"
