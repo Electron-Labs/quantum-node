@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Ok, Result as AnyhowResult};
 use quantum_circuits_interface::amqp::interactor::QuantumV2CircuitInteractor;
@@ -25,16 +25,58 @@ use quantum_types::{
 use quantum_utils::{error_line, keccak::encode_keccak_hash, paths::get_superproof_leaves_path};
 use sqlx::{MySql, Pool};
 use tracing::info;
+use quantum_types::traits::circuit_interactor::GenerateImtProofResult;
 use crate::connection::get_pool;
 use crate::utils::{dump_imt_proof_data, get_last_superproof_leaves};
 
 pub const IMT_DEPTH: usize = 10;
 
-pub async fn handle_imt(
+pub async fn handle_imt_proof_generation_and_updation(
     proofs: Vec<DBProof>,
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
+
+    let (imt_prove_result, time) = handle_imt_proof_generation(proofs, superproof_id, config).await?;
+    // Dump superproof_leaves and add to the DB
+    let superproof_leaves = ImtTree {
+        leaves: imt_prove_result.new_leaves,
+    };
+    let superproof_leaves_path = get_superproof_leaves_path(
+        &config.storage_folder_path,
+        &config.supperproof_path,
+        superproof_id,
+    );
+    superproof_leaves.dump_tree(&superproof_leaves_path)?;
+    update_superproof_leaves_path(get_pool().await, &superproof_leaves_path, superproof_id).await?;
+
+    // Dump imt proof and pis and add to the DB
+    let (imt_proof_path, imt_pis_path) = dump_imt_proof_data(
+        &config,
+        superproof_id,
+        imt_prove_result.aggregated_proof,
+        GnarkGroth16Pis(imt_prove_result.pub_inputs),
+    )?;
+    update_imt_proof_path(get_pool().await, &imt_proof_path, superproof_id).await?;
+    update_imt_pis_path(get_pool().await, &imt_pis_path, superproof_id).await?;
+
+    // Add previous superproof root to the db
+    let old_root = encode_keccak_hash(&imt_prove_result.old_root.0)?;
+    update_previous_superproof_root(get_pool().await, &old_root, superproof_id).await?;
+
+    // Add superproof root to the db
+    let new_root = encode_keccak_hash(&imt_prove_result.new_root.0)?;
+    update_superproof_root(get_pool().await, &new_root, superproof_id).await?;
+
+    Ok(())
+}
+
+async fn handle_imt_proof_generation(
+    proofs: Vec<DBProof>,
+    superproof_id: u64,
+    config: &ConfigData,
+) -> AnyhowResult<(GenerateImtProofResult, Duration)> {
+
     let amqp_config = AMQPConfigData::get_config();
     let mut reduced_proofs = Vec::<GnarkGroth16Proof>::new();
     let mut reduced_pis_vec = Vec::<GnarkGroth16Pis>::new();
@@ -122,46 +164,18 @@ pub async fn handle_imt(
     if !imt_prove_result.success {
         return Err(anyhow::Error::msg(imt_prove_result.msg));
     }
-
-    // Dump superproof_leaves and add to the DB
-    let superproof_leaves = ImtTree {
-        leaves: imt_prove_result.new_leaves,
-    };
-    let superproof_leaves_path = get_superproof_leaves_path(
-        &config.storage_folder_path,
-        &config.supperproof_path,
-        superproof_id,
-    );
-    superproof_leaves.dump_tree(&superproof_leaves_path)?;
-    update_superproof_leaves_path(get_pool().await, &superproof_leaves_path, superproof_id).await?;
-
-    // Dump imt proof and pis and add to the DB
-    let (imt_proof_path, imt_pis_path) = dump_imt_proof_data(
-        &config,
-        superproof_id,
-        imt_prove_result.aggregated_proof,
-        GnarkGroth16Pis(imt_prove_result.pub_inputs),
-    )?;
-    update_imt_proof_path(get_pool().await, &imt_proof_path, superproof_id).await?;
-    update_imt_pis_path(get_pool().await, &imt_pis_path, superproof_id).await?;
-
-    // Add previous superproof root to the db
-    let old_root = encode_keccak_hash(&imt_prove_result.old_root.0)?;
-    update_previous_superproof_root(get_pool().await, &old_root, superproof_id).await?;
-
-    // Add superproof root to the db
-    let new_root = encode_keccak_hash(&imt_prove_result.new_root.0)?;
-    update_superproof_root(get_pool().await, &new_root, superproof_id).await?;
-
-    Ok(())
+    Ok((imt_prove_result, imt_proving_time))
 }
 
 #[cfg(test)]
 mod tests {
     use quantum_circuits_interface::imt::get_init_tree_data;
+    use quantum_db::repository::proof_repository::get_proofs_in_superproof_id;
+    use quantum_db::repository::superproof_repository::get_superproof_by_id;
+    use quantum_types::types::config::ConfigData;
     use quantum_utils::keccak::{decode_keccak_hex, encode_keccak_hash};
-
-    use crate::imt::IMT_DEPTH;
+    use crate::connection::get_pool;
+    use crate::imt::{handle_imt_proof_generation, IMT_DEPTH};
 
     #[test]
     pub fn yo() {
@@ -171,4 +185,20 @@ mod tests {
         assert_eq!(y.0, a);
         println!("h {:?}", h);
     }
+
+    #[tokio::test]
+    #[ignore]
+    pub async fn test_imt_proof_by_superproof_id() {
+        // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
+        // dotenv::from_filename("../.env.test").ok();
+        // dotenv().ok();
+        let config_data = ConfigData::new("../../config.yaml"); // change the path
+        let superproof_id = 90; // insert your circuit hash
+        let superproof = get_superproof_by_id(get_pool().await, superproof_id).await.unwrap();
+        let proofs = get_proofs_in_superproof_id(get_pool().await,superproof_id).await.unwrap();
+        let (result, reduction_time) = handle_imt_proof_generation(proofs, superproof_id, &config_data).await.unwrap();
+        println!("{:?}", result);
+        assert_eq!(result.success, true);
+    }
+
 }

@@ -30,9 +30,9 @@ use sqlx::{MySql, Pool};
 use std::{thread::sleep, time::Duration};
 use tracing::{error, info};
 use crate::connection::get_pool;
-use crate::imt::handle_imt;
+use crate::imt::handle_imt_proof_generation_and_updation;
 use crate::{proof_generator, registration};
-use crate::aggregator::handle_aggregation;
+use crate::aggregator::handle_proof_aggregation_and_updation;
 
 pub async fn handle_register_circuit_task(
     registration_task: Task,
@@ -73,7 +73,7 @@ pub async fn handle_register_circuit_task(
     Ok(())
 }
 
-pub async fn aggregate_proofs(
+pub async fn handle_aggregate_proof_task(
     proofs: Vec<Proof>,
     config: &ConfigData,
     superproof_id: u64,
@@ -86,9 +86,8 @@ pub async fn aggregate_proofs(
     for proof in &proofs {
         update_superproof_id_in_proof(get_pool().await, &proof.proof_hash, superproof_id).await?;
     }
-    // 4. superproof_status -> (0: Not Started, 1: IN_PROGRESS, 2: PROVING_DONE, 3: SUBMITTED_ONCHAIN, 4: FAILED)
 
-    let aggregation_request = handle_aggregation(proofs.clone(), superproof_id, config).await;
+    let aggregation_request = handle_proof_aggregation_and_updation(proofs.clone(), superproof_id, config).await;
 
     match aggregation_request {
         Ok(_) => {
@@ -129,7 +128,7 @@ pub async fn handle_proof_generation_task(
     update_proof_status(get_pool().await, &proof_hash, ProofStatus::Reducing).await?;
     info!("Update Proof Status to Reducing");
 
-    let proof_hash = match proof_generation_task.proof_id {
+    let proof_hash = match proof_generation_task.proof_id.clone() {
         None => Err(anyhow!(error_line!("Proof generation task does not contain the proof id"))),
         Some(p) => Ok(p),
     }?;
@@ -179,8 +178,8 @@ pub async fn aggregate_and_generate_new_superproof(aggregation_awaiting_proofs: 
     let superproof_id = insert_new_superproof(get_pool().await, &proof_json_string, SuperproofStatus::InProgress).await?;
     info!("added new superproof record => superproof_id={}",superproof_id);
 
-    handle_imt(aggregation_awaiting_proofs.clone(), superproof_id, config_data, ).await?;
-    aggregate_proofs(aggregation_awaiting_proofs, config_data, superproof_id).await?;
+    handle_imt_proof_generation_and_updation(aggregation_awaiting_proofs.clone(), superproof_id, config_data, ).await?;
+    handle_aggregate_proof_task(aggregation_awaiting_proofs, config_data, superproof_id).await?;
 
     Ok(())
 }
