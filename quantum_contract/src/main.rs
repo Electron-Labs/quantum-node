@@ -19,9 +19,7 @@ use quantum_db::repository::{
     proof_repository::{get_proofs_in_superproof_id, update_proof_status},
     reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
     superproof_repository::{
-        get_first_non_submitted_superproof, get_last_verified_superproof,
-        update_superproof_fields_after_onchain_submission,
-        update_superproof_onchain_submission_time,
+        get_first_non_submitted_superproof, get_last_verified_superproof, update_superproof_fields_after_onchain_submission, update_superproof_gas_data, update_superproof_onchain_submission_time
     },
     user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, get_user_circuits_by_circuit_status, update_user_circuit_data_reduction_status},
 };
@@ -47,6 +45,7 @@ use crate::{
     contract_utils::{get_eth_price, get_gas_cost},
 };
 
+const SUPERPROOF_SUBMISSION_RETRY: u64 = 5 * 60;
 const SUPERPROOF_SUBMISSION_DURATION: u64 = 20 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const REGISTER_CIRCUIT_LOOP_DURATION: u64 = 1*60;
@@ -192,30 +191,35 @@ async fn initialize_superproof_submission_loop(
 
         let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(protocols, new_root, &gnark_proof).await?;
 
-        let gas_cost = get_gas_cost().await?;
-        let eth_price = get_eth_price().await?;
-
-        let total_cost_usd = calc_total_cost_usd(gas_used, gas_cost, eth_price);
+        // update tx data in DB for superproof
+        update_superproof_fields_after_onchain_submission(
+            get_pool().await,
+            &transaction_hash,
+            SuperproofStatus::SubmittedOnchain,
+            gas_used,
+            new_superproof_id,
+        )
+        .await?;
 
         for proof in proofs {
             update_proof_status(get_pool().await, &proof.proof_hash, ProofStatus::Verified).await?;
         }
 
-        update_superproof_fields_after_onchain_submission(
+        // update gas data in DB for superproof
+        let gas_cost = get_gas_cost().await?;
+        let eth_price = get_eth_price().await?;
+        let total_cost_usd = calc_total_cost_usd(gas_used, gas_cost, eth_price);
+        update_superproof_gas_data(
             get_pool().await,
-            &transaction_hash,
             gas_cost,
             eth_price,
-            SuperproofStatus::SubmittedOnchain,
             total_cost_usd,
-            gas_used,
             new_superproof_id,
         )
         .await?;
 
         let total_gas_saved_batch = (DIRECT_PROOF_VERIFICATION_GAS_COST * 20) - gas_used;
         let total_usd_saved_batch = calc_total_cost_usd(total_gas_saved_batch, gas_cost, eth_price);
-
         udpate_cost_saved_data(get_pool().await, total_gas_saved_batch, total_usd_saved_batch).await?;
 
         info!("Sleeping for {:?}", superproof_submission_duration);
@@ -230,6 +234,9 @@ async fn make_smart_contract_call_with_retry(protocols: [Protocol; 20], new_root
     let gas_used;
     let mut error = Err(anyhow!(error_line!("Error initialized")));
     while retry_count <= RETRY_COUNT {
+        println!("gnark_proof {:?}", gnark_proof);
+        println!("new_root {:?}", new_root);
+        println!("tree_root {:?}", quantum_contract.tree_root().await?);
         match update_quantum_contract_state(&quantum_contract, Batch { protocols }, TreeUpdate { new_root }, &gnark_proof).await {
             Ok(receipt) =>{
                 let transaction_hash_string = receipt.transaction_hash.encode_hex();
@@ -240,7 +247,9 @@ async fn make_smart_contract_call_with_retry(protocols: [Protocol; 20], new_root
             }
             Err(e) => {
                 retry_count = retry_count+1;
-                error!("error occured in smart contract call, retrying count {:?}, error: {:?}",retry_count, error_line!(e));
+                info!("error occured in smart contract call, retrying count {:?}, error: {:?}",retry_count, error_line!(e));
+                info!("Trying again in 10 seconds");
+                sleep(Duration::from_secs(10)).await;
                 error =  Err(anyhow!(error_line!(e)));
             },
         }
@@ -291,9 +300,19 @@ async fn main() {
     let superproof_submission_duration = Duration::from_secs(SUPERPROOF_SUBMISSION_DURATION);
 
     let task2 = tokio::spawn(async move {
-        match initialize_superproof_submission_loop(superproof_submission_duration).await {
-            Ok(_) => info!("contract poller exit without any error"),
-            Err(e) => error!("contract poller exit with error: {:?}", e.root_cause().to_string()),
+        loop {
+            match initialize_superproof_submission_loop(superproof_submission_duration).await {
+                Ok(_) => {
+                    info!("contract poller exit without any error");
+                    info!("Restarting in {} mins...", (SUPERPROOF_SUBMISSION_RETRY/60).to_string());
+                    sleep(Duration::from_secs(SUPERPROOF_SUBMISSION_RETRY)).await;
+                },
+                Err(e) => {
+                    error!("contract poller exit with error: {:?}", e.root_cause().to_string());
+                    info!("Restarting in {} mins...", (SUPERPROOF_SUBMISSION_RETRY/60).to_string());
+                    sleep(Duration::from_secs(SUPERPROOF_SUBMISSION_RETRY)).await;
+                },
+        }
         };
     });
 

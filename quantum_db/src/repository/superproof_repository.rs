@@ -313,12 +313,26 @@ pub async fn get_first_non_submitted_superproof(pool: &Pool<MySql>) -> AnyhowRes
     Ok(superproof)
 }
 
-pub async fn update_superproof_fields_after_onchain_submission(pool: &Pool<MySql>, transaction_hash: &str, gas_cost: f64, eth_price: f64, status: SuperproofStatus, total_cost_usd: f64, gas_used: u64, superproof_id: u64) -> AnyhowResult<()> {
-    let query = sqlx::query("UPDATE superproof SET transaction_hash = ?, status = ?, gas_cost = ?, eth_price = ?, total_cost_usd = ?, total_proof_ver_cost = ? WHERE id = ?")
-            .bind(transaction_hash).bind(status.as_u8()).bind(gas_cost).bind(eth_price).bind(total_cost_usd).bind(gas_used).bind(superproof_id);
+pub async fn update_superproof_fields_after_onchain_submission(pool: &Pool<MySql>, transaction_hash: &str, status: SuperproofStatus, gas_used: u64, superproof_id: u64) -> AnyhowResult<()> {
+    let query = sqlx::query("UPDATE superproof SET transaction_hash = ?, status = ?, total_proof_ver_cost = ? WHERE id = ?")
+            .bind(transaction_hash).bind(status.as_u8()).bind(gas_used).bind(superproof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}, {}, {}, {}, {}", transaction_hash, status.as_u8(), gas_cost, eth_price, total_cost_usd, gas_used, superproof_id);
+    info!("arguments: {}, {}, {}, {}", transaction_hash, status.as_u8(), gas_used, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+pub async fn update_superproof_gas_data(pool: &Pool<MySql>, gas_cost: f64, eth_price: f64, total_cost_usd: f64, superproof_id: u64) -> AnyhowResult<()> {
+    let query = sqlx::query("UPDATE superproof SET gas_cost = ?, eth_price = ?, total_cost_usd = ? WHERE id = ?")
+            .bind(gas_cost).bind(eth_price).bind(total_cost_usd).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}, {}, {}", gas_cost, eth_price, total_cost_usd, superproof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
