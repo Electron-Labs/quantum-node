@@ -181,6 +181,5 @@ pub async fn get_protocol_proof_exec<T: Pis>(proof: &DbProof) -> AnyhowResult<Pr
         merkle_proof: mt_proof_encoded,
         leaf_next_value: encode_keccak_hash(&mt_proof.2.next_value.0)?,
         leaf_next_index: leaf_next_index_str,
-        superproof_root: latest_verififed_superproof.superproof_root.unwrap()
     })
 }

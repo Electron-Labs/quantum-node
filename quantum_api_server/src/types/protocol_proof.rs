@@ -8,5 +8,4 @@ pub struct ProtocolProofResponse {
     pub merkle_proof: Vec<String>,
     pub leaf_next_value: String, // hex
     pub leaf_next_index: String,
-    pub superproof_root: String
 }
