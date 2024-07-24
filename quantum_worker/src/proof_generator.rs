@@ -4,7 +4,7 @@ use anyhow::{anyhow, Ok, Result as AnyhowResult};
 use num_bigint::BigUint;
 use quantum_circuits_interface::ffi::interactor::QuantumV2CircuitInteractor;
 use quantum_db::repository::{
-    proof_repository::{get_proof_by_proof_hash, update_reduction_data},
+    proof_repository::{update_reduction_data},
     reduction_circuit_repository::get_reduction_circuit_data_by_id,
     user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
 };
@@ -28,6 +28,7 @@ use quantum_utils::{error_line, file::read_bytes_from_file};
 use sqlx::{MySql, Pool};
 use tokio::time::Instant;
 use tracing::info;
+use quantum_db::repository::proof_repository::get_proof_by_proof_id;
 use quantum_types::types::db::reduction_circuit::ReductionCircuit;
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use crate::connection::get_pool;
@@ -67,7 +68,7 @@ pub async fn handle_proof_generation_and_updation(
 }
 
 async fn handle_proof_generation(proof_id: u64) ->AnyhowResult<(GenerateReductionProofResult, u64)>{
-    let proof_data = get_proof_by_proof_hash(get_pool().await, proof_id).await?;
+    let proof_data = get_proof_by_proof_id(get_pool().await, proof_id).await?;
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &proof_data.user_circuit_hash).await?;
 
     let reduction_circuit_id = match user_circuit_data.reduction_circuit_id.clone() {

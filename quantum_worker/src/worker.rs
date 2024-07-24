@@ -135,7 +135,7 @@ pub async fn handle_proof_generation_task(
         Some(p) => Ok(p),
     }?;
 
-    let proof_hash = match proof_generation_task.proof_hash {
+    let proof_hash = match proof_generation_task.clone().proof_hash {
         None => Err(anyhow!(error_line!("Proof generation task does not contain the proof hash"))),
         Some(p) => Ok(p),
     }?;
@@ -187,7 +187,7 @@ pub async fn aggregate_and_generate_new_superproof(aggregation_awaiting_proofs: 
     info!("added new superproof record => superproof_id={}",superproof_id);
 
 
-    for proof_id in proof_ids {
+    for proof_id in proof_ids.clone() {
         update_proof_status(get_pool().await, proof_id, ProofStatus::Aggregating).await?;
     }
 

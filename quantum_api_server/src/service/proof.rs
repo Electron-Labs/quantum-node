@@ -1,5 +1,5 @@
 use quantum_circuits_interface::{agg::compute_combined_vk_hash, imt::compute_leaf_value};
-use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, get_proof_by_proof_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
+use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis, hash::KeccakHashOut, imt::ImtTree}};
 use quantum_types::types::db::proof::Proof as DbProof;
 use quantum_utils::{keccak::{convert_string_to_be_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
@@ -8,6 +8,7 @@ use anyhow::{anyhow, Context, Result as AnyhowResult};
 use tracing::{error, info};
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, protocol_proof::ProtocolProofResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 use keccak_hash::keccak;
+use quantum_db::repository::proof_repository::get_proof_by_proof_hash;
 
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
@@ -27,33 +28,33 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
 
     let proof_id_hash = keccak(proof_id_ip).0;
 
-    let proof_id = encode_keccak_hash(&proof_id_hash)?;
+    let proof_hash = encode_keccak_hash(&proof_id_hash)?;
 
-    check_if_proof_already_exist(&proof_id).await?;
+    check_if_proof_already_exist(&proof_hash).await?;
 
     // Dump proof and pis binaries
-    let proof_full_path = get_user_proof_path(&config_data.storage_folder_path, &config_data.proof_path, &data.circuit_hash, &proof_id);
-    let pis_full_path = get_user_pis_path(&config_data.storage_folder_path, &config_data.public_inputs_path, &data.circuit_hash, &proof_id);
+    let proof_full_path = get_user_proof_path(&config_data.storage_folder_path, &config_data.proof_path, &data.circuit_hash, &proof_hash);
+    let pis_full_path = get_user_pis_path(&config_data.storage_folder_path, &config_data.public_inputs_path, &data.circuit_hash, &proof_hash);
     proof.dump_proof(&proof_full_path)?;
     pis.dump_pis(&pis_full_path)?;
 
     let public_inputs_json_string =  serde_json::to_string(&pis_data).unwrap();
-    insert_proof(get_pool().await, &proof_id, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash, &public_inputs_json_string).await?;
-    create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_id).await?;
+    let proof_id = insert_proof(get_pool().await, &proof_hash, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash, &public_inputs_json_string).await?;
+    create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_hash, proof_id).await?;
 
     Ok(SubmitProofResponse {
-        proof_id
+        proof_id: proof_hash
     })
 }
 
-pub async fn get_proof_data_exec(proof_id: String, config_data: &ConfigData) -> AnyhowResult<ProofDataResponse> {
+pub async fn get_proof_data_exec(proof_hash: String, config_data: &ConfigData) -> AnyhowResult<ProofDataResponse> {
     let mut response = ProofDataResponse {
         status: ProofStatus::NotFound.to_string(),
         superproof_id: -1,
         transaction_hash: None,
         verification_contract: config_data.verification_contract_address.clone()
     };
-    let proof = get_proof_by_proof_hash(get_pool().await, &proof_id).await;
+    let proof = get_proof_by_proof_hash(get_pool().await, &proof_hash).await;
     if proof.is_err() {
         return Ok(response);
     }
@@ -125,12 +126,15 @@ pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str
     Ok(())
 }
 
-pub async fn check_if_proof_already_exist(proof_id: &str) -> AnyhowResult<()> {
-    let proof = get_proof_by_proof_hash(get_pool().await, proof_id).await;
+// TODO: need to change
+pub async fn check_if_proof_already_exist(proof_hash: &str) -> AnyhowResult<()> {
+    let proof = get_proof_by_proof_hash(get_pool().await, proof_hash).await;
     let is_proof_already_registered = match proof {
         Ok(_) => true,
         Err(_) => false
     };
+
+
     if is_proof_already_registered {
         info!("proof already exist");
         return Err(anyhow!(CustomError::BadRequest(error_line!("proof already exist".to_string()))));

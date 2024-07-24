@@ -6,11 +6,10 @@ use rocket::{get, serde::json::Json};
 use tracing::error;
 use crate::{connection::get_pool, error::error::CustomError, service::proof::get_protocol_proof_exec, types::{auth::AuthToken, protocol_proof:: ProtocolProofResponse,}};
 
-#[get["/protocol_proof/merkle/<proof_id>"]]
-pub async fn get_protocol_proof(_auth_token: AuthToken, proof_id: String) -> AnyhowResult<Json<ProtocolProofResponse>, CustomError> {
+#[get("/protocol_proof/merkle/<proof_hash>")]
+pub async fn get_protocol_proof(_auth_token: AuthToken, proof_hash: String) -> AnyhowResult<Json<ProtocolProofResponse>, CustomError> {
     let response: AnyhowResult<ProtocolProofResponse, CustomError>;
-    let pool = get_pool().await;
-    let proof = get_proof_by_proof_hash(pool, &proof_id).await.map_err(|err| {
+    let proof = get_proof_by_proof_hash(get_pool().await, &proof_hash).await.map_err(|err| {
         CustomError::Internal(error_line!(format!("get_proof_by_proof_hash. Error: {}", err)))
     })?;
     if proof.proof_status != ProofStatus::Verified {
@@ -18,7 +17,7 @@ pub async fn get_protocol_proof(_auth_token: AuthToken, proof_id: String) -> Any
     }
 
     let user_circuit_hash = &proof.user_circuit_hash;
-    let user_circuit_data = get_user_circuit_data_by_circuit_hash(pool, user_circuit_hash).await.map_err(|err| {
+    let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, user_circuit_hash).await.map_err(|err| {
         CustomError::Internal(error_line!(format!("get_user_circuit_data_by_circuit_hash. Error: {}", err)))
     })?;
 
@@ -34,7 +33,7 @@ pub async fn get_protocol_proof(_auth_token: AuthToken, proof_id: String) -> Any
         Err(err) => {
             match err {
                 CustomError::NotFound(_) => {},
-                _ => error!("Error in /protocol_proof/merkle/<proof_id>: {:?}", err)
+                _ => error!("Error in /protocol_proof/merkle/<proof_hash>: {:?}", err)
             }
             Err(err)
         }

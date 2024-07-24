@@ -4,17 +4,17 @@ pub fn get_user_vk_path(storage_folder_path: &str, user_data_path: &str, circuit
     vkey_full_path
 }
 
-pub fn get_user_proof_path(storage_folder_path: &str, proof_path: &str, circuit_hash: &str, proof_id: &str) -> String {
+pub fn get_user_proof_path(storage_folder_path: &str, proof_path: &str, circuit_hash: &str, proof_hash: &str) -> String {
     let proof_path = format!("{}/{}{}", storage_folder_path, circuit_hash, proof_path);
-    let file_name = format!("proof_{}.bin", proof_id);
+    let file_name = format!("proof_{}.bin", proof_hash);
     let proof_key_full_path = format!("{}/{}", proof_path.as_str(), &file_name);
     proof_key_full_path
 }
 
-pub fn get_user_pis_path(storage_folder_path: &str, public_inputs_path: &str, circuit_hash: &str, proof_id: &str) -> String {
+pub fn get_user_pis_path(storage_folder_path: &str, public_inputs_path: &str, circuit_hash: &str, proof_hash: &str) -> String {
     let pis_path = format!("{}/{}{}", storage_folder_path, circuit_hash, public_inputs_path);
     // TODO: make it .bin
-    let file_name = format!("pis_{}.json", proof_id);
+    let file_name = format!("pis_{}.json", proof_hash);
     let pis_key_full_path = format!("{}/{}", pis_path.as_str(), &file_name);
     pis_key_full_path
 }

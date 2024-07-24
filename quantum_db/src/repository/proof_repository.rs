@@ -31,7 +31,7 @@ pub async fn insert_proof(pool: &Pool<MySql>, proof_hash: &str, pis_path: &str, 
     info!("arguments: {}, {}, {}, {}, {}, {}", proof_hash, pis_path, proof_path, proof_status.as_u8(), user_circuit_hash, pis_json_string);
 
     let row_affected = match query.execute(pool).await {
-        Ok(t) => Ok(t.rows_affected()),
+        Ok(t) => Ok(t.last_insert_id()),
         Err(e) =>Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     row_affected
@@ -50,13 +50,27 @@ pub async fn get_latest_proof_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: 
     proof
 }
 
-pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_id: u64) -> AnyhowResult<Proof> {
+pub async fn get_proof_by_proof_id(pool: &Pool<MySql>, proof_id: u64) -> AnyhowResult<Proof> {
     let query  = sqlx::query("SELECT * from proof where id = ?")
                 .bind(proof_id);
 
     info!("{}", query.sql());
     info!("arguments: {}", proof_id);
     
+    let proof = match query.fetch_one(pool).await{
+        Ok(t) => get_proof_from_mysql_row(&t),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    proof
+}
+
+pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> AnyhowResult<Proof> {
+    let query  = sqlx::query("SELECT * from proof where proof_hash = ? order by id desc limit 1")
+        .bind(proof_hash);
+
+    info!("{}", query.sql());
+    info!("arguments: {}", proof_hash);
+
     let proof = match query.fetch_one(pool).await{
         Ok(t) => get_proof_from_mysql_row(&t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
