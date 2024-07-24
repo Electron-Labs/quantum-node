@@ -31,15 +31,15 @@ pub fn get_reduction_circuit_verifying_key_path(storage_folder_path: &str, reduc
     vk_path
 }
 
-pub fn get_reduction_circuit_proof_path(storage_folder_path: &str, reduced_proof_path: &str, circuit_hash: &str, proof_id: &str) -> String {
+pub fn get_reduction_circuit_proof_path(storage_folder_path: &str, reduced_proof_path: &str, circuit_hash: &str, proof_hash: &str) -> String {
     let reduced_proof_dir = format!("{}/{}{}", storage_folder_path, circuit_hash, reduced_proof_path);
-    let proof_path = format!("{}/reduced_proof_{}.bin", reduced_proof_dir, proof_id);
+    let proof_path = format!("{}/reduced_proof_{}.bin", reduced_proof_dir, proof_hash);
     proof_path
 }
 
-pub fn get_reduction_circuit_pis_path(storage_folder_path: &str, reduced_pis_path: &str, circuit_hash: &str, proof_id: &str) -> String {
+pub fn get_reduction_circuit_pis_path(storage_folder_path: &str, reduced_pis_path: &str, circuit_hash: &str, proof_hash: &str) -> String {
     let reduced_pis_dir = format!("{}/{}{}", storage_folder_path, circuit_hash, reduced_pis_path);
-    let pis_path = format!("{}/reduced_pis_{}.bin", reduced_pis_dir, proof_id);
+    let pis_path = format!("{}/reduced_pis_{}.bin", reduced_pis_dir, proof_hash);
     pis_path
 }
 

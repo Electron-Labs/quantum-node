@@ -50,12 +50,12 @@ pub async fn get_latest_proof_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: 
     proof
 }
 
-pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> AnyhowResult<Proof> {
-    let query  = sqlx::query("SELECT * from proof where proof_hash = ?")
-                .bind(proof_hash);
+pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_id: u64) -> AnyhowResult<Proof> {
+    let query  = sqlx::query("SELECT * from proof where id = ?")
+                .bind(proof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}", proof_hash);
+    info!("arguments: {}", proof_id);
     
     let proof = match query.fetch_one(pool).await{
         Ok(t) => get_proof_from_mysql_row(&t),
@@ -84,12 +84,13 @@ pub async fn get_proofs_in_superproof_id(pool: &Pool<MySql>, superproof_id: u64)
     return Ok(proofs)
 }
 
-pub async fn update_proof_status(pool: &Pool<MySql>, proof_hash: &str, proof_status: ProofStatus) -> AnyhowResult<()>{
-    let query  = sqlx::query("UPDATE proof set proof_status = ? where proof_hash = ?")
-                .bind(proof_status.as_u8()).bind(proof_hash);
+// TODO: change to proof id
+pub async fn update_proof_status(pool: &Pool<MySql>, proof_id: u64, proof_status: ProofStatus) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE proof set proof_status = ? where id = ?")
+                .bind(proof_status.as_u8()).bind(proof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}", proof_status.as_u8(), proof_hash);
+    info!("arguments: {}, {}", proof_status.as_u8(), proof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
@@ -98,8 +99,8 @@ pub async fn update_proof_status(pool: &Pool<MySql>, proof_hash: &str, proof_sta
     row_affected
 }
 
-pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction_proof_path: &str, reduction_pis_path: &str, reduction_time: u64) -> AnyhowResult<()> {
-    let query  = sqlx::query("UPDATE proof set reduction_proof_path = ?, reduction_proof_pis_path = ?, reduction_time = ?  where proof_hash = ?")
+pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: u64, reduction_proof_path: &str, reduction_pis_path: &str, reduction_time: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE proof set reduction_proof_path = ?, reduction_proof_pis_path = ?, reduction_time = ?  where id = ?")
                 .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(proof_id);
 
     info!("{}", query.sql());
@@ -112,12 +113,12 @@ pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: &str, reduction
     row_affected
 }
 
-pub async fn update_superproof_id_in_proof(pool: &Pool<MySql>, proof_hash: &str, superproof_id: u64) -> AnyhowResult<()> {
-    let query  = sqlx::query("UPDATE proof set superproof_id = ? where proof_hash = ?")
-                .bind(superproof_id).bind(proof_hash);
+pub async fn update_superproof_id_in_proof(pool: &Pool<MySql>, proof_id: u64, superproof_id: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE proof set superproof_id = ? where id = ?")
+                .bind(superproof_id).bind(proof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}", superproof_id, proof_hash);
+    info!("arguments: {}, {}", superproof_id, proof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),

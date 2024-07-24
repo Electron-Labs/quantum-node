@@ -79,12 +79,14 @@ pub async fn handle_aggregate_proof_task(
     superproof_id: u64,
 ) -> AnyhowResult<()>
 {
+    let mut proof_ids: Vec<u64> = vec![];
     for proof in &proofs {
-        update_proof_status(get_pool().await, &proof.proof_hash, ProofStatus::Aggregating).await?;
-    }
-
-    for proof in &proofs {
-        update_superproof_id_in_proof(get_pool().await, &proof.proof_hash, superproof_id).await?;
+        let proof_id = match proof.id {
+            Some(id) => Ok(id),
+            None => Err(anyhow!(error_line!("not able to find proofId"))),
+        };
+        let proof_id = proof_id?;
+        proof_ids.push(proof_id);
     }
 
     let aggregation_request = handle_proof_aggregation_and_updation(proofs.clone(), superproof_id, config).await;
@@ -92,8 +94,8 @@ pub async fn handle_aggregate_proof_task(
     match aggregation_request {
         Ok(_) => {
             // Update Proof Status to aggregated for all the proofs
-            for proof in proofs {
-                update_proof_status(get_pool().await, &proof.proof_hash, ProofStatus::Aggregated).await?;
+            for proof_id in proof_ids {
+                update_proof_status(get_pool().await, proof_id, ProofStatus::Aggregated).await?;
             }
             // Superproof status to PROVING_DONE
             info!("changing the superproof status to proving done");
@@ -103,8 +105,8 @@ pub async fn handle_aggregate_proof_task(
             error!("aggregation_request error {:?}", e);
 
             // Change proof_generation status to FAILED
-            for proof in proofs {
-                update_proof_status(get_pool().await, &proof.proof_hash, ProofStatus::AggregationFailed).await?;
+            for proof_id in proof_ids {
+                update_proof_status(get_pool().await, proof_id, ProofStatus::AggregationFailed).await?;
             }
 
             error!("changing the superproof status to failed");
@@ -119,25 +121,31 @@ pub async fn handle_proof_generation_task(
     proof_generation_task: Task,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
-    let proof_hash = proof_generation_task.clone().proof_id.clone().unwrap();
+    let proof_id = proof_generation_task.clone().proof_id.clone().unwrap();
     // Change Task status to InProgress
     update_task_status(get_pool().await, proof_generation_task.clone().id.unwrap(), TaskStatus::InProgress).await?;
     info!("Updated Task Status to InProgress");
 
     // Update Proof Status to Reducing
-    update_proof_status(get_pool().await, &proof_hash, ProofStatus::Reducing).await?;
+    update_proof_status(get_pool().await, proof_id, ProofStatus::Reducing).await?;
     info!("Update Proof Status to Reducing");
 
-    let proof_hash = match proof_generation_task.proof_id.clone() {
+    let proof_id = match proof_generation_task.proof_id {
         None => Err(anyhow!(error_line!("Proof generation task does not contain the proof id"))),
         Some(p) => Ok(p),
     }?;
-    let request = proof_generator::handle_proof_generation_and_updation(&proof_hash, &proof_generation_task.user_circuit_hash, config).await;
+
+    let proof_hash = match proof_generation_task.proof_hash {
+        None => Err(anyhow!(error_line!("Proof generation task does not contain the proof hash"))),
+        Some(p) => Ok(p),
+    }?;
+
+    let request = proof_generator::handle_proof_generation_and_updation(proof_id, &proof_hash, &proof_generation_task.user_circuit_hash, config).await;
 
     match request {
         Ok(_) => {
             // Change proof_generation status to REDUCED
-            update_proof_status(get_pool().await, &proof_hash, ProofStatus::Reduced).await?;
+            update_proof_status(get_pool().await, proof_id, ProofStatus::Reduced).await?;
             info!("Changed proof status to REDUCED");
 
             // Update task status to completed
@@ -148,7 +156,7 @@ pub async fn handle_proof_generation_task(
         }
         Err(e) => {
             // Change proof_generation status to FAILED
-            update_proof_status(get_pool().await, &proof_hash, ProofStatus::ReductionFailed).await?;
+            update_proof_status(get_pool().await, proof_id, ProofStatus::ReductionFailed).await?;
             info!("Changed Proof Status to FAILED");
 
             // Update task status to failed
@@ -177,6 +185,15 @@ pub async fn aggregate_and_generate_new_superproof(aggregation_awaiting_proofs: 
     let proof_json_string = serde_json::to_string(&proof_ids)?;
     let superproof_id = insert_new_superproof(get_pool().await, &proof_json_string, SuperproofStatus::InProgress).await?;
     info!("added new superproof record => superproof_id={}",superproof_id);
+
+
+    for proof_id in proof_ids {
+        update_proof_status(get_pool().await, proof_id, ProofStatus::Aggregating).await?;
+    }
+
+    for proof_id in proof_ids {
+        update_superproof_id_in_proof(get_pool().await, proof_id, superproof_id).await?;
+    }
 
     handle_imt_proof_generation_and_updation(aggregation_awaiting_proofs.clone(), superproof_id, config_data, ).await?;
     handle_aggregate_proof_task(aggregation_awaiting_proofs, config_data, superproof_id).await?;

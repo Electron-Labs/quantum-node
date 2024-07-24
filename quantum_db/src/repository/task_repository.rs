@@ -48,6 +48,7 @@ fn get_task_from_mysql_row(row: Option<MySqlRow>) -> AnyhowResult<Option<Task>> 
                 id: r.try_get_unchecked("id")?,
                 user_circuit_hash: r.try_get_unchecked("user_circuit_hash")?,
                 task_type: TaskType::from(task_type),
+                proof_hash: r.try_get_unchecked("proof_hash")?,
                 proof_id: r.try_get_unchecked("proof_id")?,
                 task_status: TaskStatus::from(task_status)
             })
