@@ -54,7 +54,7 @@ pub fn dump_reduction_circuit_data(
 pub fn dump_reduction_proof_data(
     config: &ConfigData,
     circuit_hash: &str,
-    proof_id: &str,
+    proof_hash: &str,
     proof: GnarkGroth16Proof,
     pis: GnarkGroth16Pis,
 ) -> AnyhowResult<(String, String)> {
@@ -62,13 +62,13 @@ pub fn dump_reduction_proof_data(
         &config.storage_folder_path,
         &config.reduced_proof_path,
         circuit_hash,
-        proof_id,
+        proof_hash,
     );
     let pis_path = get_reduction_circuit_pis_path(
         &config.storage_folder_path,
         &config.reduced_pis_path,
         circuit_hash,
-        proof_id,
+        proof_hash,
     );
     proof.dump_proof(&proof_path)?;
     pis.dump_pis(&pis_path)?;

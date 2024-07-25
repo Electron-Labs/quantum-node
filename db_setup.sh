@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS task (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_circuit_hash VARCHAR(255),
   task_type INT,
-  proof_id VARCHAR(255),
+  proof_hash VARCHAR(255),
+  proof_id INT,
   task_status INT
 );
 

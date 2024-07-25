@@ -28,9 +28,9 @@ pub async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, conf
     }
 }
 
-#[get("/proof/<proof_id>")]
-pub async fn get_proof_status(_auth_token: AuthToken, proof_id: String, config_data: &State<ConfigData>) -> AnyhowResult<Json<ProofDataResponse>, CustomError> {
-    let response = get_proof_data_exec(proof_id, config_data).await;
+#[get("/proof/<proof_hash>")]
+pub async fn get_proof_status(_auth_token: AuthToken, proof_hash: String, config_data: &State<ConfigData>) -> AnyhowResult<Json<ProofDataResponse>, CustomError> {
+    let response = get_proof_data_exec(proof_hash, config_data).await;
     match response{
         Ok(r) => Ok(Json(r)),
         Err(e) => {
