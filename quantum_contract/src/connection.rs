@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use sqlx::{mysql::{MySqlConnectOptions, MySqlPoolOptions}, MySql, Pool};
+use sqlx::{ConnectOptions, mysql::{MySqlConnectOptions, MySqlPoolOptions}, MySql, Pool};
 use tokio::sync::OnceCell;
 
 lazy_static! {
@@ -15,7 +15,8 @@ pub async fn get_pool() -> &'static Pool<MySql> {
         let connection_options = MySqlConnectOptions::new()
             .username(&username)
             .password(&password)
-            .database(&database);
+            .database(&database)
+            .disable_statement_logging().clone();
 
         let pool_options = MySqlPoolOptions::new().min_connections(5);
         pool_options.connect_with(connection_options).await.unwrap()
