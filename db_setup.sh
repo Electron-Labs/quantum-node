@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS reduction_circuit (
 CREATE TABLE IF NOT EXISTS protocol (
   protocol_name varchar(255),
   auth_token varchar(255) DEFAULT NULL,
+  is_proof_repeat_allowed INT DEFAULT 0,
   PRIMARY KEY (protocol_name)
 );
 

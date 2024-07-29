@@ -9,6 +9,8 @@ use tracing::{error, info};
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, protocol_proof::ProtocolProofResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 use keccak_hash::keccak;
 use quantum_db::repository::proof_repository::get_proof_by_proof_hash;
+use quantum_db::repository::protocol::get_protocol_by_protocol_name;
+use quantum_types::types::db::user_circuit_data::UserCircuitData;
 
 pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
@@ -129,15 +131,15 @@ pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str
 // TODO: need to change
 pub async fn check_if_proof_already_exist(proof_hash: &str) -> AnyhowResult<()> {
     let proof = get_proof_by_proof_hash(get_pool().await, proof_hash).await;
-    let is_proof_already_registered = match proof {
-        Ok(_) => true,
-        Err(_) => false
-    };
+    if proof.is_ok() {
+        let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, proof?.user_circuit_hash.as_str()).await?;
+        let protocol_name = user_circuit.protocol_name;
 
-
-    if is_proof_already_registered {
-        info!("proof already exist");
-        return Err(anyhow!(CustomError::BadRequest(error_line!("proof already exist".to_string()))));
+        let protocol = get_protocol_by_protocol_name(get_pool().await, &protocol_name).await?;
+        if protocol.is_proof_repeat_allowed == 0 {
+            info!("proof already exist");
+            return Err(anyhow!(CustomError::BadRequest(error_line!("proof already exist".to_string()))));
+        }
     }
     Ok(())
 }
