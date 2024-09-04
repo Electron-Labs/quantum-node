@@ -4,3 +4,5 @@ pub mod reduction_circuit;
 pub mod superproof;
 pub mod task;
 pub mod protocol;
+
+pub mod bonsai_image;

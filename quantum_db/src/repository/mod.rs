@@ -6,3 +6,5 @@ pub mod superproof_repository;
 pub mod protocol;
 pub mod auth;
 pub mod cost_saved_repository;
+
+pub mod bonsai_image;
