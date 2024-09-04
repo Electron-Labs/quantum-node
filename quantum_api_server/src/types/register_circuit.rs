@@ -5,6 +5,7 @@ use serde::Deserialize;
 use tracing::info;
 // use crate::types::proving_schemes::ProvingSchemes;
 
+// Note: not removing for the backward compatibility
 #[derive(Clone, Debug, Deserialize)]
 pub struct RegisterCircuitRequest {
     pub vkey: Vec<u8>, // borsh serialised vkey
