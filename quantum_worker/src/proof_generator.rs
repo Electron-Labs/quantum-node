@@ -98,27 +98,28 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
     let outer_vk = GnarkGroth16Vkey::read_vk(&outer_vk_path)?;
     println!("outer_vk_path :: {:?}", outer_vk_path);
 
-    let reduction_start_time = Instant::now();
+    // let reduction_start_time = Instant::now();
     let prove_result: GenerateReductionProofResult;
+    let reduction_time: u64;
 
     info!("Calling gnark groth16 proof generation");
     if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
-        prove_result = generate_gnark_groth16_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
+        (prove_result, reduction_time) = generate_gnark_groth16_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Groth16 {
-        prove_result = generate_snarkjs_groth16_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
+        (prove_result, reduction_time) = generate_snarkjs_groth16_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
-        prove_result = generate_halo2_plonk_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
+        (prove_result, reduction_time) = generate_halo2_plonk_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
     } else {
         return Err(anyhow!(error_line!("unsupported proving scheme in proof reduction")));
     }
 
-    let reduction_time = reduction_start_time.elapsed().as_secs();
+    // let reduction_time = reduction_start_time.elapsed().as_secs();
     info!("Reduced Proof successfully generated in {:?}", reduction_time);
 
     Ok((prove_result, reduction_time))
 }
 
-async fn generate_gnark_groth16_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<GenerateReductionProofResult> {
+async fn generate_gnark_groth16_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<(GenerateReductionProofResult, u64)> {
     // Get inner_proof
     let inner_proof_path = &proof_data.proof_path;
     println!("inner_proof_path :: {:?}", inner_proof_path);
@@ -135,6 +136,9 @@ async fn generate_gnark_groth16_reduced_proof(user_circuit_data: &UserCircuitDat
         GnarkGroth16Proof::read_proof(&inner_proof_path)?;
     let gnark_inner_vk: GnarkGroth16Vkey = GnarkGroth16Vkey::read_vk(&inner_vk_path)?;
     let gnark_inner_pis: GnarkGroth16Pis = GnarkGroth16Pis::read_pis(&inner_pis_path)?;
+
+    let reduction_start_time = Instant::now();
+
     // 2.Call reduced proof generator for gnark inner proof
     let prove_result = QuantumV2CircuitInteractor::generate_gnark_groth16_reduced_proof(
         gnark_inner_proof,
@@ -143,12 +147,13 @@ async fn generate_gnark_groth16_reduced_proof(user_circuit_data: &UserCircuitDat
         outer_vk,
         outer_pk_bytes,
     );
+    let reduction_time = reduction_start_time.elapsed().as_secs();
 
     verify_proof_reduction_result(&prove_result, &user_circuit_data, gnark_inner_vk, gnark_inner_pis)?;
-    Ok(prove_result)
+    Ok((prove_result, reduction_time))
 }
 
-async fn generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<GenerateReductionProofResult> {
+async fn generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<(GenerateReductionProofResult, u64)> {
     // Get inner_proof
     let inner_proof_path = &proof_data.proof_path;
     println!("inner_proof_path :: {:?}", inner_proof_path);
@@ -166,6 +171,8 @@ async fn generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuitD
     let snarkjs_inner_vk: SnarkJSGroth16Vkey = SnarkJSGroth16Vkey::read_vk(&inner_vk_path)?;
     let snarkjs_inner_pis: SnarkJSGroth16Pis = SnarkJSGroth16Pis::read_pis(&inner_pis_path)?;
     // 2. Call reduced proof generator for circom inner proof
+
+    let reduction_start_time = Instant::now();
     let prove_result = QuantumV2CircuitInteractor::generate_snarkjs_groth16_reduced_proof(
         snarkjs_inner_proof,
         snarkjs_inner_vk.clone(),
@@ -173,11 +180,12 @@ async fn generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuitD
         outer_vk,
         outer_pk_bytes,
     );
+    let reduction_time = reduction_start_time.elapsed().as_secs();
     verify_proof_reduction_result(&prove_result, &user_circuit_data, snarkjs_inner_vk, snarkjs_inner_pis)?;
-    Ok(prove_result)
+    Ok((prove_result, reduction_time))
 }
 
-async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<GenerateReductionProofResult> {
+async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<(GenerateReductionProofResult, u64)> {
     // Get inner_proof
     let inner_proof_path = &proof_data.proof_path;
     println!("inner_proof_path :: {:?}", inner_proof_path);
@@ -193,6 +201,8 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let inner_proof = Halo2PlonkProof::read_proof(&inner_proof_path)?;
     let inner_vk = Halo2PlonkVkey::read_vk(&inner_vk_path)?;
     let inner_pis = Halo2PlonkPis::read_pis(&inner_pis_path)?;
+    
+    let reduction_start_time = Instant::now();
     let prove_result = QuantumV2CircuitInteractor::generate_halo2_plonk_reduced_proof(
         inner_pis.clone(),
         inner_proof,
@@ -200,8 +210,10 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
         outer_vk,
         outer_pk_bytes,
     );
+    let reduction_time = reduction_start_time.elapsed().as_secs();
+
     verify_proof_reduction_result(&prove_result, &user_circuit_data, inner_vk, inner_pis)?;
-    Ok(prove_result)
+    Ok((prove_result, reduction_time))
 }
 
 fn verify_proof_reduction_result<V: Vkey, P: Pis>(prove_result: &GenerateReductionProofResult, user_circuit_data: &UserCircuitData, inner_vk: V, inner_pis: P) -> AnyhowResult<()>{
