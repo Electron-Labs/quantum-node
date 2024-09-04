@@ -7,7 +7,8 @@ pub enum ProvingSchemes {
     GnarkGroth16,
     Groth16,
     Plonky2,
-    Halo2Plonk
+    Halo2Plonk,
+    GnarkPlonk
 }
 
 impl FromStr for ProvingSchemes {
@@ -17,6 +18,7 @@ impl FromStr for ProvingSchemes {
         Groth16,
         Plonky2,
         Halo2Plonk
+        GnarkPlonk
      */
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
@@ -24,6 +26,7 @@ impl FromStr for ProvingSchemes {
             "groth16" => Ok(ProvingSchemes::Groth16),
             "plonky2" => Ok(ProvingSchemes::Plonky2),
             "halo2plonk" => Ok(ProvingSchemes::Halo2Plonk),
+            "gnarkplonk" => Ok(ProvingSchemes::GnarkPlonk),
             _ => Err(format!("Invalid proving scheme: {}", s)),
         }
     }
@@ -35,7 +38,8 @@ impl ToString for ProvingSchemes {
             ProvingSchemes::GnarkGroth16 => String::from("GnarkGroth16"),
             ProvingSchemes::Groth16 => String::from("Groth16"),
             ProvingSchemes::Halo2Plonk => String::from("Halo2Plonk"),
-            ProvingSchemes::Plonky2 => String::from("Plonky2")
+            ProvingSchemes::Plonky2 => String::from("Plonky2"),
+            ProvingSchemes::GnarkPlonk => String::from("GnarkPlonk")
         }
     }
 }

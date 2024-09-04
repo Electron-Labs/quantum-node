@@ -12,9 +12,9 @@ pub async fn get_aggregation_waiting_proof_num(pool: &Pool<MySql>) -> AnyhowResu
 
     info!("{}", query.sql());
     info!("arguments: {}",ProofStatus::Reduced.as_u8());
-    
+
     let reduction_circuit = match query.fetch_one(pool).await{
-        Ok(t) =>{ 
+        Ok(t) =>{
             let id: u64 = t.try_get_unchecked("reduced_proof_count")?;
             Ok(id)
         }
@@ -42,7 +42,7 @@ pub async fn get_latest_proof_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: 
 
     info!("{}", query.sql());
     info!("arguments: {}", circuit_hash);
-    
+
     let proof = match query.fetch_one(pool).await{
         Ok(t) => get_proof_from_mysql_row(&t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -56,7 +56,7 @@ pub async fn get_proof_by_proof_id(pool: &Pool<MySql>, proof_id: u64) -> AnyhowR
 
     info!("{}", query.sql());
     info!("arguments: {}", proof_id);
-    
+
     let proof = match query.fetch_one(pool).await{
         Ok(t) => get_proof_from_mysql_row(&t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
@@ -78,19 +78,19 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
     proof
 }
 
-pub async fn get_latest_proofs_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: Vec<String>, limit: u8) -> AnyhowResult<Proof> {
-    let query  = sqlx::query("SELECT * from proof where user_circuit_hash in (?) limit ?")
-        .bind(circuit_hash).bind(limit);
+// pub async fn get_latest_proofs_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: Vec<String>, limit: u8) -> AnyhowResult<Proof> {
+//     let query  = sqlx::query("SELECT * from proof where user_circuit_hash in (?) limit ?")
+//         .bind(circuit_hash).bind(limit);
 
-    info!("{}", query.sql());
-    info!("arguments: {:?}, {}",circuit_hash, limit);
+//     info!("{}", query.sql());
+//     info!("arguments: {:?}, {}",circuit_hash, limit);
 
-    let proof = match query.fetch_one(pool).await{
-        Ok(t) => get_proof_from_mysql_row(&t),
-        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
-    };
-    proof
-}
+//     let proof = match query.fetch_one(pool).await{
+//         Ok(t) => get_proof_from_mysql_row(&t),
+//         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+//     };
+//     proof
+// }
 
 pub async fn get_proofs_in_superproof_id(pool: &Pool<MySql>, superproof_id: u64) -> AnyhowResult<Vec<Proof>> {
     let query  = sqlx::query("SELECT * from proof where superproof_id = ?")
@@ -164,7 +164,7 @@ pub async fn get_n_reduced_proofs(pool: &Pool<MySql>, n: u64) -> AnyhowResult<Ve
 
     let db_rows = match query.fetch_all(pool).await {
         Ok(t) => Ok(t),
-        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))  
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
 
     let db_rows = db_rows?;

@@ -17,11 +17,7 @@ use quantum_types::{
         vkey::Vkey,
     },
     types::{
-        config::ConfigData,
-        db::{task::Task, user_circuit_data, proof::Proof as DBProof},
-        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey},
-        halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey},
-        snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
+        config::ConfigData, db::{proof::Proof as DBProof, task::Task, user_circuit_data}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}
     },
 };
 use quantum_utils::{error_line, file::read_bytes_from_file};
@@ -31,7 +27,7 @@ use tracing::info;
 use quantum_db::repository::proof_repository::get_proof_by_proof_id;
 use quantum_types::types::db::reduction_circuit::ReductionCircuit;
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
-use crate::connection::get_pool;
+use crate::{connection::get_pool, AVAIL_BH};
 use crate::utils::dump_reduction_proof_data;
 
 pub async fn handle_proof_generation_and_updation(
@@ -109,6 +105,8 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
         (prove_result, reduction_time) = generate_snarkjs_groth16_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
         (prove_result, reduction_time) = generate_halo2_plonk_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::GnarkPlonk {
+        (prove_result, reduction_time) = generate_gnark_plonk_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
     } else {
         return Err(anyhow!(error_line!("unsupported proving scheme in proof reduction")));
     }
@@ -201,7 +199,7 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let inner_proof = Halo2PlonkProof::read_proof(&inner_proof_path)?;
     let inner_vk = Halo2PlonkVkey::read_vk(&inner_vk_path)?;
     let inner_pis = Halo2PlonkPis::read_pis(&inner_pis_path)?;
-    
+
     let reduction_start_time = Instant::now();
     let prove_result = QuantumV2CircuitInteractor::generate_halo2_plonk_reduced_proof(
         inner_pis.clone(),
@@ -209,6 +207,39 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
         inner_vk.clone(),
         outer_vk,
         outer_pk_bytes,
+    );
+    let reduction_time = reduction_start_time.elapsed().as_secs();
+
+    verify_proof_reduction_result(&prove_result, &user_circuit_data, inner_vk, inner_pis)?;
+    Ok((prove_result, reduction_time))
+}
+
+async fn generate_gnark_plonk_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<(GenerateReductionProofResult, u64)> {
+    // Get inner_proof
+    let inner_proof_path = &proof_data.proof_path;
+    println!("inner_proof_path :: {:?}", inner_proof_path);
+
+    // Get inner_vk
+    let inner_vk_path = &user_circuit_data.vk_path;
+    println!("inner_vk_path :: {:?}", inner_vk_path);
+
+    // Get inner_pis
+    let inner_pis_path = &proof_data.pis_path;
+    println!("inner_pis_path :: {:?}", inner_pis_path);
+    // 1.Reconstruct inner proof
+    let inner_proof = GnarkPlonkSolidityProof::read_proof(&inner_proof_path)?;
+    let inner_vk = GnarkPlonkVkey::read_vk(&inner_vk_path)?;
+    let inner_pis = GnarkPlonkPis::read_pis(&inner_pis_path)?;
+
+    let reduction_start_time = Instant::now();
+
+    let prove_result = QuantumV2CircuitInteractor::generate_gnark_plonk_reduced_proof(
+        inner_proof,
+        inner_vk.clone(),
+        inner_pis.clone(),
+        outer_vk,
+        outer_pk_bytes,
+        AVAIL_BH
     );
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
