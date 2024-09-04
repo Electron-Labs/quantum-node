@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use quantum_db::repository::{proof_repository::get_proof_by_proof_hash, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes}, types::{gnark_groth16::GnarkGroth16Pis, halo2_plonk::Halo2PlonkPis, snarkjs_groth16::SnarkJSGroth16Pis}};
+use quantum_types::{enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes}, types::{gnark_groth16::GnarkGroth16Pis, gnark_plonk::GnarkPlonkPis, halo2_plonk::Halo2PlonkPis, snarkjs_groth16::SnarkJSGroth16Pis}};
 use quantum_utils::error_line;
 use rocket::{get, serde::json::Json};
 use tracing::error;
@@ -25,6 +25,7 @@ pub async fn get_protocol_proof(_auth_token: AuthToken, proof_hash: String) -> A
         ProvingSchemes::GnarkGroth16 => response = get_protocol_proof_exec::<GnarkGroth16Pis>(&proof).await,
         ProvingSchemes::Groth16 => response = get_protocol_proof_exec::<SnarkJSGroth16Pis>(&proof).await,
         ProvingSchemes::Halo2Plonk => response = get_protocol_proof_exec::<Halo2PlonkPis>(&proof).await,
+        ProvingSchemes::GnarkPlonk => response = get_protocol_proof_exec::<GnarkPlonkPis>(&proof).await,
         _ => return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
     }
 
