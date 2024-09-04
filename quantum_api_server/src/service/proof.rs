@@ -1,5 +1,5 @@
 use quantum_circuits_interface::{agg::compute_combined_vk_hash, imt::compute_leaf_value};
-use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
+use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, get_proof_by_proof_hash_within_limits, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis, hash::KeccakHashOut, imt::ImtTree}};
 use quantum_types::types::db::proof::Proof as DbProof;
 use quantum_utils::{keccak::{convert_string_to_be_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
@@ -32,7 +32,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
 
     let proof_hash = encode_keccak_hash(&proof_id_hash)?;
 
-    check_if_proof_already_exist(&proof_hash).await?;
+    check_if_proof_already_exist(&proof_hash, &data.circuit_hash).await?;
 
     // Dump proof and pis binaries
     let proof_full_path = get_user_proof_path(&config_data.storage_folder_path, &config_data.proof_path, &data.circuit_hash, &proof_hash);
@@ -129,7 +129,7 @@ pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str
 }
 
 // TODO: need to change
-pub async fn check_if_proof_already_exist(proof_hash: &str) -> AnyhowResult<()> {
+pub async fn check_if_proof_already_exist(proof_hash: &str, circuit_hash: &str) -> AnyhowResult<()> {
     let proof = get_proof_by_proof_hash(get_pool().await, proof_hash).await;
     if proof.is_ok() {
         let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, proof?.user_circuit_hash.as_str()).await?;
@@ -140,6 +140,14 @@ pub async fn check_if_proof_already_exist(proof_hash: &str) -> AnyhowResult<()> 
             info!("proof already exist");
             return Err(anyhow!(CustomError::BadRequest(error_line!("proof already exist".to_string()))));
         }
+        // else {
+        //     let user_circuit_hash = get_user_
+        //     let proof = get_proof_by_proof_hash_within_limits(get_pool().await, proof_hash, circuit_hash, 51).await;
+        //     if proof.is_ok() {
+        //         info!("repeat proof present in the latest 51 proofs");
+        //         return Err(anyhow!(CustomError::BadRequest(error_line!("repeat proof present in the latest 51 proofs".to_string()))));
+        //     }
+        // }
     }
     Ok(())
 }
