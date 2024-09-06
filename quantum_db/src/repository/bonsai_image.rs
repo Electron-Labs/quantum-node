@@ -31,12 +31,33 @@ fn get_bonsai_image_from_mysql_row(row: &MySqlRow) -> AnyhowResult<BonsaiImage, 
         Ok(ps) => Ok(ps),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
+    let circuit_verifying_id_string: String = row.try_get_unchecked("circuit_verifying_id")?;
+    let circuit_verifying_id = parse_string_to_u32_array(&circuit_verifying_id_string)?;
     let bonsai_image = BonsaiImage {
         image_id : row.try_get_unchecked("image_id")?,
         elf_file_path: row.try_get_unchecked("elf_file_path")?,
-        circuit_verifying_id: row.try_get_unchecked("circuit_verifying_id")?,
+        circuit_verifying_id,
         proving_scheme: proving_scheme?,
         is_aggregation_image_id: row.try_get_unchecked("is_aggregation_image_id")?
     };
     Ok(bonsai_image)
+}
+
+
+fn parse_string_to_u32_array(s: &str) -> AnyhowResult<[u32; 8]> {
+    // Remove the square brackets and split by commas
+    let trimmed = s.trim_matches(|c| c == '[' || c == ']');
+    let parsed_values: Result<Vec<u32>, _> = trimmed
+        .split(',')
+        .map(|num| num.trim().parse::<u32>()) // Trim and parse each number
+        .collect();
+
+    match parsed_values {
+        Ok(vec) if vec.len() == 8 => {
+            let arr: [u32; 8] = vec.try_into().map_err(|_| anyhow!("error"))?;
+            Ok(arr)
+        },
+        Ok(_) => Err(anyhow!(CustomError::DB(error_line!("not able to pares array of u32")))),
+        Err(_) => Err(anyhow!(CustomError::DB(error_line!("not able to pares array of u32")))),
+    }
 }

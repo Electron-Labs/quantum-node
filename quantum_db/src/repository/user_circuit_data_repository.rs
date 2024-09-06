@@ -47,12 +47,12 @@ pub async fn get_user_circuits_by_circuit_status(pool: &Pool<MySql>, status: Cir
     Ok(user_circuits)
 }
 
-pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, proving_scheme: ProvingSchemes, protocol_name: &str, bonsai_image_id: &str) -> AnyhowResult<u64, AnyhowError>{
-    let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, proving_scheme, protocol_name, bonsai_image_id) VALUES(?,?,?,?,?,?,?,?)")
-                .bind(circuit_hash).bind(vk_path).bind(proving_scheme.to_string()).bind(protocol_name).bind(bonsai_image_id);
+pub async fn insert_user_circuit_data(pool: &Pool<MySql>, circuit_hash: &str, vk_path: &str, proving_scheme: ProvingSchemes, protocol_name: &str, bonsai_image_id: &str, circuit_reduction_status: CircuitReductionStatus) -> AnyhowResult<u64, AnyhowError>{
+    let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, proving_scheme, protocol_name, bonsai_image_id, circuit_reduction_status) VALUES(?,?,?,?,?,?,?,?,?)")
+                .bind(circuit_hash).bind(vk_path).bind(proving_scheme.to_string()).bind(protocol_name).bind(bonsai_image_id).bind(circuit_reduction_status.as_u8());
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {:?}, {}, {:?}", circuit_hash, vk_path, proving_scheme.to_string(), protocol_name, bonsai_image_id);
+    info!("arguments: {}, {}, {:?}, {}, {:?}, {}", circuit_hash, vk_path, proving_scheme.to_string(), protocol_name, bonsai_image_id, circuit_reduction_status.as_u8());
 
     let row_affected = match query.execute(pool).await {
         Ok(t) => Ok(t.rows_affected()),
@@ -72,12 +72,16 @@ fn get_user_circuit_data_from_mysql_row(row: &MySqlRow) -> AnyhowResult<UserCirc
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
 
+    let circuit_reduction_status_u8: u8 = row.try_get_unchecked("circuit_reduction_status").map_err(|err| anyhow!(error_line!(err)))?;
+    let circuit_reduction_status =  CircuitReductionStatus::from(circuit_reduction_status_u8);
+
     let user_circuit_data = UserCircuitData {
         circuit_hash : row.try_get_unchecked("circuit_hash")?,
         vk_path: row.try_get_unchecked("vk_path")?,
         proving_scheme: proving_scheme?,
         bonsai_image_id: row.try_get_unchecked("bonsai_image_id")?,
-        protocol_name: row.try_get_unchecked("protocol_name")?
+        protocol_name: row.try_get_unchecked("protocol_name")?,
+        circuit_reduction_status,
     };
     Ok(user_circuit_data)
 }
