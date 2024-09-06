@@ -215,6 +215,11 @@ impl Vkey for SnarkJSGroth16Vkey {
 
         gnark_converted_vkey.extended_keccak_hash(Some(0))
     }
+
+    fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
+        let gnark_converted_vkey = self.convert_to_gnark_vkey();
+        gnark_converted_vkey.compute_circuit_hash(circuit_verifying_id)
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]

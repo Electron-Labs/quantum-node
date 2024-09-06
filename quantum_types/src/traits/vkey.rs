@@ -2,6 +2,7 @@
 pub type Result<T> = std::io::Result<T>;
 
 use anyhow::Result as AnyhowResult;
+// use sqlx::Any;
 
 pub trait Vkey: Sized {
     fn serialize_vkey(&self) -> AnyhowResult<Vec<u8>>;
@@ -11,4 +12,5 @@ pub trait Vkey: Sized {
     fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()>;
     fn keccak_hash(&self) -> AnyhowResult<[u8;32]>;
     fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8;32]>;
+    fn compute_circuit_hash(&self, circuit_verifying_id: [u32;8]) -> AnyhowResult<[u8;32]>;
 }

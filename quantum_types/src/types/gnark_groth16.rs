@@ -310,6 +310,17 @@ impl Vkey for GnarkGroth16Vkey {
         extended_vkey.G1.K = k;
         extended_vkey.keccak_hash()
     }
+
+    fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
+        let keccak_h = self.keccak_hash()?;
+        let mut keccak_ip = Vec::<u8>::new();
+        keccak_ip.extend(keccak_h.to_vec());
+        for elm in circuit_verifying_id {
+            keccak_ip.extend(elm.to_be_bytes());
+        }
+        let keccak_h = keccak(keccak_ip.clone());
+        Ok(keccak_h.0)
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]

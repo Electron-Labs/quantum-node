@@ -9,4 +9,5 @@ pub struct UserCircuitData{
     pub proving_scheme: ProvingSchemes,
     pub protocol_name: String,
     pub bonsai_image_id: String,
+    pub circuit_reduction_status: CircuitReductionStatus,
 }

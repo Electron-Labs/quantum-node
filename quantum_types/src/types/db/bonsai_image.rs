@@ -5,7 +5,7 @@ use crate::enums::proving_schemes::ProvingSchemes;
 pub struct BonsaiImage {
     pub image_id: String,
     pub elf_file_path: String,
-    pub circuit_verifying_id: String,
+    pub circuit_verifying_id: [u32;8],
     pub proving_scheme: ProvingSchemes,
     pub is_aggregation_image_id: u8
 }

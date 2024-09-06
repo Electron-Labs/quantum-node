@@ -6,6 +6,5 @@ use serde::Serialize;
 #[serde(crate = "rocket::serde")]
 
 pub struct CircuitRegistrationStatusResponse {
-    pub circuit_registration_status: String,
-    pub reduction_circuit_hash: Option<String>
+    pub circuit_registration_status: String
 }

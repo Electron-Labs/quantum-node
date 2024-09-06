@@ -81,10 +81,10 @@ pub async fn get_proof_by_proof_hash(pool: &Pool<MySql>, proof_hash: &str) -> An
 // pub async fn get_latest_proofs_by_circuit_hash(pool: &Pool<MySql>, circuit_hash: Vec<String>, limit: u8) -> AnyhowResult<Proof> {
 //     let query  = sqlx::query("SELECT * from proof where user_circuit_hash in (?) limit ?")
 //         .bind(circuit_hash).bind(limit);
-
+//
 //     info!("{}", query.sql());
 //     info!("arguments: {:?}, {}",circuit_hash, limit);
-
+//
 //     let proof = match query.fetch_one(pool).await{
 //         Ok(t) => get_proof_from_mysql_row(&t),
 //         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
