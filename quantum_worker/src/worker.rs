@@ -2,6 +2,8 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use dotenv::dotenv;
 // use imt::handle_imt;
+// use bonsai_sdk::
+
 use quantum_db::{
     error::error::CustomError,
     repository::{
@@ -28,94 +30,95 @@ use quantum_types::{
 use quantum_utils::{error_line, logger::initialize_logger};
 use sqlx::{MySql, Pool};
 use std::{thread::sleep, time::Duration};
+// use risc0_zkvm::{ExecutorEnv, Receipt};
 use tracing::{error, info};
 use crate::connection::get_pool;
-use crate::imt::handle_imt_proof_generation_and_updation;
+// use crate::imt::handle_imt_proof_generation_and_updation;
 use crate::{proof_generator, registration};
-use crate::aggregator::handle_proof_aggregation_and_updation;
+// use crate::aggregator::handle_proof_aggregation_and_updation;
 
-pub async fn handle_register_circuit_task(
-    registration_task: Task,
-    config: &ConfigData,
-) -> AnyhowResult<()> {
-    let user_circuit_hash = registration_task.clone().user_circuit_hash;
+// pub async fn handle_register_circuit_task(
+//     registration_task: Task,
+//     config: &ConfigData,
+// ) -> AnyhowResult<()> {
+//     let user_circuit_hash = registration_task.clone().user_circuit_hash;
 
-    // Change Task status to InProgress
-    update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::InProgress).await?;
+//     // Change Task status to InProgress
+//     update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::InProgress).await?;
 
-    // Change user_circuit_data.circuit_reduction_status to InProgress
-    update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::InProgress).await?;
+//     // Change user_circuit_data.circuit_reduction_status to InProgress
+//     update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::InProgress).await?;
 
-    let request = registration::handle_circuit_registration(registration_task.clone(), config).await;
+//     let request = registration::handle_circuit_registration(registration_task.clone(), config).await;
 
-    match request {
-        Ok(_) => {
-            // Change user_circuit_data.circuit_reduction_status to Completed
-            update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::SmartContractRgistrationPending).await?;
+//     match request {
+//         Ok(_) => {
+//             // Change user_circuit_data.circuit_reduction_status to Completed
+//             update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::SmartContractRgistrationPending).await?;
 
-            // Set Task Status to Completed
-            update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::Completed).await?;
+//             // Set Task Status to Completed
+//             update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::Completed).await?;
 
-            info!("Circuit registered successfully");
-        }
-        Err(e) => {
-            // Update db task to failed and circuit reduction to failed too
-            update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::Failed).await?;
+//             info!("Circuit registered successfully");
+//         }
+//         Err(e) => {
+//             // Update db task to failed and circuit reduction to failed too
+//             update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::Failed).await?;
 
-            // Set Task Status to failed
-            update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::Failed).await?;
-            error!(
-                "Circuit registration failed : {:?}",
-                e.root_cause().to_string()
-            );
-        }
-    }
-    Ok(())
-}
+//             // Set Task Status to failed
+//             update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::Failed).await?;
+//             error!(
+//                 "Circuit registration failed : {:?}",
+//                 e.root_cause().to_string()
+//             );
+//         }
+//     }
+//     Ok(())
+// }
 
-pub async fn handle_aggregate_proof_task(
-    proofs: Vec<Proof>,
-    config: &ConfigData,
-    superproof_id: u64,
-) -> AnyhowResult<()>
-{
-    let mut proof_ids: Vec<u64> = vec![];
-    for proof in &proofs {
-        let proof_id = match proof.id {
-            Some(id) => Ok(id),
-            None => Err(anyhow!(error_line!("not able to find proofId"))),
-        };
-        let proof_id = proof_id?;
-        proof_ids.push(proof_id);
-    }
+// pub async fn handle_aggregate_proof_task(
+//     proofs: Vec<Proof>,
+//     config: &ConfigData,
+//     superproof_id: u64,
+// ) -> AnyhowResult<()>
+// {
+//     let mut proof_ids: Vec<u64> = vec![];
+//     for proof in &proofs {
+//         let proof_id = match proof.id {
+//             Some(id) => Ok(id),
+//             None => Err(anyhow!(error_line!("not able to find proofId"))),
+//         };
+//         let proof_id = proof_id?;
+//         proof_ids.push(proof_id);
+//     }
 
-    let aggregation_request = handle_proof_aggregation_and_updation(proofs.clone(), superproof_id, config).await;
+//     let aggregation_request = handle_proof_aggregation_and_updation(proofs.clone(), superproof_id, config).await;
 
-    match aggregation_request {
-        Ok(_) => {
-            // Update Proof Status to aggregated for all the proofs
-            for proof_id in proof_ids {
-                update_proof_status(get_pool().await, proof_id, ProofStatus::Aggregated).await?;
-            }
-            // Superproof status to PROVING_DONE
-            info!("changing the superproof status to proving done");
-            update_superproof_status(get_pool().await, SuperproofStatus::ProvingDone, superproof_id).await?;
-        }
-        Err(e) => {
-            error!("aggregation_request error {:?}", e);
+//     match aggregation_request {
+//         Ok(_) => {
+//             // Update Proof Status to aggregated for all the proofs
+//             for proof_id in proof_ids {
+//                 update_proof_status(get_pool().await, proof_id, ProofStatus::Aggregated).await?;
+//             }
+//             // Superproof status to PROVING_DONE
+//             info!("changing the superproof status to proving done");
+//             update_superproof_status(get_pool().await, SuperproofStatus::ProvingDone, superproof_id).await?;
+//         }
+//         Err(e) => {
+//             error!("aggregation_request error {:?}", e);
 
-            // Change proof_generation status to FAILED
-            for proof_id in proof_ids {
-                update_proof_status(get_pool().await, proof_id, ProofStatus::AggregationFailed).await?;
-            }
+//             // Change proof_generation status to FAILED
+//             for proof_id in proof_ids {
+//                 update_proof_status(get_pool().await, proof_id, ProofStatus::AggregationFailed).await?;
+//             }
 
-            error!("changing the superproof status to failed");
-            update_superproof_status(get_pool().await, SuperproofStatus::Failed, superproof_id).await?;
-            return Err(e);
-        }
-    }
-    Ok(())
-}
+//             error!("changing the superproof status to failed");
+//             update_superproof_status(get_pool().await, SuperproofStatus::Failed, superproof_id).await?;
+//             return Err(e);
+//         }
+//     }
+//     Ok(())
+// }
 
 pub async fn handle_proof_generation_task(
     proof_generation_task: Task,
@@ -170,56 +173,59 @@ pub async fn handle_proof_generation_task(
     Ok(())
 }
 
-pub async fn aggregate_and_generate_new_superproof(aggregation_awaiting_proofs: Vec<Proof>, config_data: &ConfigData) -> AnyhowResult<()>
-{
-    // INSERT NEW SUPERPROOF RECORD
-    let mut proof_ids: Vec<u64> = vec![];
-    for proof in &aggregation_awaiting_proofs {
-        let proof_id = match proof.id {
-            Some(id) => Ok(id),
-            None => Err(anyhow!(error_line!("not able to find proofId"))),
-        };
-        let proof_id = proof_id?;
-        proof_ids.push(proof_id);
-    }
-    let proof_json_string = serde_json::to_string(&proof_ids)?;
-    let superproof_id = insert_new_superproof(get_pool().await, &proof_json_string, SuperproofStatus::InProgress).await?;
-    info!("added new superproof record => superproof_id={}",superproof_id);
+// pub async fn aggregate_and_generate_new_superproof(aggregation_awaiting_proofs: Vec<Proof>, config_data: &ConfigData) -> AnyhowResult<()>
+// {
+//     // INSERT NEW SUPERPROOF RECORD
+//     let mut proof_ids: Vec<u64> = vec![];
+//     for proof in &aggregation_awaiting_proofs {
+//         let proof_id = match proof.id {
+//             Some(id) => Ok(id),
+//             None => Err(anyhow!(error_line!("not able to find proofId"))),
+//         };
+//         let proof_id = proof_id?;
+//         proof_ids.push(proof_id);
+//     }
+//     let proof_json_string = serde_json::to_string(&proof_ids)?;
+//     let superproof_id = insert_new_superproof(get_pool().await, &proof_json_string, SuperproofStatus::InProgress).await?;
+//     info!("added new superproof record => superproof_id={}",superproof_id);
 
 
-    for proof_id in proof_ids.clone() {
-        update_proof_status(get_pool().await, proof_id, ProofStatus::Aggregating).await?;
-    }
+//     for proof_id in proof_ids.clone() {
+//         update_proof_status(get_pool().await, proof_id, ProofStatus::Aggregating).await?;
+//     }
 
-    for proof_id in proof_ids {
-        update_superproof_id_in_proof(get_pool().await, proof_id, superproof_id).await?;
-    }
+//     for proof_id in proof_ids {
+//         update_superproof_id_in_proof(get_pool().await, proof_id, superproof_id).await?;
+//     }
 
-    handle_imt_proof_generation_and_updation(aggregation_awaiting_proofs.clone(), superproof_id, config_data, ).await?;
-    handle_aggregate_proof_task(aggregation_awaiting_proofs, config_data, superproof_id).await?;
+//     handle_imt_proof_generation_and_updation(aggregation_awaiting_proofs.clone(), superproof_id, config_data, ).await?;
+//     handle_aggregate_proof_task(aggregation_awaiting_proofs, config_data, superproof_id).await?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> AnyhowResult<()> {
     loop {
-        println!("Running worker loop");
-        let aggregation_awaiting_proofs = get_n_reduced_proofs(get_pool().await, config_data.batch_size).await?;
-        println!(
-            "Aggregation awaiting proofs {:?}",
-            aggregation_awaiting_proofs.len()
-        );
-        if aggregation_awaiting_proofs.len() == config_data.batch_size as usize {
-            info!("Picked up Proofs aggregation");
-            aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
-        }
+        // TODO: will have variable batch size for aggregation.
+        // println!("Running worker loop");
+        // let aggregation_awaiting_proofs = get_n_reduced_proofs(get_pool().await, config_data.batch_size).await?;
+        // println!(
+        //     "Aggregation awaiting proofs {:?}",
+        //     aggregation_awaiting_proofs.len()
+        // );
+        // if aggregation_awaiting_proofs.len() == config_data.batch_size as usize {
+        //     info!("Picked up Proofs aggregation");
+        //     aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
+        // }
+
 
         let unpicked_task = get_unpicked_task(get_pool().await).await?;
         if unpicked_task.is_some() {
             let task = unpicked_task.unwrap();
             if task.task_type == TaskType::CircuitReduction {
-                info!("Picked up circuit reduction task --> {:?}", task);
-                handle_register_circuit_task(task, config_data).await?;
+                // info!("Picked up circuit reduction task --> {:?}", task);
+                // handle_register_circuit_task(task, config_data).await?;
+                continue;
             } else if task.task_type == TaskType::ProofGeneration {
                 info!("Picked up proof generation task --> {:?}", task);
                 handle_proof_generation_task(task, config_data).await?;
@@ -227,6 +233,26 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
         } else {
             println!("No task available to pick");
         }
-        sleep(sleep_duration)
+        sleep(sleep_duration);
+        // break;
     }
+
+    // let r  : Receipt;
+    //
+    // r.verify()
+    //
+    // //snark
+    // let env = ExecutorEnv::builder()
+    //     .write(&vk_bytes.len())
+    //     .unwrap()
+    //     .write_slice(&vk_bytes)
+    //     .write(&proof_bytes.len())
+    //     .unwrap()
+    //     .write_slice(&proof_bytes)
+    //     .write(&public_inputs_bytes.len())
+    //     .unwrap()
+    //     .write_slice(&public_inputs_bytes)
+    //     .build()
+    //     .unwrap();
+
 }
