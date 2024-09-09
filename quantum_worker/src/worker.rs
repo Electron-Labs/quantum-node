@@ -37,45 +37,6 @@ use crate::connection::get_pool;
 use crate::{proof_generator, registration};
 // use crate::aggregator::handle_proof_aggregation_and_updation;
 
-// pub async fn handle_register_circuit_task(
-//     registration_task: Task,
-//     config: &ConfigData,
-// ) -> AnyhowResult<()> {
-//     let user_circuit_hash = registration_task.clone().user_circuit_hash;
-
-//     // Change Task status to InProgress
-//     update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::InProgress).await?;
-
-//     // Change user_circuit_data.circuit_reduction_status to InProgress
-//     update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::InProgress).await?;
-
-//     let request = registration::handle_circuit_registration(registration_task.clone(), config).await;
-
-//     match request {
-//         Ok(_) => {
-//             // Change user_circuit_data.circuit_reduction_status to Completed
-//             update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::SmartContractRgistrationPending).await?;
-
-//             // Set Task Status to Completed
-//             update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::Completed).await?;
-
-//             info!("Circuit registered successfully");
-//         }
-//         Err(e) => {
-//             // Update db task to failed and circuit reduction to failed too
-//             update_user_circuit_data_reduction_status(get_pool().await, &user_circuit_hash, CircuitReductionStatus::Failed).await?;
-
-//             // Set Task Status to failed
-//             update_task_status(get_pool().await, registration_task.id.unwrap(), TaskStatus::Failed).await?;
-//             error!(
-//                 "Circuit registration failed : {:?}",
-//                 e.root_cause().to_string()
-//             );
-//         }
-//     }
-//     Ok(())
-// }
-
 // pub async fn handle_aggregate_proof_task(
 //     proofs: Vec<Proof>,
 //     config: &ConfigData,
@@ -222,11 +183,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
         let unpicked_task = get_unpicked_task(get_pool().await).await?;
         if unpicked_task.is_some() {
             let task = unpicked_task.unwrap();
-            if task.task_type == TaskType::CircuitReduction {
-                // info!("Picked up circuit reduction task --> {:?}", task);
-                // handle_register_circuit_task(task, config_data).await?;
-                continue;
-            } else if task.task_type == TaskType::ProofGeneration {
+           if task.task_type == TaskType::ProofGeneration {
                 info!("Picked up proof generation task --> {:?}", task);
                 handle_proof_generation_task(task, config_data).await?;
             }
@@ -234,25 +191,5 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             println!("No task available to pick");
         }
         sleep(sleep_duration);
-        // break;
     }
-
-    // let r  : Receipt;
-    //
-    // r.verify()
-    //
-    // //snark
-    // let env = ExecutorEnv::builder()
-    //     .write(&vk_bytes.len())
-    //     .unwrap()
-    //     .write_slice(&vk_bytes)
-    //     .write(&proof_bytes.len())
-    //     .unwrap()
-    //     .write_slice(&proof_bytes)
-    //     .write(&public_inputs_bytes.len())
-    //     .unwrap()
-    //     .write_slice(&public_inputs_bytes)
-    //     .build()
-    //     .unwrap();
-
 }

@@ -3,6 +3,10 @@
 
 use std::{path, str::FromStr};
 
+// use ark_bn254::Bn254;
+use ark_bn254::{Bn254, Config, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
+use ark_groth16::{verifier, VerifyingKey, Proof as ArkProof};
+use ark_groth16::VerifyingKey;
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use quantum_utils::{
@@ -163,6 +167,108 @@ impl SnarkJSGroth16Vkey {
     }
 }
 
+impl SnarkJSGroth16Vkey {
+    pub fn get_ark_vk_for_snarkjs_groth16(&self) -> AnyhowResult<VerifyingKey<Bn254>> {
+        let alpha_g1 = G1Affine::new(
+            ArkFq::from_str(
+                self.vk_alpha_1.get(0)?,
+            )?,
+            ArkFq::from_str(
+                self.vk_alpha_1.get(1)?,
+            )?,
+        );
+        let beta_g2 = G2Affine::new(
+            ArkFq2::new(
+                ArkFq::from_str(
+                    self.vk_beta_2.get(0)?.get(0)?,
+                )
+                ?,
+                ArkFq::from_str(
+                    self.vk_beta_2.get(0)?.get(1)?,
+                )
+                ?,
+            ),
+            ArkFq2::new(
+                ArkFq::from_str(
+                    self.vk_beta_2.get(1)?.get(0)?,
+                )
+                ?,
+                ArkFq::from_str(
+                    self.vk_beta_2.get(1)?.get(1)?,
+                )
+                ?,
+            ),
+        );
+        let gamma_g2 = G2Affine::new(
+            ArkFq2::new(
+                ArkFq::from_str(
+                    self.vk_gamma_2.get(0)?.get(0)?,
+                )
+                ?,
+                ArkFq::from_str(
+                    self.vk_gamma_2.get(0)?.get(1)?,
+                )
+                ?,
+            ),
+            ArkFq2::new(
+                ArkFq::from_str(
+                    self.vk_gamma_2.get(1)?.get(0)?,
+                )
+                ?,
+                ArkFq::from_str(
+                    self.vk_gamma_2.get(1)?.get(1)?,
+                )
+                ?,
+            ),
+        );
+        let delta_g2 = G2Affine::new(
+            ArkFq2::new(
+                ArkFq::from_str(
+                    self.vk_delta_2.get(0)?.get(0)?,
+                )
+                ?,
+                ArkFq::from_str(
+                    self.vk_delta_2.get(0)?.get(1)?,
+                )
+                ?,
+            ),
+            ArkFq2::new(
+                ArkFq::from_str(
+                    self.vk_delta_2.get(1)?.get(0)?,
+                )
+                ?,
+                ArkFq::from_str(
+                    self.vk_delta_2.get(1)?.get(1)?,
+                )
+                ?,
+            ),
+        );
+    
+        let mut gamma_abc_g1 = vec![];
+        for ic in self.IC {
+            let g1 = G1Affine::new(
+                ArkFq::from_str(
+                    ic.get(0)?
+                )?,
+                ArkFq::from_str(
+                    ic.get(1)?
+                )
+                ?,
+            );
+            gamma_abc_g1.push(g1);
+        }
+    
+        let ark_vk = VerifyingKey::<Bn254>{
+            alpha_g1,
+            beta_g2,
+            gamma_g2,
+            delta_g2,
+            gamma_abc_g1
+        };
+        Ok(ark_vk)
+    }
+}
+
 impl Vkey for SnarkJSGroth16Vkey {
     fn serialize_vkey(&self) -> AnyhowResult<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
@@ -257,6 +363,47 @@ impl Proof for SnarkJSGroth16Proof {
     }
 }
 
+impl SnarkJSGroth16Proof {
+    pub fn get_ark_proof_for_snarkjs_groth16_proof(&self) -> AnyhowResult<ArkProof<Bn254>> {
+        let a = G1Affine::new(
+            ArkFq::from_str(
+                self.pi_a.get(0)?
+            )?,
+            ArkFq::from_str(
+                self.pi_a.get(1)?
+            )?,
+        );
+        let b = G2Affine::new(
+            ArkFq2::new(
+                ArkFq::from_str(
+                    self.pi_b.get(0)?.get(0)?
+                )?,
+                ArkFq::from_str(
+                    self.pi_b.get(0)?.get(1)?
+                )?,
+            ),
+            ArkFq2::new(
+                Fq::from_str(
+                    self.pi_b.get(1)?.get(0)?
+                )?,
+                ArkFq::from_str(
+                    self.pi_b.get(1)?.get(1)?
+                )?,
+            ),
+        );
+        let c = G1Affine::new(
+            ArkFq::from_str(
+                self.pi_c.get(0)?
+            )?,
+            ArkFq::from_str(
+                self.pi_c.get(1)?
+            )?,
+        );
+        let ark_proof = ArkProof::<Bn254> { a, b, c };
+        Ok(ark_proof)
+    }
+}
+
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Pis(pub Vec<String>);
 
@@ -304,6 +451,16 @@ impl Pis for SnarkJSGroth16Pis {
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
         Ok(self.0.clone())
+    }
+}
+
+impl SnarkJSGroth16Pis {
+    pub fn get_ark_pis_for_snarkjs_groth16_pis(&self) ->  AnyhowResult<Vec<Fr>> {
+        let mut ark_pis = vec![];
+    for p in pis.0 {
+        ark_pis.push(ArkFr::from_str(&p)?)
+    }
+    Ok(ark_pis)
     }
 }
 
