@@ -37,6 +37,18 @@ pub fn get_reduction_circuit_proof_path(storage_folder_path: &str, reduced_proof
     proof_path
 }
 
+pub fn get_reduced_proof_receipt_path(storage_folder_path: &str, reduced_proof_receipt_path: &str, circuit_hash: &str, proof_hash: &str) {
+    let reduced_proof_dir = format!("{}/{}{}", storage_folder_path, circuit_hash, reduced_proof_receipt_path);
+    let proof_path = format!("{}/reduced_proof_receipt_{}.bin", reduced_proof_dir, proof_hash);
+    proof_path
+}
+
+pub fn get_reduction_(storage_folder_path: &str, reduced_proof_path: &str, circuit_hash: &str, proof_hash: &str) -> String {
+    let reduced_proof_dir = format!("{}/{}{}", storage_folder_path, circuit_hash, reduced_proof_path);
+    let proof_path = format!("{}/reduced_proof_{}.bin", reduced_proof_dir, proof_hash);
+    proof_path
+}
+
 pub fn get_reduction_circuit_pis_path(storage_folder_path: &str, reduced_pis_path: &str, circuit_hash: &str, proof_hash: &str) -> String {
     let reduced_pis_dir = format!("{}/{}{}", storage_folder_path, circuit_hash, reduced_pis_path);
     let pis_path = format!("{}/reduced_pis_{}.bin", reduced_pis_dir, proof_hash);

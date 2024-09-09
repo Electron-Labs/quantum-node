@@ -12,6 +12,7 @@ pub struct ConfigData {
     pub public_inputs_path: String,
     pub reduced_proof_path: String,
     pub reduced_pis_path: String,
+    pub reduced_proof_receipt_path: String,
     pub reduced_circuit_path: String,
     pub imt_circuit_data_path: String,
     pub aggregated_circuit_data: String,

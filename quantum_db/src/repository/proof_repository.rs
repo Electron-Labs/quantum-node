@@ -127,12 +127,12 @@ pub async fn update_proof_status(pool: &Pool<MySql>, proof_id: u64, proof_status
     row_affected
 }
 
-pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: u64, reduction_proof_path: &str, reduction_pis_path: &str, reduction_time: u64) -> AnyhowResult<()> {
-    let query  = sqlx::query("UPDATE proof set reduction_proof_path = ?, reduction_proof_pis_path = ?, reduction_time = ?  where id = ?")
-                .bind(reduction_proof_path).bind(reduction_pis_path).bind(reduction_time).bind(proof_id);
+pub async fn update_reduction_data(pool: &Pool<MySql>, proof_id: u64, reducded_proof_receipt_path: &str, reduction_time: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE proof set reducded_proof_receipt_path = ?, reduction_time = ?  where id = ?")
+                .bind(reducded_proof_receipt_path).bind(reduction_time).bind(proof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}, {}", reduction_proof_path, reduction_pis_path, reduction_time, proof_id);
+    info!("arguments: {}, {}, {}", reducded_proof_receipt_path, reduction_time, proof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),

@@ -1,5 +1,5 @@
 use anyhow::Result as AnyhowResult;
-use quantum_circuits_interface::imt::get_init_tree_data;
+// use quantum_circuits_interface::imt::get_init_tree_data;
 use quantum_db::repository::superproof_repository::{
     get_last_verified_superproof, get_superproof_by_id,
 };
@@ -10,13 +10,12 @@ use quantum_types::types::db::superproof::Superproof;
 use quantum_types::types::gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey};
 use quantum_types::types::imt::ImtTree;
 use quantum_types::{traits::vkey::Vkey, types::gnark_groth16::GnarkGroth16Proof};
-use quantum_utils::file::write_bytes_to_file;
+use quantum_utils::file::{dump_object, write_bytes_to_file};
 use quantum_utils::keccak::{decode_keccak_hex, encode_keccak_hash};
 use quantum_utils::paths::{
-    get_imt_pis_path, get_imt_proof_path, get_reduction_circuit_pis_path,
-    get_reduction_circuit_proof_path, get_reduction_circuit_proving_key_path,
-    get_reduction_circuit_verifying_key_path,
+    get_imt_pis_path, get_imt_proof_path, get_reduced_proof_receipt_path, get_reduction_circuit_pis_path, get_reduction_circuit_proof_path, get_reduction_circuit_proving_key_path, get_reduction_circuit_verifying_key_path
 };
+use risc0_zkvm::Receipt;
 use sqlx::{MySql, Pool};
 use tracing::info;
 use crate::connection::get_pool;
@@ -55,24 +54,20 @@ pub fn dump_reduction_proof_data(
     config: &ConfigData,
     circuit_hash: &str,
     proof_hash: &str,
-    proof: GnarkGroth16Proof,
-    pis: GnarkGroth16Pis,
-) -> AnyhowResult<(String, String)> {
-    let proof_path = get_reduction_circuit_proof_path(
+    receipt: Receipt
+) -> AnyhowResult<String> {
+    let receipt_path = get_reduced_proof_receipt_path(
         &config.storage_folder_path,
-        &config.reduced_proof_path,
+        &config.reduced_proof_receipt_path,
         circuit_hash,
         proof_hash,
     );
-    let pis_path = get_reduction_circuit_pis_path(
-        &config.storage_folder_path,
-        &config.reduced_pis_path,
-        circuit_hash,
-        proof_hash,
-    );
-    proof.dump_proof(&proof_path)?;
-    pis.dump_pis(&pis_path)?;
-    Ok((proof_path, pis_path))
+    // proof.dump_proof(&proof_path)?;
+    // pis.dump_pis(&pis_path)?;
+
+    // TODO: fix this
+    dump_object(receipt, receipt_path, "receipt_1").unwrap();
+    Ok(proof_path)
 }
 
 // Returns imt_proof_path, imt_pis_path
@@ -98,37 +93,37 @@ pub fn dump_imt_proof_data(
 }
 
 // returns empty tree root if leaves not found
-pub async fn get_last_superproof_leaves(
-    config: &ConfigData,
-) -> AnyhowResult<ImtTree> {
-    let some_superproof = get_last_verified_superproof(get_pool().await).await?;
-    let last_leaves: ImtTree;
-    match some_superproof {
-        Some(superproof) => match superproof.superproof_leaves_path {
-            Some(superproof_leaves_path) => {
-                last_leaves = ImtTree::read_tree(&superproof_leaves_path)?;
-            }
-            _ => {
-                info!(
-                    "No superproof_leaves_path for superproof_id={} => using last empty tree root",
-                    superproof.id.unwrap() // can't be null
-                );
-                let (zero_leaves, _) = get_init_tree_data(config.imt_depth as u8)?;
-                last_leaves = ImtTree {
-                    leaves: zero_leaves,
-                };
-            }
-        },
-        _ => {
-            info!("No superproof => using last empty tree root");
-            let (zero_leaves, _) = get_init_tree_data(config.imt_depth as u8)?;
-            last_leaves = ImtTree {
-                leaves: zero_leaves,
-            };
-        }
-    }
-    Ok(last_leaves)
-}
+// pub async fn get_last_superproof_leaves(
+//     config: &ConfigData,
+// ) -> AnyhowResult<ImtTree> {
+//     let some_superproof = get_last_verified_superproof(get_pool().await).await?;
+//     let last_leaves: ImtTree;
+//     match some_superproof {
+//         Some(superproof) => match superproof.superproof_leaves_path {
+//             Some(superproof_leaves_path) => {
+//                 last_leaves = ImtTree::read_tree(&superproof_leaves_path)?;
+//             }
+//             _ => {
+//                 info!(
+//                     "No superproof_leaves_path for superproof_id={} => using last empty tree root",
+//                     superproof.id.unwrap() // can't be null
+//                 );
+//                 let (zero_leaves, _) = get_init_tree_data(config.imt_depth as u8)?;
+//                 last_leaves = ImtTree {
+//                     leaves: zero_leaves,
+//                 };
+//             }
+//         },
+//         _ => {
+//             info!("No superproof => using last empty tree root");
+//             let (zero_leaves, _) = get_init_tree_data(config.imt_depth as u8)?;
+//             last_leaves = ImtTree {
+//                 leaves: zero_leaves,
+//             };
+//         }
+//     }
+//     Ok(last_leaves)
+// }
 
 #[cfg(test)]
 mod tests {

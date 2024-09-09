@@ -20,13 +20,13 @@ tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
 tracing-appender = "0.2.3"
 
 #[TODO] Change this to git repo
-quantum_circuits_interface = {path = "../../quantum-circuits/quantum_circuits_interface"}
+#quantum_circuits_interface = {path = "../../quantum-circuits/quantum_circuits_interface"}
 num-bigint = "0.4.5"
 keccak-hash = "0.10.0"
 chrono = { version = "0.4.38", features = ["serde"] }
 
-risc0-zkvm = { version = "1.1.0-rc.2" }
-bonsai-sdk = { version = "0.9.1"  }
+risc0-zkvm = { version = "1.0.5" }
+bonsai-sdk = { version = "0.9.0", features = ["non_blocking"]}
 bytemuck = "1.18.0"
 ark-groth16 = "0.4.0"
 ark-bn254 = "0.4.0"
