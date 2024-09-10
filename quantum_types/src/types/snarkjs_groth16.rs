@@ -22,6 +22,7 @@ use crate::{
 use anyhow::{anyhow, Result as AnyhowResult};
 use keccak_hash::keccak;
 use tracing::info;
+use utils::{combine_hash, groth16_vkey_hash, public_inputs_hash};
 
 use super::{
     config::ConfigData,
@@ -310,8 +311,20 @@ impl Vkey for SnarkJSGroth16Vkey {
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
-        let gnark_converted_vkey = self.convert_to_gnark_vkey();
-        gnark_converted_vkey.compute_circuit_hash(circuit_verifying_id)
+        // let gnark_converted_vkey = self.convert_to_gnark_vkey();
+        // gnark_converted_vkey.compute_circuit_hash(circuit_verifying_id)
+        let ark_vk = self.get_ark_vk_for_snarkjs_groth16()?;
+        let pvk = verifier::prepare_verifying_key(&ark_vk);
+        let pvk_hash = groth16_vkey_hash(&pvk);
+
+        let mut circuit_verifying_id_bytes = vec![];
+        for elm in circuit_verifying_id {
+            circuit_verifying_id_bytes.extend(elm.to_be_bytes());
+        }
+        // TODO: fix unwrap
+        let circuit_verifying_id_bytes: [u8;32] = circuit_verifying_id_bytes.try_into().unwrap();
+        let circuit_hash = combine_hash(&pvk_hash, &circuit_verifying_id_bytes);
+        Ok(circuit_hash)
     }
 }
 
@@ -421,13 +434,10 @@ impl Pis for SnarkJSGroth16Pis {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let mut keccak_ip = Vec::<u8>::new();
 
-        for pub_str in self.0.clone() {
-            keccak_ip.extend(convert_string_to_be_bytes(&pub_str));
-        }
-        let hash = keccak(keccak_ip);
-        Ok(hash.0)
+        let ark_pis = self.get_ark_pis_for_snarkjs_groth16_pis()?;
+        let hash = public_inputs_hash(&ark_pis);
+        Ok(hash)
     }
 
     fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
