@@ -66,8 +66,8 @@ pub fn dump_reduction_proof_data(
     // pis.dump_pis(&pis_path)?;
 
     // TODO: fix this
-    dump_object(receipt, receipt_path, "receipt_1").unwrap();
-    Ok(proof_path)
+    dump_object(receipt, &receipt_path, "receipt_1").unwrap();
+    Ok(receipt_path)
 }
 
 // Returns imt_proof_path, imt_pis_path

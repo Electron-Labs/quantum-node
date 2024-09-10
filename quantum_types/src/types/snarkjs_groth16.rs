@@ -6,7 +6,6 @@ use std::{path, str::FromStr};
 // use ark_bn254::Bn254;
 use ark_bn254::{Bn254, Config, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
 use ark_groth16::{verifier, VerifyingKey, Proof as ArkProof};
-use ark_groth16::VerifyingKey;
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use quantum_utils::{
@@ -171,89 +170,77 @@ impl SnarkJSGroth16Vkey {
     pub fn get_ark_vk_for_snarkjs_groth16(&self) -> AnyhowResult<VerifyingKey<Bn254>> {
         let alpha_g1 = G1Affine::new(
             ArkFq::from_str(
-                self.vk_alpha_1.get(0)?,
-            )?,
+                &self.vk_alpha_1[0]
+            ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             ArkFq::from_str(
-                self.vk_alpha_1.get(1)?,
-            )?,
+                &self.vk_alpha_1[1],
+            ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
         );
         let beta_g2 = G2Affine::new(
             ArkFq2::new(
                 ArkFq::from_str(
-                    self.vk_beta_2.get(0)?.get(0)?,
-                )
-                ?,
+                    &self.vk_beta_2[0][0],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
                 ArkFq::from_str(
-                    self.vk_beta_2.get(0)?.get(1)?,
-                )
-                ?,
+                    &self.vk_beta_2[0][1],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             ),
             ArkFq2::new(
                 ArkFq::from_str(
-                    self.vk_beta_2.get(1)?.get(0)?,
-                )
-                ?,
+                    &self.vk_beta_2[1][0],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
                 ArkFq::from_str(
-                    self.vk_beta_2.get(1)?.get(1)?,
-                )
-                ?,
+                    &self.vk_beta_2[1][1],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             ),
         );
         let gamma_g2 = G2Affine::new(
             ArkFq2::new(
                 ArkFq::from_str(
-                    self.vk_gamma_2.get(0)?.get(0)?,
-                )
-                ?,
+                    &self.vk_gamma_2[0][0],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
                 ArkFq::from_str(
-                    self.vk_gamma_2.get(0)?.get(1)?,
-                )
-                ?,
+                    &self.vk_gamma_2[0][0],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             ),
             ArkFq2::new(
                 ArkFq::from_str(
-                    self.vk_gamma_2.get(1)?.get(0)?,
-                )
-                ?,
+                    &self.vk_gamma_2[1][0],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
                 ArkFq::from_str(
-                    self.vk_gamma_2.get(1)?.get(1)?,
-                )
-                ?,
+                    &self.vk_gamma_2[1][1],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
+
             ),
         );
         let delta_g2 = G2Affine::new(
             ArkFq2::new(
                 ArkFq::from_str(
-                    self.vk_delta_2.get(0)?.get(0)?,
-                )
-                ?,
+                    &self.vk_delta_2[0][0],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
                 ArkFq::from_str(
-                    self.vk_delta_2.get(0)?.get(1)?,
-                )
-                ?,
+                    &self.vk_delta_2[0][1],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             ),
             ArkFq2::new(
                 ArkFq::from_str(
-                    self.vk_delta_2.get(1)?.get(0)?,
-                )
-                ?,
+                    &self.vk_delta_2[1][0],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
                 ArkFq::from_str(
-                    self.vk_delta_2.get(1)?.get(1)?,
-                )
-                ?,
+                    &self.vk_delta_2[1][1],
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             ),
         );
     
         let mut gamma_abc_g1 = vec![];
-        for ic in self.IC {
+        for ic in &self.IC {
             let g1 = G1Affine::new(
                 ArkFq::from_str(
-                    ic.get(0)?
-                )?,
+                    &ic[0]
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
                 ArkFq::from_str(
-                    ic.get(1)?
-                )
-                ?,
+                    &ic[1]
+                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             );
             gamma_abc_g1.push(g1);
         }
@@ -367,37 +354,37 @@ impl SnarkJSGroth16Proof {
     pub fn get_ark_proof_for_snarkjs_groth16_proof(&self) -> AnyhowResult<ArkProof<Bn254>> {
         let a = G1Affine::new(
             ArkFq::from_str(
-                self.pi_a.get(0)?
-            )?,
+                &self.pi_a[0]
+            ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
             ArkFq::from_str(
-                self.pi_a.get(1)?
-            )?,
+                &self.pi_a[1]
+            ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
         );
         let b = G2Affine::new(
             ArkFq2::new(
                 ArkFq::from_str(
-                    self.pi_b.get(0)?.get(0)?
-                )?,
+                    &self.pi_b[0][0]
+                ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
                 ArkFq::from_str(
-                    self.pi_b.get(0)?.get(1)?
-                )?,
+                    &self.pi_b[0][1]
+                ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
             ),
             ArkFq2::new(
-                Fq::from_str(
-                    self.pi_b.get(1)?.get(0)?
-                )?,
                 ArkFq::from_str(
-                    self.pi_b.get(1)?.get(1)?
-                )?,
+                    &self.pi_b[1][0]
+                ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
+                ArkFq::from_str(
+                    &self.pi_b[1][1]
+                ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
             ),
         );
         let c = G1Affine::new(
             ArkFq::from_str(
-                self.pi_c.get(0)?
-            )?,
+                &self.pi_c[0]
+            ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
             ArkFq::from_str(
-                self.pi_c.get(1)?
-            )?,
+                &self.pi_c[1]
+            ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
         );
         let ark_proof = ArkProof::<Bn254> { a, b, c };
         Ok(ark_proof)
@@ -455,10 +442,10 @@ impl Pis for SnarkJSGroth16Pis {
 }
 
 impl SnarkJSGroth16Pis {
-    pub fn get_ark_pis_for_snarkjs_groth16_pis(&self) ->  AnyhowResult<Vec<Fr>> {
+    pub fn get_ark_pis_for_snarkjs_groth16_pis(&self) ->  AnyhowResult<Vec<ArkFr>> {
         let mut ark_pis = vec![];
-    for p in pis.0 {
-        ark_pis.push(ArkFr::from_str(&p)?)
+    for p in &self.0 {
+        ark_pis.push(ArkFr::from_str(&p).map_err(|_| anyhow!(error_line!("failed to form ark pis from snark groth16 pis")))?)
     }
     Ok(ark_pis)
     }
