@@ -42,15 +42,13 @@ pub async fn handle_proof_generation_and_updation(
 
     let (receipt, reduction_time) = handle_proof_generation(proof_id).await?;
 
-    // Dump reduced proof and public inputs
-    // TODO change proof bytes and pis bytes values
     let receipt_path= dump_reduction_proof_data(
         config,
         user_circuit_hash,
         &proof_hash,
         receipt,
     )?;
-    info!("Dumped reduced proof and pis");
+    info!("Dumped reduced proof receipt");
 
     // update reduction data corresponding to proof
     update_reduction_data(
@@ -76,11 +74,9 @@ async fn handle_proof_generation(proof_id: u64) ->AnyhowResult<(Receipt, u64)>{
 
 async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof ) -> AnyhowResult<(Option<Receipt>, u64)> {
 
-    // let reduction_start_time = Instant::now();
     let receipt: Option<Receipt>;
     let reduction_time: u64;
 
-    info!("Calling gnark groth16 proof generation");
     // if user_circuit_data.proving_scheme == ProvingSchemes::GnarkGroth16 {
         // (prove_result, reduction_time) = generate_gnark_groth16_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
     // } else 
@@ -96,7 +92,6 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
 
     // let reduction_time = reduction_start_time.elapsed().as_secs();
     info!("Reduced Proof successfully generated in {:?}", reduction_time);
-
     Ok((receipt, reduction_time))
 }
 
@@ -173,6 +168,7 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
 
     let client = Client::from_env(risc0_zkvm::VERSION)?;
 
+    // TODO: store it in DB
     let input_id = client.upload_input(input_data_vec).await?;
     println!("input_id: {:?}", input_id);
 
@@ -191,6 +187,7 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
     println!("sessionId: {:?}", session.uuid);
     loop {
         let res = session.status(&client).await?;
+        // TODO: store Risc0 status in DB
         if res.status == "RUNNING" {
             println!(
                 "Current status: {} - state: {} - continue polling...",
@@ -201,7 +198,8 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
             continue;
         }
         if res.status == "SUCCEEDED" {
-            println!("inside succed block");
+            // TODO: store Risc0 status in DB
+            println!("proof reduction completed");
             // Download the receipt, containing the output
             let receipt_url = res
                 .receipt_url
@@ -215,7 +213,6 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
 
             
         } else {
-
             println!("inside else");
             panic!(
                 "Workflow exited: {} - | err: {}",
@@ -223,12 +220,9 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
                 res.error_msg.unwrap_or_default()
             );
         }
-
         break;
     }
     let reduction_time = reduction_start_time.elapsed().as_secs();
-
-
     Ok((receipt,reduction_time))
 
     // // Get inner_proof

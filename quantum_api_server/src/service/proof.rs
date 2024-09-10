@@ -28,6 +28,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
         proof_id_ip.extend(convert_string_to_be_bytes(&pi).to_vec().iter().cloned());
     }
 
+    // TODO: change this
     let proof_id_hash = keccak(proof_id_ip).0;
 
     let proof_hash = encode_keccak_hash(&proof_id_hash)?;

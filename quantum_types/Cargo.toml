@@ -28,3 +28,4 @@ tiny-merkle = "0.3.0"
 snark-verifier-sdk = "0.1.7"
 sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono", "macros", "decimal" ] }
 dotenv = "0.15.0"
+utils = {path = "../../quantum-risc0-circuits/utils"}
