@@ -83,9 +83,9 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
     if user_circuit_data.proving_scheme == ProvingSchemes::Groth16 {
         (receipt, reduction_time) = generate_snarkjs_groth16_reduced_proof(user_circuit_data, proof_data).await?;
     } 
-    // else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
-        // (prove_result, reduction_time) = generate_halo2_plonk_reduced_proof(user_circuit_data, proof_data, outer_pk_bytes, outer_vk).await?;
-    // } 
+    else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Plonk {
+        (receipt, reduction_time) = generate_halo2_plonk_reduced_proof(user_circuit_data, proof_data).await?;
+    } 
     else {
         return Err(anyhow!(error_line!("unsupported proving scheme in proof reduction")));
     }
@@ -165,25 +165,75 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
     let public_inputs = SnarkJSGroth16Pis::read_pis(&proof_data.pis_path)?;
 
     let input_data_vec = form_snarkjs_groth16_bonsai_inputs(vk, proof, public_inputs)?;
+    
+    let reduction_start_time = Instant::now();
+    let receipt = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id).await?;
+    let reduction_time = reduction_start_time.elapsed().as_secs();
+    Ok((receipt,reduction_time))
+}
 
+fn form_halo2_plonk_bonsai_inputs(proof: &Halo2PlonkProof, vk: &Halo2PlonkVkey, pis: &Halo2PlonkPis) -> AnyhowResult<Vec<u8>> {
+    let protocol = vk.get_protocol()?;
+    let s_g2 = vk.get_sg2()?;
+    let instances = pis.get_instance()?;
+    let proof = &proof.proof_bytes;
+
+    let protocol_bytes = to_vec(&protocol)?;
+    let s_g2_bytes = to_vec(&s_g2)?;
+    let instances_bytes = to_vec(&instances)?;
+    let proof_bytes = to_vec(&proof)?;
+
+    let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&protocol_bytes).to_vec();
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&s_g2_bytes));
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&instances_bytes));
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&proof_bytes));
+
+    Ok(input_data_vec)
+}
+
+
+async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
+    // Get inner_proof
+    let proof_path = &proof_data.proof_path;
+    println!("proof_path :: {:?}", proof_path);
+
+    // Get inner_vk
+    let vk_path = &user_circuit_data.vk_path;
+    println!("vk_path :: {:?}", vk_path);
+
+    // Get inner_pis
+    let pis_path = &proof_data.pis_path;
+    println!("pis_path :: {:?}", pis_path);
+
+    let proof = Halo2PlonkProof::read_proof(&proof_path)?;
+    let vk = Halo2PlonkVkey::read_vk(&vk_path)?;
+    let pis = Halo2PlonkPis::read_pis(&pis_path)?;
+    
+    let input_data = form_halo2_plonk_bonsai_inputs(&proof, &vk, &pis)?;
+
+    let reduction_start_time = Instant::now();
+    let receipt = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id).await?;
+    let reduction_time = reduction_start_time.elapsed().as_secs();
+
+    Ok((receipt, reduction_time))
+}
+
+async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str) -> AnyhowResult<Option<Receipt>> {
+    
     let client = Client::from_env(risc0_zkvm::VERSION)?;
 
     // TODO: store it in DB
-    let input_id = client.upload_input(input_data_vec).await?;
+    let input_id = client.upload_input(input_data).await?;
     println!("input_id: {:?}", input_id);
 
     let assumptions: Vec<String> = vec![];
 
     // Wether to run in execute only mode
     let execute_only = false;
-
-    let image_id = user_circuit_data.bonsai_image_id.to_string();
     
     let mut receipt: Option<Receipt> = None;
 
-    let reduction_start_time = Instant::now();
-
-    let session = client.create_session(image_id, input_id, assumptions, execute_only).await?;
+    let session = client.create_session(image_id.to_string(), input_id, assumptions, execute_only).await?;
     println!("sessionId: {:?}", session.uuid);
     loop {
         let res = session.status(&client).await?;
@@ -222,28 +272,8 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
         }
         break;
     }
-    let reduction_time = reduction_start_time.elapsed().as_secs();
-    Ok((receipt,reduction_time))
 
-    // // Get inner_proof
-    // let inner_proof_path = &proof_data.proof_path;
-    // println!("inner_proof_path :: {:?}", inner_proof_path);
-    //
-    // // Get inner_vk
-    // let inner_vk_path = &user_circuit_data.vk_path;
-    // println!("inner_vk_path :: {:?}", inner_vk_path);
-    //
-    // // Get inner_pis
-    // let inner_pis_path = &proof_data.pis_path;
-    // println!("inner_pis_path :: {:?}", inner_pis_path);
-    // // 1.Reconstruct inner proof
-    // let snarkjs_inner_proof: SnarkJSGroth16Proof =
-    //     SnarkJSGroth16Proof::read_proof(&inner_proof_path)?;
-    // let snarkjs_inner_vk: SnarkJSGroth16Vkey = SnarkJSGroth16Vkey::read_vk(&inner_vk_path)?;
-    // let snarkjs_inner_pis: SnarkJSGroth16Pis = SnarkJSGroth16Pis::read_pis(&inner_pis_path)?;
-    // // 2. Call reduced proof generator for circom inner proof
-    //
-    // Ok((prove_result, reduction_time))
+    Ok(receipt)
 }
 
 // async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<(GenerateReductionProofResult, u64)> {

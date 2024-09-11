@@ -25,7 +25,11 @@ keccak-hash = "0.10.0"
 hex = "0.4.3"
 chrono = { version = "0.4.38", features = ["serde"] }
 tiny-merkle = "0.3.0"
-snark-verifier-sdk = "0.1.7"
+# snark-verifier-sdk = "0.1.7"
+snark-verifier = { git = "https://github.com/axiom-crypto/snark-verifier.git", tag = "v0.1.7-git", default-features = false, features = [
+    "loader_evm",
+    "halo2-pse",
+] }
 sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono", "macros", "decimal" ] }
 dotenv = "0.15.0"
 utils = {path = "../../quantum-risc0-circuits/utils"}

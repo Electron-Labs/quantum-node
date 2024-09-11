@@ -10,18 +10,25 @@ use quantum_utils::file::read_bytes_from_file;
 use quantum_utils::file::write_bytes_to_file;
 use quantum_utils::keccak::convert_string_to_be_bytes;
 use serde::{Deserialize, Serialize};
-use snark_verifier_sdk::snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::Fr;
-use snark_verifier_sdk::snark_verifier::halo2_base::utils::ScalarField;
-use snark_verifier_sdk::snark_verifier::{
-    halo2_base::halo2_proofs::halo2curves::bn256::G1Affine, verifier::plonk::PlonkProtocol,
-};
+use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G1Affine;
+use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G2Affine;
+// use snark_verifier::halo2_base::halo2_proofs::halo2curves::grumpkin::G1Affine;
+use snark_verifier::halo2_base::utils::ScalarField;
+use snark_verifier::verifier::plonk::PlonkProtocol;
+use utils::combine_hash;
+// use snark_verifier_sdk::snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+// use snark_verifier_sdk::snark_verifier::halo2_base::utils::ScalarField;
+// use snark_verifier_sdk::snark_verifier::{
+//     halo2_base::halo2_proofs::halo2curves::bn256::G1Affine, verifier::plonk::PlonkProtocol,
+// };
+use utils::halo2_kzg_vkey_hash;
+use utils::halo2_public_inputs_hash;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Halo2PlonkVkey {
     pub protocol_bytes: Vec<u8>,
     pub sg2_bytes: Vec<u8>,
-    pub proof_bytes: Vec<u8>,
-    pub instances_bytes: Vec<u8>,
 }
 
 impl Vkey for Halo2PlonkVkey {
@@ -77,14 +84,30 @@ impl Vkey for Halo2PlonkVkey {
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
-        let keccak_h = self.keccak_hash()?;
-        let mut keccak_ip = Vec::<u8>::new();
-        keccak_ip.extend(keccak_h.to_vec());
+        let protocol: PlonkProtocol<G1Affine> = self.get_protocol()?;
+        let protocol_hash = halo2_kzg_vkey_hash(&protocol);
+
+        let mut circuit_verifying_id_bytes = vec![];
         for elm in circuit_verifying_id {
-            keccak_ip.extend(elm.to_be_bytes());
+            circuit_verifying_id_bytes.extend(elm.to_be_bytes());
         }
-        let keccak_h = keccak(keccak_ip.clone());
-        Ok(keccak_h.0)
+        // TODO: fix unwrap
+        let circuit_verifying_id_bytes: [u8;32] = circuit_verifying_id_bytes.try_into().unwrap();
+        let circuit_hash = combine_hash(&protocol_hash, &circuit_verifying_id_bytes);
+        Ok(circuit_hash)
+    }
+    
+}
+
+impl Halo2PlonkVkey {
+    pub fn get_protocol(&self) -> AnyhowResult<PlonkProtocol<G1Affine>> {
+        let protocol: PlonkProtocol<G1Affine> = serde_json::from_slice(&self.protocol_bytes)?;
+        Ok(protocol)
+    }
+
+    pub fn get_sg2(&self) -> AnyhowResult<G2Affine> {
+        let s_g2: G2Affine = serde_json::from_slice(&self.sg2_bytes)?;
+        Ok(s_g2)
     }
 }
 
@@ -146,19 +169,24 @@ impl Pis for Halo2PlonkPis {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let mut keccak_ip = Vec::<u8>::new();
+        // let mut keccak_ip = Vec::<u8>::new();
 
-        for pub_str in self.get_data()? {
-            keccak_ip.extend(convert_string_to_be_bytes(&pub_str));
-        }
-        let hash = keccak(keccak_ip);
-        Ok(hash.0)
+        // for pub_str in self.get_data()? {
+        //     keccak_ip.extend(convert_string_to_be_bytes(&pub_str));
+        // }
+        // let hash = keccak(keccak_ip);
+        // Ok(hash.0)
+
+        let instances = self.get_instance()?;
+        let hash = halo2_public_inputs_hash(&instances);
+        Ok(hash)
     }
 
     fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
         self.keccak_hash()
     }
 
+    // need to check that
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
         let a: Vec<Vec<Fr>> = serde_json::from_str(&String::from_utf8(self.0.clone()).map_err(|err| anyhow!(error_line!(err)))?).map_err(|e| anyhow!(error_line!(e)))?;
         let pis = a
@@ -173,5 +201,12 @@ impl Pis for Halo2PlonkPis {
             })
             .collect::<Vec<_>>();
         Ok(pis)
+    }
+}
+
+impl Halo2PlonkPis {
+    pub fn get_instance(&self) -> AnyhowResult<Vec<Vec<Fr>>> {
+        let instances: Vec<Vec<Fr>> = serde_json::from_slice(&self.0)?;
+        Ok(instances)
     }
 }
