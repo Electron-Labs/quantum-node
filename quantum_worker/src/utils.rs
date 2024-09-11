@@ -21,33 +21,33 @@ use tracing::info;
 use crate::connection::get_pool;
 
 // Returns circuit_id, pk_path, vk_path
-pub fn dump_reduction_circuit_data(
-    config: &ConfigData,
-    proving_key_bytes: &Vec<u8>,
-    vkey: &GnarkGroth16Vkey,
-) -> AnyhowResult<(String, String, String)> {
-    // Calculate circuit id
-    let circuit_id = encode_keccak_hash(&vkey.keccak_hash()?)?;
+// pub fn dump_reduction_circuit_data(
+//     config: &ConfigData,
+//     proving_key_bytes: &Vec<u8>,
+//     vkey: &GnarkGroth16Vkey,
+// ) -> AnyhowResult<(String, String, String)> {
+//     // Calculate circuit id
+//     let circuit_id = encode_keccak_hash(&vkey.keccak_hash()?)?;
 
-    // Dump proving key bytes
-    let pkey_path = get_reduction_circuit_proving_key_path(
-        &config.storage_folder_path,
-        &config.reduced_circuit_path,
-        &circuit_id,
-    );
-    write_bytes_to_file(&proving_key_bytes, &pkey_path)?;
+//     // Dump proving key bytes
+//     let pkey_path = get_reduction_circuit_proving_key_path(
+//         &config.storage_folder_path,
+//         &config.reduced_circuit_path,
+//         &circuit_id,
+//     );
+//     write_bytes_to_file(&proving_key_bytes, &pkey_path)?;
 
-    // Dump verification key bytes
-    let vkey_path = get_reduction_circuit_verifying_key_path(
-        &config.storage_folder_path,
-        &config.reduced_circuit_path,
-        &circuit_id,
-    );
+//     // Dump verification key bytes
+//     let vkey_path = get_reduction_circuit_verifying_key_path(
+//         &config.storage_folder_path,
+//         &config.reduced_circuit_path,
+//         &circuit_id,
+//     );
 
-    vkey.dump_vk(&vkey_path)?;
+//     vkey.dump_vk(&vkey_path)?;
 
-    Ok((circuit_id, pkey_path, vkey_path))
-}
+//     Ok((circuit_id, pkey_path, vkey_path))
+// }
 
 // Returns reduced_proof_path, reduced_pis_path
 pub fn dump_reduction_proof_data(
