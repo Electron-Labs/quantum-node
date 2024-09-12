@@ -51,14 +51,14 @@
 //     update_superproof_leaves_path(get_pool().await, &superproof_leaves_path, superproof_id).await?;
 
 //     // Dump imt proof and pis and add to the DB
-//     let (imt_proof_path, imt_pis_path) = dump_imt_proof_data(
-//         &config,
-//         superproof_id,
-//         imt_prove_result.aggregated_proof,
-//         GnarkGroth16Pis(imt_prove_result.pub_inputs),
-//     )?;
-//     update_imt_proof_path(get_pool().await, &imt_proof_path, superproof_id).await?;
-//     update_imt_pis_path(get_pool().await, &imt_pis_path, superproof_id).await?;
+//     // let (imt_proof_path, imt_pis_path) = dump_imt_proof_data(
+//     //     &config,
+//     //     superproof_id,
+//     //     imt_prove_result.aggregated_proof,
+//     //     GnarkGroth16Pis(imt_prove_result.pub_inputs),
+//     // )?;
+//     // update_imt_proof_path(get_pool().await, &imt_proof_path, superproof_id).await?;
+//     // update_imt_pis_path(get_pool().await, &imt_pis_path, superproof_id).await?;
 
 //     // Add previous superproof root to the db
 //     let old_root = encode_keccak_hash(&imt_prove_result.old_root.0)?;

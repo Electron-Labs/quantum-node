@@ -23,7 +23,7 @@ use quantum_types::{
     },
 };
 use quantum_utils::{error_line, file::{dump_object, read_bytes_from_file}};
-use risc0_zkvm::{compute_image_id, default_prover, serde::to_vec, ExecutorEnv, Receipt};
+use risc0_zkvm::{compute_image_id, default_prover, serde::to_vec, Assumption, ExecutorEnv, Receipt};
 use sqlx::{MySql, Pool};
 use tokio::time::Instant;
 use tracing::info;
@@ -31,6 +31,7 @@ use quantum_db::repository::proof_repository::get_proof_by_proof_id;
 use quantum_types::types::db::reduction_circuit::ReductionCircuit;
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use crate::{connection::get_pool, AVAIL_BH};
+use crate::{bonsai::execute_proof_reduction, connection::get_pool};
 use crate::utils::dump_reduction_proof_data;
 
 pub async fn handle_proof_generation_and_updation(
@@ -167,7 +168,7 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
     let input_data_vec = form_snarkjs_groth16_bonsai_inputs(vk, proof, public_inputs)?;
     
     let reduction_start_time = Instant::now();
-    let receipt = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id).await?;
+    let receipt = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
     Ok((receipt,reduction_time))
 }
@@ -212,69 +213,12 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let input_data = form_halo2_plonk_bonsai_inputs(&proof, &vk, &pis)?;
 
     let reduction_start_time = Instant::now();
-    let receipt = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id).await?;
+    let receipt = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
 }
 
-async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str) -> AnyhowResult<Option<Receipt>> {
-    
-    let client = Client::from_env(risc0_zkvm::VERSION)?;
-
-    // TODO: store it in DB
-    let input_id = client.upload_input(input_data).await?;
-    println!("input_id: {:?}", input_id);
-
-    let assumptions: Vec<String> = vec![];
-
-    // Wether to run in execute only mode
-    let execute_only = false;
-    
-    let mut receipt: Option<Receipt> = None;
-
-    let session = client.create_session(image_id.to_string(), input_id, assumptions, execute_only).await?;
-    println!("sessionId: {:?}", session.uuid);
-    loop {
-        let res = session.status(&client).await?;
-        // TODO: store Risc0 status in DB
-        if res.status == "RUNNING" {
-            println!(
-                "Current status: {} - state: {} - continue polling...",
-                res.status,
-                res.state.unwrap_or_default()
-            );
-            std::thread::sleep(Duration::from_secs(15));
-            continue;
-        }
-        if res.status == "SUCCEEDED" {
-            // TODO: store Risc0 status in DB
-            println!("proof reduction completed");
-            // Download the receipt, containing the output
-            let receipt_url = res
-                .receipt_url
-                .expect("API error, missing receipt on completed session");
-
-            let receipt_buf = client.download(&receipt_url).await?;
-            receipt = Some(bincode::deserialize(&receipt_buf)?);
-            // receipt
-            //     .verify(METHOD_ID)
-            //     .expect("Receipt verification failed");
-
-            
-        } else {
-            println!("inside else");
-            panic!(
-                "Workflow exited: {} - | err: {}",
-                res.status,
-                res.error_msg.unwrap_or_default()
-            );
-        }
-        break;
-    }
-
-    Ok(receipt)
-}
 
 // async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<(GenerateReductionProofResult, u64)> {
 //     // Get inner_proof

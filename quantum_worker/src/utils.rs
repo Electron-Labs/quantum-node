@@ -1,4 +1,9 @@
+use std::fs::File;
+use std::io::BufWriter;
+
+use agg_core::inputs::get_init_tree_data;
 use anyhow::Result as AnyhowResult;
+use imt_core::types::Leaf;
 // use quantum_circuits_interface::imt::get_init_tree_data;
 use quantum_db::repository::superproof_repository::{
     get_last_verified_superproof, get_superproof_by_id,
@@ -18,6 +23,7 @@ use quantum_utils::paths::{
 use risc0_zkvm::Receipt;
 use sqlx::{MySql, Pool};
 use tracing::info;
+use utils::hash::{Hasher, KeccakHasher};
 use crate::connection::get_pool;
 
 // Returns circuit_id, pk_path, vk_path
@@ -66,7 +72,9 @@ pub fn dump_reduction_proof_data(
     // pis.dump_pis(&pis_path)?;
 
     // TODO: fix this
-    dump_object(receipt, &receipt_path, "receipt_1").unwrap();
+    let file = File::create(&receipt_path).unwrap();
+    let mut writer = BufWriter::new(file);
+    serde_json::to_writer(&mut writer, &receipt).unwrap();
     Ok(receipt_path)
 }
 
@@ -93,37 +101,32 @@ pub fn dump_imt_proof_data(
 }
 
 // returns empty tree root if leaves not found
-// pub async fn get_last_superproof_leaves(
-//     config: &ConfigData,
-// ) -> AnyhowResult<ImtTree> {
-//     let some_superproof = get_last_verified_superproof(get_pool().await).await?;
-//     let last_leaves: ImtTree;
-//     match some_superproof {
-//         Some(superproof) => match superproof.superproof_leaves_path {
-//             Some(superproof_leaves_path) => {
-//                 last_leaves = ImtTree::read_tree(&superproof_leaves_path)?;
-//             }
-//             _ => {
-//                 info!(
-//                     "No superproof_leaves_path for superproof_id={} => using last empty tree root",
-//                     superproof.id.unwrap() // can't be null
-//                 );
-//                 let (zero_leaves, _) = get_init_tree_data(config.imt_depth as u8)?;
-//                 last_leaves = ImtTree {
-//                     leaves: zero_leaves,
-//                 };
-//             }
-//         },
-//         _ => {
-//             info!("No superproof => using last empty tree root");
-//             let (zero_leaves, _) = get_init_tree_data(config.imt_depth as u8)?;
-//             last_leaves = ImtTree {
-//                 leaves: zero_leaves,
-//             };
-//         }
-//     }
-//     Ok(last_leaves)
-// }
+pub async fn get_last_superproof_leaves<H:Hasher>(
+    config: &ConfigData,
+) -> AnyhowResult<Vec<Leaf<H>>> {
+    let some_superproof = get_last_verified_superproof(get_pool().await).await?;
+    let last_leaves: Vec<Leaf<H>>;
+    match some_superproof {
+        Some(superproof) => match superproof.superproof_leaves_path {
+            Some(superproof_leaves_path) => {
+                last_leaves = bincode::deserialize(&std::fs::read(&superproof_leaves_path)?)?;
+            }
+            _ => {
+                info!(
+                    "No superproof_leaves_path for superproof_id={} => using last empty tree root",
+                    superproof.id.unwrap() // can't be null
+                );
+                (last_leaves, _) = get_init_tree_data::<H>(config.imt_depth as u8)?;
+            }
+        },
+        // TODO: handle case when we shift to risc0, we dont want to read last superproof leaf(in prod);
+        _ => {
+            info!("No superproof => using last empty tree root");
+            (last_leaves, _) = get_init_tree_data::<H>(config.imt_depth as u8)?;
+        }
+    }
+    Ok(last_leaves)
+}
 
 #[cfg(test)]
 mod tests {

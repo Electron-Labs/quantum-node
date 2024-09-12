@@ -24,6 +24,7 @@ use utils::combine_hash;
 // };
 use utils::halo2_kzg_vkey_hash;
 use utils::halo2_public_inputs_hash;
+use utils::hash::KeccakHasher;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Halo2PlonkVkey {
@@ -178,7 +179,7 @@ impl Pis for Halo2PlonkPis {
         // Ok(hash.0)
 
         let instances = self.get_instance()?;
-        let hash = halo2_public_inputs_hash(&instances);
+        let hash = halo2_public_inputs_hash::<KeccakHasher>(&instances);
         Ok(hash)
     }
 
