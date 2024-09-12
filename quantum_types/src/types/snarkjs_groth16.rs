@@ -3,6 +3,7 @@
 
 use std::{path, str::FromStr};
 
+use agg_core::inputs::compute_combined_vkey_hash;
 // use ark_bn254::Bn254;
 use ark_bn254::{Bn254, Config, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
 use ark_groth16::{verifier, VerifyingKey, Proof as ArkProof};
@@ -200,7 +201,7 @@ impl SnarkJSGroth16Vkey {
                     &self.vk_gamma_2[0][0],
                 ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
                 ArkFq::from_str(
-                    &self.vk_gamma_2[0][0],
+                    &self.vk_gamma_2[0][1],
                 ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             ),
             ArkFq2::new(
@@ -302,7 +303,9 @@ impl Vkey for SnarkJSGroth16Vkey {
 
         // Ok(gnark_converted_vkey.keccak_hash()?)
         let ark_vk = self.get_ark_vk_for_snarkjs_groth16()?;
+        println!("ark_vk done");
         let pvk = verifier::prepare_verifying_key(&ark_vk);
+        println!("pvk done");
         let pvk_hash = groth16_vkey_hash::<KeccakHasher>(&pvk);
         Ok(pvk_hash)
     }
@@ -318,13 +321,7 @@ impl Vkey for SnarkJSGroth16Vkey {
         // gnark_converted_vkey.compute_circuit_hash(circuit_verifying_id)
         let pvk_hash = self.keccak_hash()?;
 
-        let mut circuit_verifying_id_bytes = vec![];
-        for elm in circuit_verifying_id {
-            circuit_verifying_id_bytes.extend(elm.to_be_bytes());
-        }
-        // TODO: fix unwrap
-        let circuit_verifying_id_bytes: [u8;32] = circuit_verifying_id_bytes.try_into().unwrap();
-        let circuit_hash = KeccakHasher::combine_hash(&pvk_hash, &circuit_verifying_id_bytes);
+        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&pvk_hash, &circuit_verifying_id)?;
         Ok(circuit_hash)
     }
 }

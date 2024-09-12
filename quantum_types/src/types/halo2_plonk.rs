@@ -1,4 +1,5 @@
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
+use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
 use ark_ff::BigInt;
@@ -67,14 +68,7 @@ impl Vkey for Halo2PlonkVkey {
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         let protocol_hash = self.keccak_hash()?;
-
-        let mut circuit_verifying_id_bytes = vec![];
-        for elm in circuit_verifying_id {
-            circuit_verifying_id_bytes.extend(elm.to_be_bytes());
-        }
-        // TODO: fix unwrap
-        let circuit_verifying_id_bytes: [u8;32] = circuit_verifying_id_bytes.try_into().unwrap();
-        let circuit_hash = KeccakHasher::combine_hash(&protocol_hash, &circuit_verifying_id_bytes);
+        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&protocol_hash, &circuit_verifying_id)?;
         Ok(circuit_hash)
     }
 }

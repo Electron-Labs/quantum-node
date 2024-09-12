@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result as AnyhowResult, Error as AnyhowError};
 use sqlx::mysql::MySqlRow;
 use tracing::info;
 use quantum_types::enums::circuit_reduction_status::CircuitReductionStatus;
-use quantum_types::enums::proving_schemes::ProvingSchemes;
+use quantum_types::enums::proving_schemes::{self, ProvingSchemes};
 use quantum_types::types::db::bonsai_image::BonsaiImage;
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use quantum_utils::error_line;
@@ -26,18 +26,37 @@ pub async fn get_bonsai_image_by_proving_scheme(pool: &Pool<MySql>, proving_sche
     bonsai_image
 }
 
-fn get_bonsai_image_from_mysql_row(row: &MySqlRow) -> AnyhowResult<BonsaiImage, AnyhowError>{
-    let proving_scheme = match ProvingSchemes::from_str(row.try_get_unchecked("proving_scheme").map_err(|err| anyhow!(error_line!(err)))?) {
-        Ok(ps) => Ok(ps),
+pub async fn get_bonsai_image_by_image_id(pool: &Pool<MySql>, image_id: &str) -> AnyhowResult<BonsaiImage>{
+    let query  = sqlx::query("SELECT * from bonsai_image where image_id = ?")
+        .bind(image_id.to_string());
+
+    info!("{}", query.sql());
+    info!("arguments: {:?}", image_id);
+
+    let bonsai_image = match query.fetch_one(pool).await{
+        Ok(t) => get_bonsai_image_from_mysql_row(&t),
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
+    bonsai_image
+}
+
+fn get_bonsai_image_from_mysql_row(row: &MySqlRow) -> AnyhowResult<BonsaiImage, AnyhowError>{
+    let proving_scheme_string: Option<String> = row.try_get_unchecked("proving_scheme")?;
+    let mut proving_scheme: Option<ProvingSchemes> = None;
+    if proving_scheme_string.is_some() {
+        proving_scheme = Some(match ProvingSchemes::from_str(&proving_scheme_string.unwrap()) {
+            Ok(ps) => Ok(ps),
+            Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+        }?);
+    }
+    
     let circuit_verifying_id_string: String = row.try_get_unchecked("circuit_verifying_id")?;
     let circuit_verifying_id = parse_string_to_u32_array(&circuit_verifying_id_string)?;
     let bonsai_image = BonsaiImage {
         image_id : row.try_get_unchecked("image_id")?,
         elf_file_path: row.try_get_unchecked("elf_file_path")?,
         circuit_verifying_id,
-        proving_scheme: proving_scheme?,
+        proving_scheme: proving_scheme,
         is_aggregation_image_id: row.try_get_unchecked("is_aggregation_image_id")?
     };
     Ok(bonsai_image)

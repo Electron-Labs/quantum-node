@@ -1,4 +1,4 @@
-use quantum_circuits_interface::{agg::compute_combined_vk_hash, imt::compute_leaf_value};
+// use quantum_circuits_interface::{agg::compute_combined_vk_hash, imt::compute_leaf_value};
 use quantum_db::repository::{proof_repository::{get_latest_proof_by_circuit_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::superproof, gnark_groth16::GnarkGroth16Pis, hash::KeccakHashOut, imt::ImtTree}};
 use quantum_types::types::db::proof::Proof as DbProof;
@@ -153,48 +153,48 @@ pub async fn check_if_proof_already_exist(proof_hash: &str, circuit_hash: &str) 
     Ok(())
 }
 
-pub async fn get_protocol_proof_exec<T: Pis>(proof: &DbProof) -> AnyhowResult<ProtocolProofResponse, CustomError> {
-    let user_circuit_hash = proof.user_circuit_hash.clone();
-    let reduction_circuit = get_reduction_circuit_for_user_circuit(get_pool().await, &user_circuit_hash).await?;
-    let reduction_circuit_hash = reduction_circuit.circuit_id;
+// pub async fn get_protocol_proof_exec<T: Pis>(proof: &DbProof) -> AnyhowResult<ProtocolProofResponse, CustomError> {
+//     let user_circuit_hash = proof.user_circuit_hash.clone();
+//     let reduction_circuit = get_reduction_circuit_for_user_circuit(get_pool().await, &user_circuit_hash).await?;
+//     let reduction_circuit_hash = reduction_circuit.circuit_id;
 
-    let user_circuit_bytes = decode_keccak_hex(&user_circuit_hash)?.to_vec();
-    let reduction_circuit_bytes = decode_keccak_hex(&reduction_circuit_hash)?.to_vec();
+//     let user_circuit_bytes = decode_keccak_hex(&user_circuit_hash)?.to_vec();
+//     let reduction_circuit_bytes = decode_keccak_hex(&reduction_circuit_hash)?.to_vec();
 
-    let combined_vk_hash = compute_combined_vk_hash(user_circuit_bytes, reduction_circuit_bytes).to_vec();
+//     let combined_vk_hash = compute_combined_vk_hash(user_circuit_bytes, reduction_circuit_bytes).to_vec();
 
-    let pis: T = T::read_pis(&proof.pis_path)?;
-    let protocol_pis_hash = pis.extended_keccak_hash()?.to_vec();
+//     let pis: T = T::read_pis(&proof.pis_path)?;
+//     let protocol_pis_hash = pis.extended_keccak_hash()?.to_vec();
 
-    let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await).await? {
-        Some(superproof) => Ok(superproof),
-        None => Err(anyhow!(CustomError::Internal(error_line!("last super proof verified not found".to_string())))),
-    }?;
-    let leaf_path = latest_verififed_superproof.superproof_leaves_path.unwrap();
-    let imt_tree = ImtTree::read_tree(&leaf_path)?;
+//     let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await).await? {
+//         Some(superproof) => Ok(superproof),
+//         None => Err(anyhow!(CustomError::Internal(error_line!("last super proof verified not found".to_string())))),
+//     }?;
+//     let leaf_path = latest_verififed_superproof.superproof_leaves_path.unwrap();
+//     let imt_tree = ImtTree::read_tree(&leaf_path)?;
 
-    let leaf_value = compute_leaf_value(combined_vk_hash, protocol_pis_hash);
+//     let leaf_value = compute_leaf_value(combined_vk_hash, protocol_pis_hash);
 
-    let mt_proof = imt_tree
-        .get_imt_proof(KeccakHashOut(
-            leaf_value[..32]
-                .try_into()
-                .map_err(|e: std::array::TryFromSliceError| anyhow!(e))?,
-        ))
-        .map_err(|err| CustomError::NotFound(error_line!(format!("proof not found in the tree::{}", err.to_string()))))?;
-    let mt_proof_encoded = mt_proof.0.iter().map(|x| encode_keccak_hash(x.as_slice()[0..32].try_into().unwrap()).unwrap()).collect::<Vec<String>>();
+//     let mt_proof = imt_tree
+//         .get_imt_proof(KeccakHashOut(
+//             leaf_value[..32]
+//                 .try_into()
+//                 .map_err(|e: std::array::TryFromSliceError| anyhow!(e))?,
+//         ))
+//         .map_err(|err| CustomError::NotFound(error_line!(format!("proof not found in the tree::{}", err.to_string()))))?;
+//     let mt_proof_encoded = mt_proof.0.iter().map(|x| encode_keccak_hash(x.as_slice()[0..32].try_into().unwrap()).unwrap()).collect::<Vec<String>>();
 
-    let mut merkle_proof_position: u64 = 0;
-    for i in 0..mt_proof.1.len() {
-        merkle_proof_position += (mt_proof.1[i] as u64) * 2u64.pow(i as u32);
-    }
+//     let mut merkle_proof_position: u64 = 0;
+//     for i in 0..mt_proof.1.len() {
+//         merkle_proof_position += (mt_proof.1[i] as u64) * 2u64.pow(i as u32);
+//     }
 
-    let leaf_next_index_str = format!("0x{}", hex::encode(&mt_proof.2.next_idx));
+//     let leaf_next_index_str = format!("0x{}", hex::encode(&mt_proof.2.next_idx));
 
-    Ok(ProtocolProofResponse {
-        merkle_proof_position,
-        merkle_proof: mt_proof_encoded,
-        leaf_next_value: encode_keccak_hash(&mt_proof.2.next_value.0)?,
-        leaf_next_index: leaf_next_index_str,
-    })
-}
+//     Ok(ProtocolProofResponse {
+//         merkle_proof_position,
+//         merkle_proof: mt_proof_encoded,
+//         leaf_next_value: encode_keccak_hash(&mt_proof.2.next_value.0)?,
+//         leaf_next_index: leaf_next_index_str,
+//     })
+// }
