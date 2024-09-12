@@ -33,3 +33,4 @@ snark-verifier = { git = "https://github.com/axiom-crypto/snark-verifier.git", t
 sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono", "macros", "decimal" ] }
 dotenv = "0.15.0"
 utils = {path = "../../quantum-risc0-circuits/utils"}
+agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}

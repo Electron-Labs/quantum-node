@@ -4,7 +4,7 @@ use quantum_utils::error_line;
 use rocket::{get, post, serde::json::Json, State};
 use tracing::error;
 
-use crate::{error::error::CustomError, service::proof::{get_proof_data_exec, submit_proof_exec}, types::{auth::AuthToken, submit_proof::{SubmitProofRequest, SubmitProofResponse}, proof_data::ProofDataResponse}};
+use crate::{error::error::CustomError, service::proof::{get_proof_data_exec, submit_proof_exec}, types::{auth::AuthToken, proof_data::ProofDataResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 
 #[post("/proof", data = "<data>")]
 pub async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{

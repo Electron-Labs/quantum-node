@@ -12,3 +12,4 @@ verification_contract_address: "0x61fd0575f92837057f571fc949b449b865fcdb09"
 imt_depth: 10
 batch_size: 20 # Number of proofs to be included in 1 batch
 worker_sleep_secs: 10
+reduced_proof_receipt_path: /receipt
