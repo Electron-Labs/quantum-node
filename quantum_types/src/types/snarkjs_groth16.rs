@@ -299,9 +299,13 @@ impl Vkey for SnarkJSGroth16Vkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let gnark_converted_vkey = self.convert_to_gnark_vkey();
+        // let gnark_converted_vkey = self.convert_to_gnark_vkey();
 
-        Ok(gnark_converted_vkey.keccak_hash()?)
+        // Ok(gnark_converted_vkey.keccak_hash()?)
+        let ark_vk = self.get_ark_vk_for_snarkjs_groth16()?;
+        let pvk = verifier::prepare_verifying_key(&ark_vk);
+        let pvk_hash = groth16_vkey_hash(&pvk);
+        Ok(pvk_hash)
     }
 
     fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {

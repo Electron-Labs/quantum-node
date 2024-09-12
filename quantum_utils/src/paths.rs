@@ -55,8 +55,8 @@ pub fn get_reduction_circuit_pis_path(storage_folder_path: &str, reduced_pis_pat
     pis_path
 }
 
-pub fn get_superproof_proof_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
-    format!("{}{}/{}/proof.bin", storage_folder_path, superproof_path, superproof_id)
+pub fn get_superproof_proof_receipt_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
+    format!("{}{}/{}/receipt.bin", storage_folder_path, superproof_path, superproof_id)
 }
 
 pub fn get_superproof_pis_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
