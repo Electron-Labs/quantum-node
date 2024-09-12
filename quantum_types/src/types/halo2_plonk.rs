@@ -16,15 +16,9 @@ use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G2Affine;
 // use snark_verifier::halo2_base::halo2_proofs::halo2curves::grumpkin::G1Affine;
 use snark_verifier::halo2_base::utils::ScalarField;
 use snark_verifier::verifier::plonk::PlonkProtocol;
-use utils::combine_hash;
-// use snark_verifier_sdk::snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::Fr;
-// use snark_verifier_sdk::snark_verifier::halo2_base::utils::ScalarField;
-// use snark_verifier_sdk::snark_verifier::{
-//     halo2_base::halo2_proofs::halo2curves::bn256::G1Affine, verifier::plonk::PlonkProtocol,
-// };
+use utils::hash::{Hasher, KeccakHasher};
 use utils::halo2_kzg_vkey_hash;
 use utils::halo2_public_inputs_hash;
-use utils::hash::KeccakHasher;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Halo2PlonkVkey {
@@ -62,22 +56,9 @@ impl Vkey for Halo2PlonkVkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let protocol: PlonkProtocol<G1Affine> =
-            serde_json::from_str(&String::from_utf8(self.protocol_bytes.clone())?)?;
-        let transcript_initial_state_fr = protocol
-            .transcript_initial_state
-            .ok_or_else(|| anyhow!(error_line!("protocol.transcript_initial_state")))?;
-        let mut transcript_initial_state_bytes = transcript_initial_state_fr.to_bytes_le(); // in le
-        transcript_initial_state_bytes.reverse(); // in be
-
-        transcript_initial_state_bytes
-            .as_slice()
-            .try_into()
-            .map_err(|_| {
-                anyhow!(error_line!(
-                    "transcript_initial_state_bytes.as_slice.try_into"
-                ))
-            })
+        let protocol: PlonkProtocol<G1Affine> = self.get_protocol()?;
+        let protocol_hash = halo2_kzg_vkey_hash(&protocol);
+        Ok(protocol_hash)
     }
 
     fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
@@ -85,8 +66,7 @@ impl Vkey for Halo2PlonkVkey {
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
-        let protocol: PlonkProtocol<G1Affine> = self.get_protocol()?;
-        let protocol_hash = halo2_kzg_vkey_hash(&protocol);
+        let protocol_hash = self.keccak_hash()?;
 
         let mut circuit_verifying_id_bytes = vec![];
         for elm in circuit_verifying_id {
@@ -94,10 +74,9 @@ impl Vkey for Halo2PlonkVkey {
         }
         // TODO: fix unwrap
         let circuit_verifying_id_bytes: [u8;32] = circuit_verifying_id_bytes.try_into().unwrap();
-        let circuit_hash = combine_hash(&protocol_hash, &circuit_verifying_id_bytes);
+        let circuit_hash = KeccakHasher::combine_hash(&protocol_hash, &circuit_verifying_id_bytes);
         Ok(circuit_hash)
     }
-    
 }
 
 impl Halo2PlonkVkey {

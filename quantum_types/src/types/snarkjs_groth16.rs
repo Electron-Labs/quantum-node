@@ -22,8 +22,7 @@ use crate::{
 use anyhow::{anyhow, Result as AnyhowResult};
 use keccak_hash::keccak;
 use tracing::info;
-use utils::{combine_hash, groth16_vkey_hash, public_inputs_hash};
-
+use utils::{groth16_vkey_hash, hash::KeccakHasher, public_inputs_hash, hash::Hasher};
 use super::{
     config::ConfigData,
     gnark_groth16::{GnarkGroth16Vkey, MAX_PUB_INPUTS},
@@ -304,7 +303,7 @@ impl Vkey for SnarkJSGroth16Vkey {
         // Ok(gnark_converted_vkey.keccak_hash()?)
         let ark_vk = self.get_ark_vk_for_snarkjs_groth16()?;
         let pvk = verifier::prepare_verifying_key(&ark_vk);
-        let pvk_hash = groth16_vkey_hash(&pvk);
+        let pvk_hash = groth16_vkey_hash::<KeccakHasher>(&pvk);
         Ok(pvk_hash)
     }
 
@@ -317,9 +316,7 @@ impl Vkey for SnarkJSGroth16Vkey {
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         // let gnark_converted_vkey = self.convert_to_gnark_vkey();
         // gnark_converted_vkey.compute_circuit_hash(circuit_verifying_id)
-        let ark_vk = self.get_ark_vk_for_snarkjs_groth16()?;
-        let pvk = verifier::prepare_verifying_key(&ark_vk);
-        let pvk_hash = groth16_vkey_hash(&pvk);
+        let pvk_hash = self.keccak_hash()?;
 
         let mut circuit_verifying_id_bytes = vec![];
         for elm in circuit_verifying_id {
@@ -327,7 +324,7 @@ impl Vkey for SnarkJSGroth16Vkey {
         }
         // TODO: fix unwrap
         let circuit_verifying_id_bytes: [u8;32] = circuit_verifying_id_bytes.try_into().unwrap();
-        let circuit_hash = combine_hash(&pvk_hash, &circuit_verifying_id_bytes);
+        let circuit_hash = KeccakHasher::combine_hash(&pvk_hash, &circuit_verifying_id_bytes);
         Ok(circuit_hash)
     }
 }
@@ -440,7 +437,7 @@ impl Pis for SnarkJSGroth16Pis {
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
 
         let ark_pis = self.get_ark_pis_for_snarkjs_groth16_pis()?;
-        let hash = public_inputs_hash(&ark_pis);
+        let hash = public_inputs_hash::<KeccakHasher>(&ark_pis);
         Ok(hash)
     }
 
