@@ -1,30 +1,27 @@
-use std::{fs, str::FromStr, time::Duration};
 use anyhow::{anyhow, Ok, Result as AnyhowResult};
-use ark_bn254::{Bn254, Config, Fq, Fq2, Fr, G1Affine, G2Affine};
-use ark_groth16::{verifier, VerifyingKey, Proof as ArkProof};
+use ark_groth16::verifier;
 use ark_serialize::CanonicalSerialize;
-use num_bigint::BigUint;
-use bonsai_sdk::non_blocking::Client;
 use quantum_db::repository::{
-    proof_repository::{update_reduction_data},
-    reduction_circuit_repository::get_reduction_circuit_data_by_id,
+    proof_repository::update_reduction_data,
     user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
 };
 use quantum_types::{
-    enums::{proving_schemes::ProvingSchemes, task_type::TaskType},
+    enums::proving_schemes::ProvingSchemes,
     traits::{
-        circuit_interactor::{CircuitInteractorFFI, GenerateReductionProofResult},
         pis::Pis,
         proof::Proof,
         vkey::Vkey,
     },
     types::{
-        config::ConfigData, db::{proof::Proof as DBProof, task::Task, user_circuit_data}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}
+        config::ConfigData, db::{proof::Proof as DBProof, task::Task, user_circuit_data}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
+        config::ConfigData,
+        db::{proof::Proof as DBProof, user_circuit_data::UserCircuitData},
+        halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey},
+        snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
     },
 };
-use quantum_utils::{error_line, file::{dump_object, read_bytes_from_file}};
-use risc0_zkvm::{compute_image_id, default_prover, serde::to_vec, Assumption, ExecutorEnv, Receipt};
-use sqlx::{MySql, Pool};
+use quantum_utils::error_line;
+use risc0_zkvm::{serde::to_vec, Receipt};
 use tokio::time::Instant;
 use tracing::info;
 use quantum_db::repository::proof_repository::get_proof_by_proof_id;

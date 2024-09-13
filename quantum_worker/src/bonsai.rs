@@ -1,13 +1,12 @@
 use std::time::Duration;
 
-use agg_core::inputs::get_verifier_id;
 use bonsai_sdk::non_blocking::{Client, SessionId};
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::update_session_id_in_proof, superproof_repository::update_session_id_superproof};
 use risc0_zkvm::Receipt;
 
 use crate::connection::get_pool;
 
-use anyhow::{anyhow, Ok, Result as AnyhowResult};
+use anyhow::Result as AnyhowResult;
 pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_id: u64) -> AnyhowResult<Option<Receipt>> {
     
     let client = Client::from_env(risc0_zkvm::VERSION)?;
@@ -96,3 +95,5 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
     }
     Ok(receipt)
 }
+
+

@@ -1,14 +1,10 @@
+use quantum_utils::error_line;
 use sqlx::{MySql, Pool, Row, Execute};
-use quantum_types::types::db::reduction_circuit::ReductionCircuit;
-
 use anyhow::{anyhow, Result as AnyhowResult, Error as AnyhowError};
 use sqlx::mysql::MySqlRow;
 use tracing::info;
-use quantum_types::enums::circuit_reduction_status::CircuitReductionStatus;
-use quantum_types::enums::proving_schemes::{self, ProvingSchemes};
+use quantum_types::enums::proving_schemes::ProvingSchemes;
 use quantum_types::types::db::bonsai_image::BonsaiImage;
-use quantum_types::types::db::user_circuit_data::UserCircuitData;
-use quantum_utils::error_line;
 use crate::error::error::CustomError;
 use std::str::FromStr;
 

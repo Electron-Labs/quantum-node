@@ -1,11 +1,10 @@
 use std::str::FromStr;
-
 use quantum_types::enums::circuit_reduction_status::CircuitReductionStatus;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
 use quantum_utils::error_line;
 use quantum_types::types::db::user_circuit_data::UserCircuitData;
 use sqlx::mysql::MySqlRow;
-use sqlx::{Error, MySql, Pool, Row, Execute};
+use sqlx::{MySql, Pool, Row, Execute};
 use tracing::info;
 
 // use crate::connection::get_pool;

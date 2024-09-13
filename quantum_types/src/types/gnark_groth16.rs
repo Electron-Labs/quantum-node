@@ -7,20 +7,17 @@ use anyhow::{anyhow, Result as AnyhowResult};
 use ark_bn254::g1::Config;
 use ark_ec::short_weierstrass::Affine;
 use borsh::{BorshDeserialize, BorshSerialize};
-use hex::ToHex;
 use keccak_hash::keccak;
 use num_bigint::BigUint;
 use quantum_utils::{
     error_line,
-    file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file},
+    file::{read_bytes_from_file , write_bytes_to_file},
     keccak::convert_string_to_be_bytes,
 };
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
-
-use super::config::ConfigData;
 
 pub const MAX_PUB_INPUTS: usize = 20;
 /*

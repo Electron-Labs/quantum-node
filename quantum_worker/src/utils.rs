@@ -4,26 +4,19 @@ use std::io::BufWriter;
 use agg_core::inputs::get_init_tree_data;
 use anyhow::Result as AnyhowResult;
 use imt_core::types::Leaf;
-// use quantum_circuits_interface::imt::get_init_tree_data;
-use quantum_db::repository::superproof_repository::{
-    get_last_verified_superproof, get_superproof_by_id,
-};
+use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::traits::pis::Pis;
 use quantum_types::traits::proof::Proof;
 use quantum_types::types::config::ConfigData;
-use quantum_types::types::db::superproof::Superproof;
-use quantum_types::types::gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey};
-use quantum_types::types::imt::ImtTree;
-use quantum_types::{traits::vkey::Vkey, types::gnark_groth16::GnarkGroth16Proof};
-use quantum_utils::file::{dump_object, write_bytes_to_file};
-use quantum_utils::keccak::{decode_keccak_hex, encode_keccak_hash};
+use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
+use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
 use quantum_utils::paths::{
-    get_imt_pis_path, get_imt_proof_path, get_reduced_proof_receipt_path, get_reduction_circuit_pis_path, get_reduction_circuit_proof_path, get_reduction_circuit_proving_key_path, get_reduction_circuit_verifying_key_path
+    get_imt_pis_path, get_imt_proof_path, get_reduced_proof_receipt_path
 };
 use risc0_zkvm::Receipt;
-use sqlx::{MySql, Pool};
+
 use tracing::info;
-use utils::hash::{Hasher, KeccakHasher};
+use utils::hash::Hasher;
 use crate::connection::get_pool;
 
 // Returns circuit_id, pk_path, vk_path
