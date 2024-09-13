@@ -2,7 +2,7 @@ use std::env;
 
 use connection::get_pool;
 use dotenv::dotenv;
-use quantum_api_server::{catcher, connection, routes};
+use quantum_api_server::{catcher, connection, routes::{self, protocol_proof::get_protocol_proof}};
 use quantum_types::types::config::ConfigData;
 use quantum_utils::logger::initialize_logger;
 use quantum_types;
@@ -28,6 +28,6 @@ async fn rocket() -> _ {
 
     let t = rocket::Config::figment();
     rocket::custom(t).manage(config_data).manage(_guard)
-    .mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token]).attach(cors)
+    .mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token, get_protocol_proof]).attach(cors)
     .register("/", catchers![unsupported_media_type, internal_server_error])
 }

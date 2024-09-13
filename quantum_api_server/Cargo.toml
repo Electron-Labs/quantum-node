@@ -28,4 +28,5 @@ tracing-appender = "0.2.3"
 hex = "0.4.3"
 rocket_cors = "0.6.0"
 chrono = { version = "0.4.38", features = ["serde"] }
-# quantum_circuits_interface = {path = "../../quantum-circuits/quantum_circuits_interface"}
+agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}
+utils = {path = "../../quantum-risc0-circuits/utils"}
