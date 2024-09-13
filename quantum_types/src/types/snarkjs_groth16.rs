@@ -310,12 +310,6 @@ impl Vkey for SnarkJSGroth16Vkey {
         Ok(pvk_hash)
     }
 
-    fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
-        let gnark_converted_vkey = self.convert_to_gnark_vkey();
-
-        gnark_converted_vkey.extended_keccak_hash(Some(0))
-    }
-
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         // let gnark_converted_vkey = self.convert_to_gnark_vkey();
         // gnark_converted_vkey.compute_circuit_hash(circuit_verifying_id)
@@ -432,16 +426,9 @@ impl Pis for SnarkJSGroth16Pis {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-
         let ark_pis = self.get_ark_pis_for_snarkjs_groth16_pis()?;
         let hash = public_inputs_hash::<KeccakHasher>(&ark_pis);
         Ok(hash)
-    }
-
-    fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let mut extended_pis = self.clone();
-        (extended_pis.0.len()..MAX_PUB_INPUTS).for_each(|i| extended_pis.0.push("0".to_string()));
-        extended_pis.keccak_hash()
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {

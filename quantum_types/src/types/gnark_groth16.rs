@@ -293,23 +293,23 @@ impl Vkey for GnarkGroth16Vkey {
         Ok(keccak_h.0)
     }
 
-    fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
-        let some_n_commitments = n_commitments.ok_or(anyhow!(error_line!("missing n_commitments")))?;
-        let mut extended_vkey = self.clone();
-        let mut k = extended_vkey.G1.K.clone();
-        let mut commitments_k: Vec<Fq> = vec![];
-        (0..some_n_commitments).for_each(|i| {
-            let idx = k.len() - some_n_commitments as usize + i as usize;
-            commitments_k.push(k[idx].clone());
-            k[idx] = Fq::zero();
-        });
+    // fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
+    //     let some_n_commitments = n_commitments.ok_or(anyhow!(error_line!("missing n_commitments")))?;
+    //     let mut extended_vkey = self.clone();
+    //     let mut k = extended_vkey.G1.K.clone();
+    //     let mut commitments_k: Vec<Fq> = vec![];
+    //     (0..some_n_commitments).for_each(|i| {
+    //         let idx = k.len() - some_n_commitments as usize + i as usize;
+    //         commitments_k.push(k[idx].clone());
+    //         k[idx] = Fq::zero();
+    //     });
 
-        (k.len() - 1..MAX_PUB_INPUTS).for_each(|_| k.push(Fq::zero()));
-        k.extend(commitments_k);
+    //     (k.len() - 1..MAX_PUB_INPUTS).for_each(|_| k.push(Fq::zero()));
+    //     k.extend(commitments_k);
 
-        extended_vkey.G1.K = k;
-        extended_vkey.keccak_hash()
-    }
+    //     extended_vkey.G1.K = k;
+    //     extended_vkey.keccak_hash()
+    // }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         let keccak_h = self.keccak_hash()?;
@@ -394,12 +394,6 @@ impl Pis for GnarkGroth16Pis {
         }
         let hash = keccak(keccak_ip);
         Ok(hash.0)
-    }
-
-    fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let mut extended_pis = self.clone();
-        (extended_pis.0.len()..MAX_PUB_INPUTS).for_each(|i| extended_pis.0.push("0".to_string()));
-        extended_pis.keccak_hash()
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {

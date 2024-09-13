@@ -131,13 +131,13 @@ async fn initialize_superproof_submission_loop(
             let pis_hash: [u8; 32];
             match user_circuit.proving_scheme {
                 ProvingSchemes::GnarkGroth16 => {
-                    pis_hash = GnarkGroth16Pis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
+                    pis_hash = GnarkGroth16Pis::read_pis(&proof.pis_path)?.keccak_hash()?;
                 }
                 ProvingSchemes::Groth16 => {
-                    pis_hash = SnarkJSGroth16Pis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
+                    pis_hash = SnarkJSGroth16Pis::read_pis(&proof.pis_path)?.keccak_hash()?
                 }
                 ProvingSchemes::Halo2Plonk => {
-                    pis_hash = Halo2PlonkPis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
+                    pis_hash = Halo2PlonkPis::read_pis(&proof.pis_path)?.keccak_hash()?
                 }
                 ProvingSchemes::GnarkPlonk => {
                     pis_hash = GnarkPlonkPis::read_pis(&proof.pis_path)?.extended_keccak_hash()?

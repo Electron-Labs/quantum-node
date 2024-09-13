@@ -168,7 +168,7 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(proof: &DbProof) -> Anyhow
     let pis: T = T::read_pis(&proof.pis_path)?;
 
     // TODO: to ask for extended_keccak_hash
-    let protocol_pis_hash = pis.extended_keccak_hash()?;
+    let protocol_pis_hash = pis.keccak_hash()?;
 
     let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await).await? {
         Some(superproof) => Ok(superproof),
