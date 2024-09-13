@@ -1,5 +1,5 @@
-use quantum_db::repository::{reduction_circuit_repository::{check_if_n_inner_commitments_compatible_reduction_circuit_id_exist, get_reduction_circuit_for_user_circuit}, task_repository, user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data}};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, vkey::Vkey}, types::{config::ConfigData, db::{protocol::Protocol, reduction_circuit::ReductionCircuit}, gnark_groth16::GnarkGroth16Vkey, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}}};
+use quantum_db::repository::user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, insert_user_circuit_data};
+use quantum_types::{enums::circuit_reduction_status::CircuitReductionStatus, traits::vkey::Vkey, types::{config::ConfigData, db::protocol::Protocol}};
 use quantum_utils::{keccak::encode_keccak_hash, paths::get_user_vk_path};
 use rocket::State;
 
@@ -9,7 +9,6 @@ use quantum_db::repository::bonsai_image::get_bonsai_image_by_proving_scheme;
 use crate::{connection::get_pool, error::error::CustomError, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
 
-// TODO: handle the circuit registration on smart contract. Need to have a some kind of status
 pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: Protocol) -> AnyhowResult<RegisterCircuitResponse> {
     // Retreive verification key bytes
     let vkey_bytes: Vec<u8> = data.vkey.clone();
@@ -28,7 +27,6 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
 
     let bonsai_image = get_bonsai_image_by_proving_scheme(get_pool().await, data.proof_type).await?;
 
-    // TODO: need to change this
     let circuit_hash = vkey.compute_circuit_hash(bonsai_image.circuit_verifying_id)?;
     let circuit_hash_string = encode_keccak_hash(&circuit_hash)?;
     println!("circuit_hash_string {:?}", circuit_hash_string);
@@ -59,7 +57,6 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     )
 }
 
-// TODO: should this api be removed? or should I maintain it for backward compatibility with sdk
 pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResult<CircuitRegistrationStatusResponse> {
     let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash.as_str()).await?;
     let status = user_circuit.circuit_reduction_status;

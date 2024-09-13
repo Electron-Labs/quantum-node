@@ -1,5 +1,6 @@
 use anyhow::Result as AnyhowResult;
-use quantum_types::{enums::proving_schemes::ProvingSchemes, types::{config::ConfigData, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof}, gnark_plonk::{GnarkPlonkSolidityProof, GnarkPlonkPis}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof} }};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, types::{config::ConfigData, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof} }};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, types::{config::ConfigData, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey} }};
 use quantum_utils::error_line;
 use rocket::{get, post, serde::json::Json, State};
 use tracing::error;
@@ -10,14 +11,14 @@ use crate::{error::error::CustomError, service::proof::{get_proof_data_exec, sub
 pub async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
     let response: AnyhowResult<SubmitProofResponse>;
     if data.proof_type == ProvingSchemes::GnarkGroth16 {
-        response = submit_proof_exec::<GnarkGroth16Proof, GnarkGroth16Pis>(data, config_data).await;
+        response = submit_proof_exec::<GnarkGroth16Proof, GnarkGroth16Pis, GnarkGroth16Vkey>(data, config_data).await;
     } else if data.proof_type == ProvingSchemes::Groth16 {
-        response = submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis>(data, config_data).await;
+        response = submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis, SnarkJSGroth16Vkey>(data, config_data).await;
     } else if data.proof_type == ProvingSchemes::Halo2Plonk {
-        response = submit_proof_exec::<Halo2PlonkProof, Halo2PlonkPis>(data, config_data).await;
-    } else if data.proof_type == ProvingSchemes::GnarkPlonk {
-        response = submit_proof_exec::<GnarkPlonkSolidityProof, GnarkPlonkPis>(data, config_data).await;
-    } else {
+        response = submit_proof_exec::<Halo2PlonkProof, Halo2PlonkPis, Halo2PlonkVkey>(data, config_data).await;
+    } else if (data.proof_type == ProvingSchemes::GnarkPlonk ){
+        response = submit_proof_exec::<GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey>(data, config_data).await;
+    }else {
         error!("unsupported proving scheme");
         return Err(CustomError::Internal(error_line!(String::from("/proof Unsupported Proving Scheme"))))
     }
