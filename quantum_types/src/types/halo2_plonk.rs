@@ -62,10 +62,6 @@ impl Vkey for Halo2PlonkVkey {
         Ok(protocol_hash)
     }
 
-    fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
-        self.keccak_hash()
-    }
-
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         let protocol_hash = self.keccak_hash()?;
         let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&protocol_hash, &circuit_verifying_id)?;
@@ -156,11 +152,7 @@ impl Pis for Halo2PlonkPis {
         Ok(hash)
     }
 
-    fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        self.keccak_hash()
-    }
-
-    // need to check that
+    // TODO: need to check that
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
         let a: Vec<Vec<Fr>> = serde_json::from_str(&String::from_utf8(self.0.clone()).map_err(|err| anyhow!(error_line!(err)))?).map_err(|e| anyhow!(error_line!(e)))?;
         let pis = a
