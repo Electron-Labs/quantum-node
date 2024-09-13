@@ -176,9 +176,9 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
         );
-        if aggregation_awaiting_proofs.len() !=0 && 
+        if (aggregation_awaiting_proofs.len() !=0 && 
         last_verified_superproof.is_some() && 
-        last_verified_superproof.unwrap().onchain_submission_time.unwrap() + Duration::from_secs(30*60) >= Utc::now().naive_utc() {
+        last_verified_superproof.unwrap().onchain_submission_time.unwrap() + Duration::from_secs(30*60) >= Utc::now().naive_utc()){
             info!("Picked up Proofs aggregation");
             aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
         }

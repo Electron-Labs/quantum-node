@@ -3,11 +3,9 @@ use std::{fs::File, io::BufWriter, time::{Duration, Instant}};
 use agg_core::{inputs::get_agg_inputs, types::AggInputs};
 use anyhow::{anyhow, Ok, Result as AnyhowResult};
 use quantum_db::repository::{
-    reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
-    superproof_repository::{
+    bonsai_image::{get_aggregate_circuit_bonsai_image, get_bonsai_image_by_image_id}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{
         get_last_verified_superproof, get_superproof_by_id, update_previous_superproof_root, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time
-    },
-    user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
+    }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
 };
 use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
@@ -52,13 +50,14 @@ pub async fn handle_proof_aggregation_and_updation(
     serde_json::to_writer(&mut writer, &receipt.unwrap()).unwrap();
     // superproof_proof.dump_proof(&superproof_proof_path)?;
 
+    // TODO: Add new field superproof root path
     update_superproof_proof_path(get_pool().await, &superproof_proof_path, superproof_id).await?;
 
     // Add agg_time to the db
     update_superproof_agg_time(get_pool().await, aggregation_time.as_secs(), superproof_id).await?;
 
     let proof_with_max_reduction_time = proofs.iter().max_by_key(|proof| proof.reduction_time);
-    // TODO: remove unwrap
+    // TODO: remove unwrap , check reduction time is not getting update in db
     let total_proving_time = proof_with_max_reduction_time
         .unwrap()
         .reduction_time
@@ -123,10 +122,12 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
     );
     // TODO: check this.
     let new_leaves_bytes = bincode::serialize(&new_leaves)?;
-    write_bytes_to_file(&new_leaves_bytes, &superproof_leaves_path);
+    write_bytes_to_file(&new_leaves_bytes, &superproof_leaves_path)?;
     update_superproof_leaves_path(get_pool().await, &superproof_leaves_path, superproof_id).await?;
 
-    let old_root = last_verified_superproof.unwrap().previous_superproof_root.unwrap();
+    //TODO: fix this
+    // let old_root = last_verified_superproof.unwrap().previous_superproof_root.unwrap();
+    let old_root: &str = "";
     update_previous_superproof_root(get_pool().await, &old_root, superproof_id).await?;
 
     let new_root = encode_keccak_hash(&new_superproof_root)?;
@@ -137,8 +138,9 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
     let input_data = form_bonsai_input_data(agg_input)?;
 
     //TODO: move it to DB;
-    let agg_image_id = "";
-    let receipt = execute_aggregation(input_data, agg_image_id, assumptions, superproof_id).await?;
+    let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
+    let receipt = execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
+    receipt.clone().unwrap().verify(agg_image.circuit_verifying_id).expect("agg receipt not verified");
     let aggregation_time = aggregation_start.elapsed();
     Ok((receipt, aggregation_time))
 }
@@ -146,7 +148,7 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
 
 fn form_bonsai_input_data<H: Hasher + Serialize>(agg_input: AggInputs<H>) -> AnyhowResult<Vec<u8>> {
     let data = to_vec(&agg_input)?;
-    let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&data).to_vec();
+    let input_data_vec: Vec<u8> = bytemuck::cast_slice(&data).to_vec();
     Ok(input_data_vec)
 }
 

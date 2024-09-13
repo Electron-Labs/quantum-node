@@ -40,6 +40,18 @@ pub async fn get_bonsai_image_by_image_id(pool: &Pool<MySql>, image_id: &str) ->
     bonsai_image
 }
 
+pub async fn get_aggregate_circuit_bonsai_image(pool: &Pool<MySql>) -> AnyhowResult<BonsaiImage> {
+    let query  = sqlx::query("SELECT * from bonsai_image where is_aggregation_image_id = 1");
+
+    info!("{}", query.sql());
+
+    let bonsai_image = match query.fetch_one(pool).await{
+        Ok(t) => get_bonsai_image_from_mysql_row(&t),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    bonsai_image
+}
+
 fn get_bonsai_image_from_mysql_row(row: &MySqlRow) -> AnyhowResult<BonsaiImage, AnyhowError>{
     let proving_scheme_string: Option<String> = row.try_get_unchecked("proving_scheme")?;
     let mut proving_scheme: Option<ProvingSchemes> = None;
