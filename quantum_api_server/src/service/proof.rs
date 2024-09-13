@@ -1,37 +1,26 @@
 use agg_core::inputs::{compute_combined_vkey_hash, compute_leaf_value};
-// use quantum_circuits_interface::{agg::compute_combined_vk_hash, imt::compute_leaf_value};
-use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::{get_latest_proof_by_circuit_hash, insert_proof}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof, vkey::Vkey}, types::{config::ConfigData, db::{superproof, user_circuit_data}, gnark_groth16::GnarkGroth16Pis, hash::KeccakHashOut, imt::ImtTree}};
+use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::{get_latest_proof_by_circuit_hash, insert_proof}, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof, vkey::Vkey}, types::{config::ConfigData, hash::KeccakHashOut, imt::ImtTree}};
 use quantum_types::types::db::proof::Proof as DbProof;
-use quantum_utils::{keccak::{convert_string_to_be_bytes, decode_keccak_hex, encode_keccak_hash}, paths::{get_user_pis_path, get_user_proof_path},error_line};
+use quantum_utils::{keccak::encode_keccak_hash, paths::{get_user_pis_path, get_user_proof_path},error_line};
 use rocket::State;
-use anyhow::{anyhow, Context, Result as AnyhowResult};
+use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::{error, info};
-use utils::hash::KeccakHasher;
+use utils::hash::{Hasher, KeccakHasher};
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, protocol_proof::ProtocolProofResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
-use keccak_hash::keccak;
 use quantum_db::repository::proof_repository::get_proof_by_proof_hash;
 use quantum_db::repository::protocol::get_protocol_by_protocol_name;
-use quantum_types::types::db::user_circuit_data::UserCircuitData;
-
-pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
+pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
 
     let proof: T = T::deserialize_proof(&mut data.proof.as_slice())?;
 
     let pis: F = F::deserialize_pis(&mut data.pis.as_slice())?;
 
-    let mut proof_id_ip = Vec::<u8>::new();
-    let vkey_hash = decode_keccak_hex(&data.circuit_hash)?;
-    proof_id_ip.extend(vkey_hash.to_vec().iter().cloned());
-    let pis_data = pis.get_data()?;
-    for i in 0..pis_data.len() {
-        let pi = pis_data[i].clone();
-        proof_id_ip.extend(convert_string_to_be_bytes(&pi).to_vec().iter().cloned());
-    }
+    let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
+    let user_vk = V::read_vk(&user_circuit_data.vk_path)?;
 
-    // TODO: change this
-    let proof_id_hash =  keccak(proof_id_ip).0;
+    let proof_id_hash =  KeccakHasher::combine_hash(&user_vk.keccak_hash()?,&pis.keccak_hash()?);
 
     let proof_hash = encode_keccak_hash(&proof_id_hash)?;
 
@@ -43,7 +32,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis>(data: SubmitProofRequest, confi
     proof.dump_proof(&proof_full_path)?;
     pis.dump_pis(&pis_full_path)?;
 
-    let public_inputs_json_string =  serde_json::to_string(&pis_data).unwrap();
+    let public_inputs_json_string =  serde_json::to_string(&pis.get_data()?).unwrap();
     let proof_id = insert_proof(get_pool().await, &proof_hash, &pis_full_path, &proof_full_path, ProofStatus::Registered, &data.circuit_hash, &public_inputs_json_string).await?;
     create_proof_task(get_pool().await, &data.circuit_hash, TaskType::ProofGeneration, TaskStatus::NotPicked, &proof_hash, proof_id).await?;
 
@@ -159,7 +148,6 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(proof: &DbProof) -> Anyhow
     let user_circuit_hash = proof.user_circuit_hash.clone();
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &user_circuit_hash).await?;
     let bonsai_image = get_bonsai_image_by_image_id(get_pool().await, &user_circuit_data.bonsai_image_id).await?;
-    let user_circuit_bytes = decode_keccak_hex(&user_circuit_hash)?.to_vec();
 
     let user_circuit_vk = V::read_vk(&user_circuit_data.vk_path)?;
 
@@ -167,7 +155,6 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(proof: &DbProof) -> Anyhow
 
     let pis: T = T::read_pis(&proof.pis_path)?;
 
-    // TODO: to ask for extended_keccak_hash
     let protocol_pis_hash = pis.keccak_hash()?;
 
     let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await).await? {
