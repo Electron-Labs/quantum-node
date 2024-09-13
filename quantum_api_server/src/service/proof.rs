@@ -10,6 +10,7 @@ use utils::hash::{Hasher, KeccakHasher};
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, protocol_proof::ProtocolProofResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 use quantum_db::repository::proof_repository::get_proof_by_proof_hash;
 use quantum_db::repository::protocol::get_protocol_by_protocol_name;
+
 pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
 

@@ -112,7 +112,6 @@ pub async fn get_proofs_in_superproof_id(pool: &Pool<MySql>, superproof_id: u64)
     return Ok(proofs)
 }
 
-// TODO: change to proof id
 pub async fn update_proof_status(pool: &Pool<MySql>, proof_id: u64, proof_status: ProofStatus) -> AnyhowResult<()>{
     let query  = sqlx::query("UPDATE proof set proof_status = ? where id = ?")
                 .bind(proof_status.as_u8()).bind(proof_id);

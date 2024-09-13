@@ -1,8 +1,8 @@
-use quantum_types::{types::db::protocol::Protocol};
+use quantum_types::types::db::protocol::Protocol;
 use quantum_utils::error_line;
 use sqlx::{mysql::MySqlRow, Execute, MySql, Pool, Row};
 use tracing::info;
-use anyhow::{anyhow, Error, Result as AnyhowResult};
+use anyhow::{anyhow, Result as AnyhowResult};
 use crate::error::error::CustomError;
 
 pub async fn get_protocol_by_auth_token(pool: &Pool<MySql>, auth_token: &str) -> AnyhowResult<Option<Protocol>> {

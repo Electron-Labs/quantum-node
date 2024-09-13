@@ -1,33 +1,25 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use std::{path, str::FromStr};
-
+use std::str::FromStr;
 use agg_core::inputs::compute_combined_vkey_hash;
-// use ark_bn254::Bn254;
-use ark_bn254::{Bn254, Config, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
+use ark_bn254::{Bn254, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
 use ark_groth16::{verifier, VerifyingKey, Proof as ArkProof};
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use quantum_utils::{
     error_line,
-    file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file},
-    keccak::convert_string_to_be_bytes,
+    file::{read_bytes_from_file, write_bytes_to_file},
 };
 use serde::{Deserialize, Serialize};
-
 use crate::{
     traits::{pis::Pis, proof::Proof, vkey::Vkey},
     types::gnark_groth16::{Fq, Fq2, Fq_2, G1Struct, G2Struct, PedersenCommitmentKey},
 };
 use anyhow::{anyhow, Result as AnyhowResult};
-use keccak_hash::keccak;
 use tracing::info;
-use utils::{groth16_vkey_hash, hash::KeccakHasher, public_inputs_hash, hash::Hasher};
-use super::{
-    config::ConfigData,
-    gnark_groth16::{GnarkGroth16Vkey, MAX_PUB_INPUTS},
-};
+use utils::{groth16_vkey_hash, hash::KeccakHasher, public_inputs_hash};
+use super::gnark_groth16::GnarkGroth16Vkey;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {

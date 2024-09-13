@@ -1,31 +1,28 @@
 use std::{fs::File, io::BufWriter, time::{Duration, Instant}};
 
 use agg_core::{inputs::get_agg_inputs, types::AggInputs};
-use anyhow::{anyhow, Ok, Result as AnyhowResult};
+use anyhow::Result as AnyhowResult;
 use quantum_db::repository::{
-    bonsai_image::{get_aggregate_circuit_bonsai_image, get_bonsai_image_by_image_id}, reduction_circuit_repository::get_reduction_circuit_for_user_circuit, superproof_repository::{
-        get_last_verified_superproof, get_superproof_by_id, update_previous_superproof_root, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time
+    bonsai_image::get_aggregate_circuit_bonsai_image, superproof_repository::{
+        get_last_verified_superproof, update_previous_superproof_root, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time
     }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
 };
 use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
-    traits::{circuit_interactor::CircuitInteractorAMQP, pis::Pis, proof::Proof, vkey::Vkey},
+    traits::{pis::Pis, vkey::Vkey},
     types::{
-        config::{AMQPConfigData, ConfigData},
+        config::ConfigData,
         db::proof::Proof as DBProof,
-        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, GnarkVerifier},
         halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey},
         snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
     },
 };
 use quantum_utils::{
-    error_line, file::write_bytes_to_file, keccak::encode_keccak_hash, paths::{get_imt_vkey_path, get_superproof_leaves_path, get_superproof_pis_path, get_superproof_proof_receipt_path}
+    file::write_bytes_to_file, keccak::encode_keccak_hash, paths::{get_superproof_leaves_path, get_superproof_proof_receipt_path}
 };
 use risc0_zkvm::{serde::to_vec, Receipt};
 use serde::Serialize;
-use sqlx::{MySql, Pool};
 use tracing::info;
-use quantum_types::traits::circuit_interactor::GenerateAggregatedProofResult;
 use utils::hash::{Hasher, KeccakHasher};
 use crate::{bonsai::execute_aggregation, connection::get_pool};
 use crate::utils::get_last_superproof_leaves;

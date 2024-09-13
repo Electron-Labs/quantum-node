@@ -2,14 +2,14 @@ use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
-use ark_ff::BigInt;
+
 use borsh::{BorshDeserialize, BorshSerialize};
-use keccak_hash::keccak;
+
 use num_bigint::BigUint;
 use quantum_utils::error_line;
 use quantum_utils::file::read_bytes_from_file;
 use quantum_utils::file::write_bytes_to_file;
-use quantum_utils::keccak::convert_string_to_be_bytes;
+
 use serde::{Deserialize, Serialize};
 use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::Fr;
 use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G1Affine;
@@ -17,7 +17,7 @@ use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G2Affine;
 // use snark_verifier::halo2_base::halo2_proofs::halo2curves::grumpkin::G1Affine;
 use snark_verifier::halo2_base::utils::ScalarField;
 use snark_verifier::verifier::plonk::PlonkProtocol;
-use utils::hash::{Hasher, KeccakHasher};
+use utils::hash::KeccakHasher;
 use utils::halo2_kzg_vkey_hash;
 use utils::halo2_public_inputs_hash;
 
@@ -52,7 +52,7 @@ impl Vkey for Halo2PlonkVkey {
         Ok(vkey)
     }
 
-    fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()> {
+    fn validate(&self, _num_public_inputs: u8) -> AnyhowResult<()> {
         Ok(())
     }
 

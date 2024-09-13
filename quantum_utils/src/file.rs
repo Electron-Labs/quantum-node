@@ -2,7 +2,7 @@ use std::{fs::{self, File}, io::{BufWriter, Read, Write}};
 
 use serde::Serialize;
 
-use anyhow::{anyhow,Context, Result as AnyhowResult};
+use anyhow::{anyhow, Result as AnyhowResult};
 
 use crate::error_line;
 

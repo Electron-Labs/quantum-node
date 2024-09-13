@@ -1,42 +1,27 @@
-// use aggregator::handle_aggregation;
 use anyhow::{anyhow, Result as AnyhowResult};
 use chrono::Utc;
-use dotenv::dotenv;
-// use imt::handle_imt;
-// use bonsai_sdk::
-
-use quantum_db::{
-    error::error::CustomError,
+use quantum_db::
     repository::{
         proof_repository::{
             get_n_reduced_proofs, update_proof_status, update_superproof_id_in_proof,
         },
         superproof_repository::{get_last_verified_superproof, insert_new_superproof, update_superproof_status},
-        task_repository::{
-            get_aggregation_waiting_tasks_num, get_unpicked_task, update_task_status,
-        },
-        user_circuit_data_repository::update_user_circuit_data_reduction_status,
-    },
-};
+        task_repository::{get_unpicked_task, update_task_status}
+    };
 use quantum_types::{
-    enums::{
-        circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus,
+    enums::{ proof_status::ProofStatus,
         superproof_status::SuperproofStatus, task_status::TaskStatus, task_type::TaskType,
     },
     types::{
         config::ConfigData,
-        db::{proof::Proof, superproof::Superproof, task::Task},
+        db::{proof::Proof, task::Task},
     },
 };
-use quantum_utils::{error_line, logger::initialize_logger};
-use sqlx::{MySql, Pool};
+use quantum_utils::error_line;
 use std::{thread::sleep, time::Duration};
-// use risc0_zkvm::{ExecutorEnv, Receipt};
 use tracing::{error, info};
 use crate::{aggregator::handle_proof_aggregation_and_updation, connection::get_pool};
-// use crate::imt::handle_imt_proof_generation_and_updation;
-use crate::{proof_generator, registration};
-// use crate::aggregator::handle_proof_aggregation_and_updation;
+use crate::proof_generator;
 
 pub async fn handle_aggregate_proof_task(
     proofs: Vec<Proof>,
@@ -176,9 +161,9 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
         );
-        if (aggregation_awaiting_proofs.len() !=0 && 
+        if aggregation_awaiting_proofs.len() !=0 && 
         last_verified_superproof.is_some() && 
-        last_verified_superproof.unwrap().onchain_submission_time.unwrap() + Duration::from_secs(30*60) >= Utc::now().naive_utc()){
+        last_verified_superproof.unwrap().onchain_submission_time.unwrap() + Duration::from_secs(30*60) >= Utc::now().naive_utc(){
             info!("Picked up Proofs aggregation");
             aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
         }
