@@ -153,22 +153,28 @@ pub async fn aggregate_and_generate_new_superproof(aggregation_awaiting_proofs: 
 
 pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> AnyhowResult<()> {
     loop {
-        // TODO: will have variable batch size for aggregation.
-        // println!("Running worker loop");
+        println!("Running worker loop");
         let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
         let aggregation_awaiting_proofs = get_n_reduced_proofs(get_pool().await, config_data.batch_size).await?;
         println!(
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
         );
-        if aggregation_awaiting_proofs.len() !=0 && 
-        last_verified_superproof.is_some() && 
-        last_verified_superproof.unwrap().onchain_submission_time.unwrap() + Duration::from_secs(30*60) >= Utc::now().naive_utc(){
-            info!("Picked up Proofs aggregation");
-            aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
+        if last_verified_superproof.is_some() {
+            let last_verified_superproof = last_verified_superproof.unwrap(); // safe to use unwrap here, already check 
+            let last_superproof_onchain_time = match last_verified_superproof.onchain_submission_time {
+                Some(t) => Ok(t),
+                None => Err(anyhow!(error_line!("onchain verified time field missing in last verified superproof"))),
+            }?;
+            let next_agg_start_time = last_superproof_onchain_time + Duration::from_secs(config_data.aggregation_wait_time);
+            let remaining_time = next_agg_start_time - Utc::now().naive_utc();
+            println!("remaining time for agg : {:?} seconds", remaining_time.num_seconds());
+            if next_agg_start_time <= Utc::now().naive_utc() {
+                info!("Picked up Proofs aggregation");
+                aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
+            }
         }
-
-
+        
         let unpicked_task = get_unpicked_task(get_pool().await).await?;
         if unpicked_task.is_some() {
             let task = unpicked_task.unwrap();

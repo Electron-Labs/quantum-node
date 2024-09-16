@@ -21,6 +21,7 @@ pub struct ConfigData {
     pub imt_depth: u64,
     pub batch_size: u64,
     pub worker_sleep_secs: u64,
+    pub aggregation_wait_time: u64,
 }
 
 impl ConfigData {

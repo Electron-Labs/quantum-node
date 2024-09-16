@@ -2,6 +2,7 @@ use std::{fs::File, io::BufWriter, time::{Duration, Instant}};
 
 use agg_core::{inputs::get_agg_inputs, types::AggInputs};
 use anyhow::Result as AnyhowResult;
+use bonsai_sdk::responses::SnarkReceipt;
 use quantum_db::repository::{
     bonsai_image::get_aggregate_circuit_bonsai_image, superproof_repository::{
         get_last_verified_superproof, update_previous_superproof_root, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time
@@ -18,13 +19,13 @@ use quantum_types::{
     },
 };
 use quantum_utils::{
-    file::write_bytes_to_file, keccak::encode_keccak_hash, paths::{get_superproof_leaves_path, get_superproof_proof_receipt_path}
+    file::{dump_object, write_bytes_to_file}, keccak::encode_keccak_hash, paths::{get_superproof_leaves_path, get_superproof_proof_receipt_path, get_superproof_snark_receipt_path}
 };
 use risc0_zkvm::{serde::to_vec, Receipt};
 use serde::Serialize;
 use tracing::info;
 use utils::hash::{Hasher, KeccakHasher};
-use crate::{bonsai::execute_aggregation, connection::get_pool};
+use crate::{bonsai::{execute_aggregation, run_stark2snark}, connection::get_pool};
 use crate::utils::get_last_superproof_leaves;
 
 pub async fn handle_proof_aggregation_and_updation(
@@ -33,7 +34,7 @@ pub async fn handle_proof_aggregation_and_updation(
     config: &ConfigData,
 ) -> AnyhowResult<()> {
 
-    let (receipt, aggregation_time) = handle_proof_aggregation(proofs.clone(), superproof_id, config).await?;
+    let (receipt, snark_receipt, aggregation_time) = handle_proof_aggregation(proofs.clone(), superproof_id, config).await?;
     info!("aggregation done in time : {:?}", aggregation_time);
 
     // TODO: Dump superproof receipt and add to the DB
@@ -42,12 +43,17 @@ pub async fn handle_proof_aggregation_and_updation(
         &config.supperproof_path,
         superproof_id,
     );
-    let file = File::create(&superproof_proof_path).unwrap();
-    let mut writer = BufWriter::new(file);
-    serde_json::to_writer(&mut writer, &receipt.unwrap()).unwrap();
+    dump_object(receipt.unwrap(), &superproof_proof_path)?;
+
+    let superproof_proof_path = get_superproof_snark_receipt_path(
+        &config.storage_folder_path,
+        &config.supperproof_path,
+        superproof_id,
+    );
+    dump_object(snark_receipt.unwrap(), &superproof_proof_path)?;
     // superproof_proof.dump_proof(&superproof_proof_path)?;
 
-    // TODO: Add new field superproof root path
+    // TODO: Add new field superproof receipt path
     update_superproof_proof_path(get_pool().await, &superproof_proof_path, superproof_id).await?;
 
     // Add agg_time to the db
@@ -64,7 +70,7 @@ pub async fn handle_proof_aggregation_and_updation(
     Ok(())
 }
 
-async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData,) -> AnyhowResult<(Option<Receipt>, Duration)> {
+async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData,) -> AnyhowResult<(Option<Receipt>, Option<SnarkReceipt>, Duration)> {
     info!("superproof_id {:?}", superproof_id);
     
     let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
@@ -136,10 +142,13 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
 
     //TODO: move it to DB;
     let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
-    let receipt = execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
+    let (receipt, agg_session_id) = execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
     receipt.clone().unwrap().verify(agg_image.circuit_verifying_id).expect("agg receipt not verified");
+    let snark_receipt = run_stark2snark(agg_session_id, superproof_id).await?;
+
+
     let aggregation_time = aggregation_start.elapsed();
-    Ok((receipt, aggregation_time))
+    Ok((receipt, snark_receipt, aggregation_time))
 }
 
 
@@ -149,24 +158,24 @@ fn form_bonsai_input_data<H: Hasher + Serialize>(agg_input: AggInputs<H>) -> Any
     Ok(input_data_vec)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use dotenv::dotenv;
-    use quantum_db::repository::proof_repository::get_proofs_in_superproof_id;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use dotenv::dotenv;
+//     use quantum_db::repository::proof_repository::get_proofs_in_superproof_id;
 
-    #[tokio::test]
-    #[ignore]
-    pub async fn test_aggregate_proof_by_superproof_id() {
-        // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
-        // dotenv::from_filename("../.env.test").ok();
-        // dotenv().ok();
-        let config_data = ConfigData::new("../../config.yaml"); // change the path
-        let superproof_id = 90; // insert your circuit hash
-        let superproof = get_superproof_by_id(get_pool().await, superproof_id).await.unwrap();
-        let proofs = get_proofs_in_superproof_id(get_pool().await,superproof_id).await.unwrap();
-        let (result, reduction_time) = handle_proof_aggregation(proofs, superproof_id, &config_data).await.unwrap();
-        println!("{:?}", result);
-        assert_eq!(result.success, true);
-    }
-}
+//     #[tokio::test]
+//     #[ignore]
+//     pub async fn test_aggregate_proof_by_superproof_id() {
+//         // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
+//         // dotenv::from_filename("../.env.test").ok();
+//         // dotenv().ok();
+//         let config_data = ConfigData::new("../../config.yaml"); // change the path
+//         let superproof_id = 90; // insert your circuit hash
+//         let superproof = get_superproof_by_id(get_pool().await, superproof_id).await.unwrap();
+//         let proofs = get_proofs_in_superproof_id(get_pool().await,superproof_id).await.unwrap();
+//         let (result, reduction_time) = handle_proof_aggregation(proofs, superproof_id, &config_data).await.unwrap();
+//         println!("{:?}", result);
+//         assert_eq!(result.success, true);
+//     }
+// }

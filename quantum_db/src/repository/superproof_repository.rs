@@ -235,6 +235,20 @@ pub async fn update_session_id_superproof(pool: &Pool<MySql>, session_id: &str, 
     row_affected
 }
 
+pub async fn update_snark_session_id_superproof(pool: &Pool<MySql>, snark_session_id: &str, superproof_id: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE superproof set snark_session_id = ? where id = ?")
+                .bind(snark_session_id).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", snark_session_id, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
 
 
 fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
