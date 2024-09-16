@@ -21,9 +21,10 @@ pub fn create_dir(full_path: &str) -> AnyhowResult<()>{
     Ok(res)
 }
 
-pub fn dump_object<T: Serialize>(object: T, path: &str, file_name: &str) -> AnyhowResult<()> {
-    create_dir(path)?;
-    dump_json_file(path, file_name, object)?;
+pub fn dump_object<T: Serialize>(object: T, path: &str) -> AnyhowResult<()> {
+    let (dir_path, file_name) = get_last_dir_path_file_name_from_full_path(path);
+    create_dir(&dir_path)?;
+    dump_json_file(&dir_path, &file_name, object)?;
     Ok(())
 }
 
@@ -32,12 +33,18 @@ pub fn read_file(path: &str) -> AnyhowResult<String> {
     Ok(data_string)
 }
 
-// Write bytes to file
-pub fn write_bytes_to_file(bytes: &Vec<u8>, path: &str) -> AnyhowResult<()> {
+pub fn get_last_dir_path_file_name_from_full_path(path: &str) -> (String, String) {
     // Split the string into components separated by '/'
     let components: Vec<&str> = path.split('/').collect();
     // The directory path is everything except the last component
     let dir_path = components[..components.len() - 1].join("/");
+    let file_name = components[components.len()-1].to_string();
+    (dir_path, file_name)
+}
+
+// Write bytes to file
+pub fn write_bytes_to_file(bytes: &Vec<u8>, path: &str) -> AnyhowResult<()> {
+    let (dir_path, _) = get_last_dir_path_file_name_from_full_path(path);
     create_dir(&dir_path)?;
     let mut file = File::create(path).map_err(|err| anyhow!(error_line!(err)))?;
     file.write_all(&bytes).map_err(|err| anyhow!(error_line!(err)))?;

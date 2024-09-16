@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::BufWriter;
 
 use agg_core::inputs::get_init_tree_data;
+use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
 use imt_core::types::Leaf;
 use quantum_db::repository::superproof_repository::get_last_verified_superproof;
@@ -10,6 +11,8 @@ use quantum_types::traits::proof::Proof;
 use quantum_types::types::config::ConfigData;
 use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
+use quantum_utils::error_line;
+use quantum_utils::file::dump_object;
 use quantum_utils::paths::{
     get_imt_pis_path, get_imt_proof_path, get_reduced_proof_receipt_path
 };
@@ -61,13 +64,8 @@ pub fn dump_reduction_proof_data(
         circuit_hash,
         proof_hash,
     );
-    // proof.dump_proof(&proof_path)?;
-    // pis.dump_pis(&pis_path)?;
-
-    // TODO: fix this
-    let file = File::create(&receipt_path).unwrap();
-    let mut writer = BufWriter::new(file);
-    serde_json::to_writer(&mut writer, &receipt).unwrap();
+    
+    dump_object(receipt, &receipt_path).map_err(|err| anyhow!(error_line!(err)))?;
     Ok(receipt_path)
 }
 

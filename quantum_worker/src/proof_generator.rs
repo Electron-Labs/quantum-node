@@ -165,7 +165,7 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
     let input_data_vec = form_snarkjs_groth16_bonsai_inputs(vk, proof, public_inputs)?;
     
     let reduction_start_time = Instant::now();
-    let receipt = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let (receipt, _) = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
     Ok((receipt,reduction_time))
 }
@@ -210,7 +210,7 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let input_data = form_halo2_plonk_bonsai_inputs(&proof, &vk, &pis)?;
 
     let reduction_start_time = Instant::now();
-    let receipt = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))

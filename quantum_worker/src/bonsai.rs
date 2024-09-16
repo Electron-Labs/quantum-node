@@ -1,13 +1,13 @@
-use std::time::Duration;
+use std::{fs::File, io::BufWriter, time::Duration};
 
-use bonsai_sdk::non_blocking::{Client, SessionId};
-use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::update_session_id_in_proof, superproof_repository::update_session_id_superproof};
+use bonsai_sdk::{non_blocking::{Client, SessionId}, responses::SnarkReceipt};
+use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::update_session_id_in_proof, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};
 use risc0_zkvm::Receipt;
 
 use crate::connection::get_pool;
 
 use anyhow::Result as AnyhowResult;
-pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_id: u64) -> AnyhowResult<Option<Receipt>> {
+pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_id: u64) -> AnyhowResult<(Option<Receipt>, String)> {
     
     let client = Client::from_env(risc0_zkvm::VERSION)?;
 
@@ -24,15 +24,16 @@ pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_
 
     //TODO: store in DB
     let session = client.create_session(image_id.to_string(), input_id, assumptions, execute_only).await?;
+    let session_uuid_id = session.uuid.clone();
     println!("sessionId: {:?}", session.uuid);
 
     update_session_id_in_proof(get_pool().await, proof_id, &session.uuid).await?;
 
     let receipt = check_session_status(session, client, &bonsai_image.circuit_verifying_id).await?;
-    Ok(receipt)
+    Ok((receipt, session_uuid_id))
 }
 
-pub async fn execute_aggregation(input_data: Vec<u8>, image_id: &str, assumptions: Vec<String>, superproof_id: u64, ) -> AnyhowResult<Option<Receipt>> {
+pub async fn execute_aggregation(input_data: Vec<u8>, image_id: &str, assumptions: Vec<String>, superproof_id: u64, ) -> AnyhowResult<(Option<Receipt>, String)> {
     
     let client = Client::from_env(risc0_zkvm::VERSION)?;
     let bonsai_image = get_bonsai_image_by_image_id(get_pool().await, image_id).await?;
@@ -42,16 +43,13 @@ pub async fn execute_aggregation(input_data: Vec<u8>, image_id: &str, assumption
 
     let execute_only = false;
     
-    
-
-    //TODO: store in DB
     let session = client.create_session(image_id.to_string(), input_id, assumptions, execute_only).await?;
+    let session_uuid_id = session.uuid.clone();
     println!("sessionId: {:?}", session.uuid);
-
     update_session_id_superproof(get_pool().await,  &session.uuid, superproof_id).await?;
 
     let receipt = check_session_status(session, client, &bonsai_image.circuit_verifying_id).await?;    
-    Ok(receipt)
+    Ok((receipt, session_uuid_id))
 }
 
 async fn check_session_status(session: SessionId, client: Client, circuit_verifying_id: &[u32;8] ) -> AnyhowResult<Option<Receipt>> {
@@ -97,3 +95,54 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
 }
 
 
+pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> AnyhowResult<Option<SnarkReceipt>> {
+    let client = Client::from_env(risc0_zkvm::VERSION)?;
+    let mut receipt: Option<SnarkReceipt> = None;
+    let snark_session = client.create_snark(agg_session_id).await?;
+    println!("Created snark session: {}", snark_session.uuid);
+    update_snark_session_id_superproof(get_pool().await, &snark_session.uuid, superproof_id).await?;
+    loop {
+        let res = snark_session.status(&client).await?;
+        match res.status.as_str() {
+            "RUNNING" => {
+                println!("Current status: {} - continue polling...", res.status,);
+                std::thread::sleep(Duration::from_secs(15));
+                continue;
+            }
+            "SUCCEEDED" => {
+                let snark_receipt = res.output;
+                println!("Snark proof!: {snark_receipt:?}");
+                // let file = File::create("snark_receipt.json").unwrap();
+                // let mut writer = BufWriter::new(file);
+                // serde_json::to_writer(&mut writer, &snark_receipt.unwrap()).unwrap();
+                receipt = snark_receipt;
+                break;
+            }
+            _ => {
+                panic!(
+                    "Workflow exited: {} err: {}",
+                    res.status,
+                    res.error_msg.unwrap_or_default()
+                );
+            }
+        }
+    }
+    Ok(receipt)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dotenv::dotenv;
+    use quantum_db::repository::proof_repository::get_proofs_in_superproof_id;
+
+    #[tokio::test]
+    #[ignore]
+    pub async fn test_start_to_snark() {
+        // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
+        // dotenv::from_filename("../.env.test").ok();
+        dotenv().ok();
+        let session_id = "090c5ffa-3ed1-4bc5-a430-d6fb5d32d969";
+        run_stark2snark(session_id.to_string()).await;
+    }
+}
