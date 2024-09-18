@@ -82,3 +82,19 @@ pub fn get_imt_pis_path(storage_folder_path: &str, imt_circuit_data_path: &str, 
 pub fn get_imt_vkey_path(aggregated_circuit_data_path: &str) -> String {
     format!("{}/imt_vkey.bin", aggregated_circuit_data_path)
 }
+
+pub fn get_inner_vkey_path(storage_folder_path: &str, snark_folder_path: &str) -> String {
+    format!("{}{}/innerVK.json", storage_folder_path, snark_folder_path)
+}
+
+pub fn get_cs_bytes_path(storage_folder_path: &str, snark_folder_path: &str) -> String {
+    format!("{}{}/cs", storage_folder_path, snark_folder_path)
+}
+
+pub fn get_snark_reduction_pk_bytes_path(storage_folder_path: &str, snark_folder_path: &str) -> String {
+    format!("{}{}/pk", storage_folder_path, snark_folder_path)
+}
+
+pub fn get_snark_reduction_vk_path(storage_folder_path: &str, snark_folder_path: &str) -> String {
+    format!("{}{}/vKey.json", storage_folder_path, snark_folder_path)
+}

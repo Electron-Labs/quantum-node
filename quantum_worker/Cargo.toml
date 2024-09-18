@@ -37,3 +37,4 @@ bincode = "1.3.3"
 agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}
 utils = {path = "../../quantum-risc0-circuits/utils"}
 imt-core = {path = "../../quantum-risc0-circuits/imt/core"}
+quantum_circuits_interface = {path = "../../quantum-risc0-circuits/quantum_circuits_interface"}

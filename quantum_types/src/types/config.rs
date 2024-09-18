@@ -22,6 +22,7 @@ pub struct ConfigData {
     pub batch_size: u64,
     pub worker_sleep_secs: u64,
     pub aggregation_wait_time: u64,
+    pub snark_reduction_data_path: String
 }
 
 impl ConfigData {

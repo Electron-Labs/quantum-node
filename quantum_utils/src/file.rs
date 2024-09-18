@@ -1,6 +1,6 @@
 use std::{fs::{self, File}, io::{BufWriter, Read, Write}};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use anyhow::{anyhow, Result as AnyhowResult};
 
@@ -28,9 +28,10 @@ pub fn dump_object<T: Serialize>(object: T, path: &str) -> AnyhowResult<()> {
     Ok(())
 }
 
-pub fn read_file(path: &str) -> AnyhowResult<String> {
+pub fn read_file<T: for<'a> Deserialize<'a>>(path: &str) -> AnyhowResult<T> {
     let data_string = fs::read_to_string(path)?;
-    Ok(data_string)
+    let a = serde_json::from_str(&data_string).unwrap();
+    Ok(a)
 }
 
 pub fn get_last_dir_path_file_name_from_full_path(path: &str) -> (String, String) {
