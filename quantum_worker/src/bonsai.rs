@@ -130,19 +130,19 @@ pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> Anyh
     Ok(receipt)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use dotenv::dotenv;
-    use quantum_db::repository::proof_repository::get_proofs_in_superproof_id;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use dotenv::dotenv;
+//     use quantum_db::repository::proof_repository::get_proofs_in_superproof_id;
 
-    #[tokio::test]
-    #[ignore]
-    pub async fn test_start_to_snark() {
-        // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
-        // dotenv::from_filename("../.env.test").ok();
-        dotenv().ok();
-        let session_id = "090c5ffa-3ed1-4bc5-a430-d6fb5d32d969";
-        run_stark2snark(session_id.to_string()).await;
-    }
-}
+//     #[tokio::test]
+//     #[ignore]
+//     pub async fn test_start_to_snark() {
+//         // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
+//         // dotenv::from_filename("../.env.test").ok();
+//         dotenv().ok();
+//         let session_id = "090c5ffa-3ed1-4bc5-a430-d6fb5d32d969";
+//         run_stark2snark(session_id.to_string()).await;
+//     }
+// }

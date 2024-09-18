@@ -9,6 +9,7 @@ use ark_ec::short_weierstrass::Affine;
 use borsh::{BorshDeserialize, BorshSerialize};
 use keccak_hash::keccak;
 use num_bigint::BigUint;
+use quantum_circuits_interface::ffi::circuit_builder::{GnarkProof, G1, G1A, G2};
 use quantum_utils::{
     error_line,
     file::{read_bytes_from_file , write_bytes_to_file},
@@ -55,6 +56,13 @@ impl Fq {
             Y: "0".to_string(),
         }
     }
+
+    pub fn from_risc_circuit_G1(g1: &G1) -> Self {
+        Fq {
+            X: g1.X.clone(),
+            Y: g1.Y.clone(),
+        }
+    }
 }
 
 #[derive(Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -63,10 +71,28 @@ pub struct Fq_2 {
     pub A1: String,
 }
 
+impl Fq_2 {
+    pub fn from_risc_circuit_G1A(g1A: &G1A) -> Self {
+        Fq_2 {
+            A0: g1A.A0.clone(),
+            A1: g1A.A1.clone(),
+        }
+    }
+}
+
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Fq2 {
     pub X: Fq_2,
     pub Y: Fq_2,
+}
+
+impl Fq2 {
+    pub fn from_risc_circuit_g2(g2: &G2) -> Self {
+        Fq2 {
+            X: Fq_2::from_risc_circuit_G1A(&g2.X),
+            Y: Fq_2::from_risc_circuit_G1A(&g2.Y),
+        }
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -352,6 +378,23 @@ impl Proof for GnarkGroth16Proof {
         let proof_bytes = read_bytes_from_file(full_path)?;
         let gnark_proof = GnarkGroth16Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
+    }
+}
+
+impl GnarkGroth16Proof {
+    pub fn from_risc0_gnark_proof_result(gnark_proof: GnarkProof) -> Self {
+        let commitments = gnark_proof.Commitments
+            .iter()
+            .map(|g1| Fq::from_risc_circuit_G1(&g1))
+            .collect();
+        
+        GnarkGroth16Proof {
+            Ar: Fq::from_risc_circuit_G1(&gnark_proof.Ar),
+            Krs: Fq::from_risc_circuit_G1(&gnark_proof.Krs),
+            Bs: Fq2::from_risc_circuit_g2(&gnark_proof.Bs),
+            Commitments: commitments,
+            CommitmentPok: Fq::from_risc_circuit_G1(&gnark_proof.CommitmentPok),
+        }
     }
 }
 
