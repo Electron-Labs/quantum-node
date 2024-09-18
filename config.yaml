@@ -14,3 +14,4 @@ batch_size: 20 # Number of proofs to be included in 1 batch
 worker_sleep_secs: 10
 reduced_proof_receipt_path: /receipt
 aggregation_wait_time: 600
+snark_reduction_data_path: /snark_reduction

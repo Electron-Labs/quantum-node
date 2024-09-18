@@ -1,8 +1,10 @@
-use std::{fs::File, io::BufWriter, time::{Duration, Instant}};
+use std::{fs::{self, File}, io::{BufWriter, Read}, path::PathBuf, time::{Duration, Instant}};
 
 use agg_core::{inputs::get_agg_inputs, types::AggInputs};
 use anyhow::Result as AnyhowResult;
 use bonsai_sdk::responses::SnarkReceipt;
+use num_bigint::BigUint;
+use quantum_circuits_interface::ffi::circuit_builder::{CircomProof, CircomVKey, CircuitBuilder, CircuitBuilderImpl, GnarkVKey, ProveResult, Risc0SnarkProveArgs};
 use quantum_db::repository::{
     bonsai_image::get_aggregate_circuit_bonsai_image, superproof_repository::{
         get_last_verified_superproof, update_previous_superproof_root, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time
@@ -19,7 +21,7 @@ use quantum_types::{
     },
 };
 use quantum_utils::{
-    file::{dump_object, write_bytes_to_file}, keccak::encode_keccak_hash, paths::{get_superproof_leaves_path, get_superproof_proof_receipt_path, get_superproof_snark_receipt_path}
+    error_line, file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::encode_keccak_hash, paths::{get_cs_bytes_path, get_inner_vkey_path, get_snark_reduction_pk_bytes_path, get_snark_reduction_vk_path, get_superproof_leaves_path, get_superproof_proof_receipt_path, get_superproof_snark_receipt_path, get_user_vk_path}
 };
 use risc0_zkvm::{serde::to_vec, Receipt};
 use serde::Serialize;
@@ -27,16 +29,19 @@ use tracing::info;
 use utils::hash::{Hasher, KeccakHasher};
 use crate::{bonsai::{execute_aggregation, run_stark2snark}, connection::get_pool};
 use crate::utils::get_last_superproof_leaves;
-
+// use 
 pub async fn handle_proof_aggregation_and_updation(
     proofs: Vec<DBProof>,
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
 
-    let (receipt, snark_receipt, aggregation_time) = handle_proof_aggregation(proofs.clone(), superproof_id, config).await?;
+    let (receipt, snark_receipt, aggregation_result, aggregation_time) = handle_proof_aggregation(proofs.clone(), superproof_id, config).await?;
     info!("aggregation done in time : {:?}", aggregation_time);
 
+    if !aggregation_result.pass {
+        return Err(anyhow::Error::msg(error_line!(aggregation_result.msg)));
+    }
     // TODO: Dump superproof receipt and add to the DB
     let superproof_proof_path = get_superproof_proof_receipt_path(
         &config.storage_folder_path,
@@ -50,7 +55,7 @@ pub async fn handle_proof_aggregation_and_updation(
         &config.supperproof_path,
         superproof_id,
     );
-    dump_object(snark_receipt.unwrap(), &superproof_proof_path)?;
+    dump_object(snark_receipt, &superproof_proof_path)?;
     // superproof_proof.dump_proof(&superproof_proof_path)?;
 
     // TODO: Add new field superproof receipt path
@@ -70,7 +75,7 @@ pub async fn handle_proof_aggregation_and_updation(
     Ok(())
 }
 
-async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData,) -> AnyhowResult<(Option<Receipt>, Option<SnarkReceipt>, Duration)> {
+async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(Option<Receipt>, SnarkReceipt, ProveResult, Duration)> {
     info!("superproof_id {:?}", superproof_id);
     
     let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
@@ -144,11 +149,67 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
     let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
     let (receipt, agg_session_id) = execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
     receipt.clone().unwrap().verify(agg_image.circuit_verifying_id).expect("agg receipt not verified");
-    let snark_receipt = run_stark2snark(agg_session_id, superproof_id).await?;
+    let snark_receipt = run_stark2snark(agg_session_id, superproof_id).await?.unwrap();
 
+    let prove_result = snark_to_gnark_reduction(&snark_receipt, config, agg_image.circuit_verifying_id)?;
 
     let aggregation_time = aggregation_start.elapsed();
-    Ok((receipt, snark_receipt, aggregation_time))
+    Ok((receipt, snark_receipt, prove_result, aggregation_time))
+}
+
+
+
+fn snark_to_gnark_reduction(snark_receipt: &SnarkReceipt, config: &ConfigData, circuit_verifying_id: [u32;8]) -> AnyhowResult<ProveResult> {
+    
+    let inner_proof = form_circom_proof_from_snark_receipt(snark_receipt);
+
+    let inner_vkey_path = get_inner_vkey_path(&config.storage_folder_path, &config.snark_reduction_data_path);
+    let inner_v_key: CircomVKey = read_file(&inner_vkey_path)?;
+
+    let cs_bytes = read_bytes_from_file(&get_cs_bytes_path(&config.storage_folder_path, &config.snark_reduction_data_path))?;
+
+    let pk_bytes = read_bytes_from_file(&get_snark_reduction_pk_bytes_path(&config.storage_folder_path, &config.snark_reduction_data_path))?;
+
+    let v_key: GnarkVKey = read_file(&get_snark_reduction_vk_path(&config.storage_folder_path, &config.snark_reduction_data_path))?;
+
+    let mut circuit_verifying_id_bytes = vec![];
+    for i in circuit_verifying_id {
+        circuit_verifying_id_bytes.extend_from_slice(&i.to_be_bytes());
+    }
+    let args = Risc0SnarkProveArgs {
+        cs_bytes,
+        pk_bytes,
+        v_key,
+        inner_proof,
+        inner_v_key,
+        agg_verifier_id: circuit_verifying_id_bytes,
+        journal: snark_receipt.journal.clone(),
+    };
+    let result = CircuitBuilderImpl::prove_risc0_snark(args);
+    Ok(result)
+}
+
+
+fn form_circom_proof_from_snark_receipt(snark_receipt: &SnarkReceipt) -> CircomProof {
+    let a0 = BigUint::from_bytes_be(&snark_receipt.snark.a[0]).to_string();
+    let a1 = BigUint::from_bytes_be(&snark_receipt.snark.a[1]).to_string();
+    
+    let b00 = BigUint::from_bytes_be(&snark_receipt.snark.b[0][1]).to_string();
+    let b01 = BigUint::from_bytes_be(&snark_receipt.snark.b[0][0]).to_string();
+
+    let b10 = BigUint::from_bytes_be(&snark_receipt.snark.b[1][1]).to_string();
+    let b11 = BigUint::from_bytes_be(&snark_receipt.snark.b[1][0]).to_string();
+
+    let c1 = BigUint::from_bytes_be(&snark_receipt.snark.c[1]).to_string();
+    let c0 = BigUint::from_bytes_be(&snark_receipt.snark.c[0]).to_string();
+
+    CircomProof {
+        A: vec![a0,a1],
+        B: vec![vec![b00, b01], vec![b10, b11]],
+        C: vec![c0,c1],
+        Protocol: "groth16".to_string(),
+        Curve: "bn128".to_string(),
+    }
 }
 
 
