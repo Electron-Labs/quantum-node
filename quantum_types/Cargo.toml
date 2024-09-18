@@ -34,3 +34,4 @@ sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono"
 dotenv = "0.15.0"
 utils = {path = "../../quantum-risc0-circuits/utils"}
 agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}
+quantum_circuits_interface = {path = "../../quantum-risc0-circuits/quantum_circuits_interface"}
