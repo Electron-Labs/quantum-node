@@ -2,11 +2,13 @@ use std::{fs::File, io::BufWriter, time::Duration};
 
 use bonsai_sdk::{non_blocking::{Client, SessionId}, responses::SnarkReceipt};
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::update_session_id_in_proof, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};
+use quantum_utils::error_line;
 use risc0_zkvm::Receipt;
+use tracing::{info, error};
 
 use crate::connection::get_pool;
 
-use anyhow::Result as AnyhowResult;
+use anyhow::{anyhow, Result as AnyhowResult};
 pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_id: u64) -> AnyhowResult<(Option<Receipt>, String)> {
     
     let client = Client::from_env(risc0_zkvm::VERSION)?;
@@ -58,7 +60,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
         let res = session.status(&client).await?;
         // TODO: store Risc0 status in DB
         if res.status == "RUNNING" {
-            println!(
+            info!(
                 "Current status: {} - state: {} - continue polling...",
                 res.status,
                 res.state.unwrap_or_default()
@@ -68,7 +70,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
         }
         if res.status == "SUCCEEDED" {
             // TODO: store Risc0 status in DB
-            println!("proof reduction completed");
+            info!("proof reduction completed");
             // Download the receipt, containing the output
             let receipt_url = res
                 .receipt_url
@@ -82,12 +84,14 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
 
             
         } else {
-            println!("inside else");
-            panic!(
-                "Workflow exited: {} - | err: {}",
-                res.status,
-                res.error_msg.unwrap_or_default()
-            );
+            error!("error occured in bonsai session: {:?} with status {:?}, and error messgae: {:?}", &session.uuid, res.status, res.error_msg);
+            return Err(anyhow!(error_line!("bonsai_session_failed")));
+            // panic!(
+            //     "Workflow exited: {} - | err: {}",
+            //     res.status,
+            //     res.error_msg.unwrap_or_default()
+            // );
+            // error!("session status: {:?}, wit")
         }
         break;
     }
@@ -119,11 +123,13 @@ pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> Anyh
                 break;
             }
             _ => {
-                panic!(
-                    "Workflow exited: {} err: {}",
-                    res.status,
-                    res.error_msg.unwrap_or_default()
-                );
+                // panic!(
+                //     "Workflow exited: {} err: {}",
+                //     res.status,
+                //     res.error_msg.unwrap_or_default()
+                // );
+                error!("error occured in bonsai session: {:?} with status {:?}, and error messgae: {:?}", &snark_session.uuid, res.status, res.error_msg);
+                return Err(anyhow!(error_line!("bonsai_session_failed")));
             }
         }
     }

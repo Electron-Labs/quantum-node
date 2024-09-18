@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS user_circuit_data (
   n_commitments INT DEFAULT NULL,
   proving_scheme VARCHAR(255),
   circuit_reduction_status INT,
+  bonsai_image_id varchar(255) DEFAULT NULL,
   protocol_name VARCHAR(255),
   FOREIGN KEY (reduction_circuit_id) REFERENCES reduction_circuit(circuit_id),
   FOREIGN KEY (protocol_name) REFERENCES protocol(protocol_name)
@@ -71,6 +72,9 @@ CREATE TABLE IF NOT EXISTS proof (
   proof_status INT,
   user_circuit_hash VARCHAR(255),
   public_inputs varchar(1200) DEFAULT NULL,
+  input_id varchar(255) DEFAULT NULL,
+  session_id varchar(255) DEFAULT NULL,
+  reducded_proof_receipt_path varchar(255) DEFAULT NULL,
   FOREIGN KEY (user_circuit_hash) REFERENCES user_circuit_data(circuit_hash)
 );
 
@@ -95,7 +99,19 @@ CREATE TABLE IF NOT EXISTS superproof (
   previous_superproof_root varchar(255) DEFAULT NULL
   imt_proof_path VARCHAR(255) DEFAULT NULL,
   imt_pis_path VARCHAR(255) DEFAULT NULL,
+  session_id varchar(255) DEFAULT NULL,
+  snark_session_id varchar(255) DEFAULT NULL,
+  receipt_path varchar(255) DEFAULT NULL,
+  snark_receipt_path varchar(255) DEFAULT NULL,
 );
+
+CREATE TABLE IF NOT EXISTS bonsai_image (
+  image_id varchar(255) DEFAULT NULL,
+  elf_file_path varchar(255) DEFAULT NULL,
+  circuit_verifying_id varchar(255) DEFAULT NULL,
+  proving_scheme varchar(255) DEFAULT NULL,
+  is_aggregation_image_id int DEFAULT NULL
+)
 
 CREATE TABLE IF NOT EXISTS proof_submission_config (
   proof_submission_time int DEFAULT NULL
