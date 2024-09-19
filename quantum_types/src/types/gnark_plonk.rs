@@ -253,8 +253,8 @@ impl Vkey for GnarkPlonkVkey {
         Ok(keccak_h.0)
     }
 
-    fn extended_keccak_hash(&self, n_commitments: Option<u8>) -> AnyhowResult<[u8; 32]> {
-        self.keccak_hash()
+    fn compute_circuit_hash(&self, circuit_verifying_id: [u32;8]) -> AnyhowResult<[u8;32]> {
+        todo!()
     }
 }
 
@@ -327,9 +327,9 @@ impl Pis for GnarkPlonkPis {
         Ok(hash.0)
     }
 
-    fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        self.keccak_hash()
-    }
+    // fn extended_keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
+    //     self.keccak_hash()
+    // }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
         Ok(self.0.clone())
