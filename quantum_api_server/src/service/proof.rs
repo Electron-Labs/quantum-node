@@ -1,4 +1,7 @@
-use agg_core::inputs::{compute_combined_vkey_hash, compute_leaf_value};
+use std::str::FromStr;
+
+use agg_core::inputs::{compute_combined_vkey_hash, compute_leaf_value, get_init_tree_data, get_mtree_from_leaves};
+use num_bigint::BigUint;
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::{get_latest_proof_by_circuit_hash, insert_proof}, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof, vkey::Vkey}, types::{config::ConfigData, hash::KeccakHashOut, imt::ImtTree}};
 use quantum_types::types::db::proof::Proof as DbProof;
@@ -10,6 +13,8 @@ use utils::hash::{Hasher, KeccakHasher};
 use crate::{connection::get_pool, error::error::CustomError, types::{proof_data::ProofDataResponse, protocol_proof::ProtocolProofResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 use quantum_db::repository::proof_repository::get_proof_by_proof_hash;
 use quantum_db::repository::protocol::get_protocol_by_protocol_name;
+use imt_core::types::Leaf;
+use tiny_merkle::proof::Position;
 
 pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<SubmitProofResponse>{
     validate_circuit_data_in_submit_proof_request(&data).await?;
@@ -145,7 +150,9 @@ pub async fn check_if_proof_already_exist(proof_hash: &str, circuit_hash: &str) 
     Ok(())
 }
 
-pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(proof: &DbProof) -> AnyhowResult<ProtocolProofResponse, CustomError> {
+pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(proof: &DbProof, config_data: &State<ConfigData>) -> AnyhowResult<ProtocolProofResponse, CustomError> {
+    type H = KeccakHasher;
+
     let user_circuit_hash = proof.user_circuit_hash.clone();
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &user_circuit_hash).await?;
     let bonsai_image = get_bonsai_image_by_image_id(get_pool().await, &user_circuit_data.bonsai_image_id).await?;
@@ -158,22 +165,26 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(proof: &DbProof) -> Anyhow
 
     let protocol_pis_hash = pis.keccak_hash()?;
 
-    let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await).await? {
-        Some(superproof) => Ok(superproof),
-        None => Err(anyhow!(CustomError::Internal(error_line!("last super proof verified not found".to_string())))),
-    }?;
-    let leaf_path = latest_verififed_superproof.superproof_leaves_path.unwrap();
-    let imt_tree = ImtTree::read_tree(&leaf_path)?;
+    let last_superproof_leaves = get_last_superproof_leaves::<H>(config_data).await?;
+    // let latest_verififed_superproof = match get_last_verified_superproof(get_pool().await).await? {
+    //     Some(superproof) => Ok(superproof),
+    //     None => Err(anyhow!(CustomError::Internal(error_line!("last super proof verified not found".to_string())))),
+    // }?;
+    // let leaf_path = latest_verififed_superproof.superproof_leaves_path.unwrap();
+    // let imt_tree = ImtTree::read_tree(&leaf_path)?;
+    // println!("imt_tree.leaves[1] {:?}", imt_tree.leaves[1]);
+    // println!("imt_tree.leaves[2] {:?}", imt_tree.leaves[2]);
 
     let leaf_value = compute_leaf_value::<KeccakHasher>(&combined_vk_hash, &protocol_pis_hash);
+    let mt_proof = get_imt_proof::<H>(last_superproof_leaves, leaf_value)?;
 
-    let mt_proof = imt_tree
-        .get_imt_proof(KeccakHashOut(
-            leaf_value[..32]
-                .try_into()
-                .map_err(|e: std::array::TryFromSliceError| anyhow!(e))?,
-        ))
-        .map_err(|err| CustomError::NotFound(error_line!(format!("proof not found in the tree::{}", err.to_string()))))?;
+    // let mt_proof = imt_tree
+    //     .get_imt_proof(KeccakHashOut(
+    //         leaf_value[..32]
+    //             .try_into()
+    //             .map_err(|e: std::array::TryFromSliceError| anyhow!(e))?,
+    //     ))
+    //     .map_err(|err| CustomError::NotFound(error_line!(format!("proof not found in the tree::{}", err.to_string()))))?;
     let mt_proof_encoded = mt_proof.0.iter().map(|x| encode_keccak_hash(x.as_slice()[0..32].try_into().unwrap()).unwrap()).collect::<Vec<String>>();
 
     let mut merkle_proof_position: u64 = 0;
@@ -181,12 +192,84 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(proof: &DbProof) -> Anyhow
         merkle_proof_position += (mt_proof.1[i] as u64) * 2u64.pow(i as u32);
     }
 
-    let leaf_next_index_str = format!("0x{}", hex::encode(&mt_proof.2.next_idx));
+    // get next idx in u64 big endian bytes
+    let next_idx_big = BigUint::from_str(&mt_proof.2.next_idx.to_string()).map_err(|err| anyhow!(CustomError::Internal(err.to_string())))?;
+    let mut next_idx_bytes = next_idx_big.to_bytes_le();
+    for _ in next_idx_bytes.len()..8 {
+        next_idx_bytes.push(0);
+    }
+    next_idx_bytes.reverse(); // to Big-Endian
+    let leaf_next_index_str = format!("0x{}", hex::encode(&next_idx_bytes));
 
     Ok(ProtocolProofResponse {
         merkle_proof_position,
         merkle_proof: mt_proof_encoded,
-        leaf_next_value: encode_keccak_hash(&mt_proof.2.next_value.0)?,
+        leaf_next_value: encode_keccak_hash(&mt_proof.2.next_value)?,
         leaf_next_index: leaf_next_index_str,
     })
+}
+
+// returns empty tree root if leaves not found
+pub async fn get_last_superproof_leaves<H:Hasher>(
+    config: &ConfigData,
+) -> AnyhowResult<Vec<Leaf<H>>> {
+    let some_superproof = get_last_verified_superproof(get_pool().await).await?;
+    let last_leaves: Vec<Leaf<H>>;
+    match some_superproof {
+        Some(superproof) => match superproof.superproof_leaves_path {
+            Some(superproof_leaves_path) => {
+                last_leaves = bincode::deserialize(&std::fs::read(&superproof_leaves_path)?)?;
+            }
+            _ => {
+                info!(
+                    "No superproof_leaves_path for superproof_id={} => using last empty tree root",
+                    superproof.id.unwrap() // can't be null
+                );
+                (last_leaves, _) = get_init_tree_data::<H>(config.imt_depth as u8)?;
+            }
+        },
+        // TODO: handle case when we shift to risc0, we dont want to read last superproof leaf(in prod);
+        _ => {
+            info!("No superproof => using last empty tree root");
+            (last_leaves, _) = get_init_tree_data::<H>(config.imt_depth as u8)?;
+        }
+    }
+    Ok(last_leaves)
+}
+
+
+pub fn get_imt_proof<H: Hasher>(
+    leaves: Vec<Leaf<H>>,
+    leaf_value: H::HashOut,
+) -> AnyhowResult<(Vec<H::Hash>, Vec<u8>, Leaf<H>)> {
+    let mut leaf_asked: Option<Leaf<H>> = None;
+    for leaf in leaves.clone() {
+        if leaf.value.as_ref() == leaf_value.as_ref() {
+            leaf_asked = Some(leaf.clone());
+            break;
+        }
+    }
+    if leaf_asked.is_none() {
+        return Err(anyhow!(error_line!("Couldnt find a value in leaves")));
+    }
+    let leaf = leaf_asked.unwrap();
+    let mtree = get_mtree_from_leaves(leaves)?;
+    let imt_proof = mtree.proof(H::to_internal_hash(leaf.hash())?);
+    if imt_proof.is_none() {
+        return Err(anyhow::Error::msg("Couldnt find a valid merkle proof"));
+    }
+    let mut proof = Vec::<H::Hash>::new();
+    let mut proof_helper = Vec::<u8>::new();
+
+    imt_proof.unwrap().proofs.iter().for_each(|elm| {
+        proof.push(elm.data.clone());
+        let posn = &elm.position;
+        match posn {
+            Position::Left => proof_helper.push(0),
+            Position::Right => proof_helper.push(1),
+        }
+    });
+
+    // return proof = ([next_leaf_val, next_idx, merkle_proof ...], merkle_proof_helper)
+    Ok((proof, proof_helper, leaf))
 }
