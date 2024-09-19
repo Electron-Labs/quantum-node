@@ -28,7 +28,10 @@ pub async fn get_gas_cost() -> AnyhowResult<f64> {
                 let base_fees_option =
                     get_f64_from_json_value_object(block_prices[0]["baseFeePerGas"].clone());
                 match base_fees_option {
-                    Some(some_base_fees) => base_fees = Ok(some_base_fees),
+                    Some(some_base_fees) => {
+                        base_fees = Ok(some_base_fees);
+                        break;
+                    },
                     None => {
                         info!("not able to get the base fee from get gas api. Trying again...");
                         base_fees = Err(anyhow!(error_line!(
@@ -67,7 +70,10 @@ pub async fn get_eth_price() -> AnyhowResult<f64> {
 
         let usd_price_option = get_f64_from_json_value_object(json["USD"].clone());
         match usd_price_option {
-            Some(some_usd_price) => usd_price = Ok(some_usd_price),
+            Some(some_usd_price) => {
+                usd_price = Ok(some_usd_price);
+                break;
+            },
             None => {
                 info!("not able to get the USD fee from get gas api. Trying again...");
                 usd_price = Err(anyhow!(error_line!(

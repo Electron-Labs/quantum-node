@@ -2,22 +2,20 @@ use anyhow::{anyhow, Result as AnyhowResult};
 use ethers::contract::Abigen;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
 use quantum_utils::error_line;
-use tracing::{error, info};
+use tracing::info;
 
-use ethers::types::{Bytes, U256};
+use ethers::types::U256;
 use ethers::{
     middleware::SignerMiddleware,
-    providers::{Http, Middleware, Provider},
+    providers::{Http, Provider},
     signers::{LocalWallet, Signer},
     types::Address,
     types::TransactionReceipt,
 };
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::contract_utils::get_bytes_from_hex_string;
-use crate::quantum_contract::{Batch, Proof, Quantum, TreeUpdate};
+use crate::quantum_contract::{Proof, Protocol, Quantum, TreeUpdate};
 
 pub fn gen_quantum_structs() -> Result<(), Box<dyn std::error::Error>> {
     Abigen::new("Quantum", "quantum_contract/src/abi/Quantum.json")?
@@ -45,7 +43,7 @@ pub fn get_quantum_contract(
 
 pub async fn update_quantum_contract_state(
     contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    batch: Batch,
+    protocols: Vec<Protocol>,
     tree_update: TreeUpdate,
     gnark_proof: &GnarkGroth16Proof,
 ) -> AnyhowResult<TransactionReceipt> {
@@ -53,7 +51,7 @@ pub async fn update_quantum_contract_state(
 
     info!("calling verify_superproof");
     let receipt = contract
-        .verify_superproof(proof, batch, tree_update)
+        .verify_superproof(proof, protocols, tree_update)
         .send()
         .await?
         .await?
@@ -66,7 +64,7 @@ pub async fn register_cricuit_in_contract(
     contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
 ) -> AnyhowResult<()> {
     info!("calling register circuit contract call with vkey hash: {:?}", vk_hash);
-    let s = contract.register_protocol(vk_hash).send().await?.await.map_err(|err| anyhow!(error_line!(err)));
+    let _ = contract.register_protocol(vk_hash).send().await?.await.map_err(|err| anyhow!(error_line!(err)));
     Ok(())
 }
 
@@ -86,19 +84,19 @@ pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &GnarkGroth16Proof) -> An
     let krsx = U256::from_dec_str(&gnark_proof.Krs.X)?;
     let krsy = U256::from_dec_str(&gnark_proof.Krs.Y)?;
 
-    println!(
-        "inputs {:?}",
-        [
-            &gnark_proof.Ar.X,
-            &gnark_proof.Ar.Y,
-            &gnark_proof.Bs.X.A1,
-            &gnark_proof.Bs.X.A0,
-            &gnark_proof.Bs.Y.A1,
-            &gnark_proof.Bs.Y.A0,
-            &gnark_proof.Krs.X,
-            &gnark_proof.Krs.Y
-        ]
-    );
+    // println!(
+    //     "inputs {:?}",
+    //     [
+    //         &gnark_proof.Ar.X,
+    //         &gnark_proof.Ar.Y,
+    //         &gnark_proof.Bs.X.A1,
+    //         &gnark_proof.Bs.X.A0,
+    //         &gnark_proof.Bs.Y.A1,
+    //         &gnark_proof.Bs.Y.A0,
+    //         &gnark_proof.Krs.X,
+    //         &gnark_proof.Krs.Y
+    //     ]
+    // );
 
     let commitments_x = U256::from_dec_str(&gnark_proof.Commitments[0].X)?;
     let commitments_y = U256::from_dec_str(&gnark_proof.Commitments[0].Y)?;

@@ -11,13 +11,13 @@ use contract::{gen_quantum_structs, register_cricuit_in_contract};
 use contract_utils::get_bytes_from_hex_string;
 use dotenv::dotenv;
 use ethers::{etherscan::gas, types::TransactionReceipt, utils::hex::ToHexExt};
-use quantum_contract::{Batch, Protocol, TreeUpdate};
+use quantum_contract::{Protocol, TreeUpdate};
 // use ethers::utils::hex::traits::ToHex;
 use keccak_hash::keccak;
 use quantum_db::repository::{
     cost_saved_repository::udpate_cost_saved_data,
     proof_repository::{get_proofs_in_superproof_id, update_proof_status},
-    reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
+    // reduction_circuit_repository::get_reduction_circuit_for_user_circuit,
     superproof_repository::{
         get_first_non_submitted_superproof, get_last_verified_superproof, update_superproof_fields_after_onchain_submission, update_superproof_gas_data, update_superproof_onchain_submission_time
     },
@@ -33,7 +33,7 @@ use quantum_types::{
         snarkjs_groth16::SnarkJSGroth16Pis,
     },
 };
-use quantum_utils::{error_line, logger::initialize_logger};
+use quantum_utils::{error_line, keccak::decode_keccak_hex, logger::initialize_logger};
 
 use anyhow::{anyhow, Error, Result as AnyhowResult};
 use sqlx::types::chrono::NaiveDateTime;
@@ -121,7 +121,7 @@ async fn initialize_superproof_submission_loop(
 
         let proofs = get_proofs_in_superproof_id(get_pool().await, new_superproof_id).await?;
 
-        let mut protocols = [Protocol::default(); 20];
+        let mut protocols = vec![];
         for (i, proof) in proofs.clone().iter().enumerate() {
             let user_circuit =
                 get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash)
@@ -148,13 +148,10 @@ async fn initialize_superproof_submission_loop(
                 },
             }
 
-            // compute vk_hash
-            let vk_hash = get_vk_hash_for_smart_contract(user_circuit.circuit_hash, user_circuit.reduction_circuit_id.unwrap())?;
-
-            protocols[i] = Protocol {
-                vk_hash,
-                pub_inputs_hash: pis_hash,
-            };
+            protocols.push(Protocol {
+                combined_vkey_hash: decode_keccak_hex(&user_circuit.circuit_hash)?,
+                pis_hash,
+            });
         }
 
         let new_root =
@@ -172,7 +169,7 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
-        let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(protocols, new_root, &gnark_proof).await?;
+        let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(protocols.clone(), new_root, &gnark_proof).await?;
 
         // update tx data in DB for superproof
         update_superproof_fields_after_onchain_submission(
@@ -211,7 +208,7 @@ async fn initialize_superproof_submission_loop(
     }
 }
 
-async fn make_smart_contract_call_with_retry(protocols: [Protocol; 20], new_root: [u8; 32], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
+async fn make_smart_contract_call_with_retry(protocols: Vec<Protocol>, new_root: [u8; 32], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
     let mut retry_count = 0;
     let transaction_hash;
     let quantum_contract = get_quantum_contract()?;
@@ -221,7 +218,7 @@ async fn make_smart_contract_call_with_retry(protocols: [Protocol; 20], new_root
         println!("gnark_proof {:?}", gnark_proof);
         println!("new_root {:?}", new_root);
         println!("tree_root {:?}", quantum_contract.tree_root().await?);
-        match update_quantum_contract_state(&quantum_contract, Batch { protocols }, TreeUpdate { new_root }, &gnark_proof).await {
+        match update_quantum_contract_state(&quantum_contract, protocols.clone(), TreeUpdate { new_root }, &gnark_proof).await {
             Ok(receipt) =>{
                 let transaction_hash_string = receipt.transaction_hash.encode_hex();
                 let transaction_hash_string = String::from("0x") + &transaction_hash_string;
@@ -250,14 +247,6 @@ fn get_current_time() -> NaiveDateTime {
     now_utc.naive_utc()
 }
 
-fn get_vk_hash_for_smart_contract(user_circuit_hash: String, reduction_circuit_hash: String) -> AnyhowResult<[u8;32]> {
-    let protocol_vk_hash = hex::decode(user_circuit_hash[2..].to_string()).map_err(|err| anyhow!(error_line!(err)))?;
-    let reduction_vk_hash = hex::decode(reduction_circuit_hash[2..].to_string())?;
-    let concat = [protocol_vk_hash, reduction_vk_hash].concat();
-    let vk_hash = keccak(concat).0;
-    Ok(vk_hash)
-}
-
 async fn initialize_circuit_registration_loop() -> AnyhowResult<()> {
     info!("----starting cirucit registration loop----");
     loop {
@@ -265,8 +254,7 @@ async fn initialize_circuit_registration_loop() -> AnyhowResult<()> {
         let quantum_contract = get_quantum_contract()?;
         for user_circuit in user_circuit_not_registered {
             info!("calculating vk_hash for circuit hash: {:?}", user_circuit.circuit_hash);
-            let vk_hash = get_vk_hash_for_smart_contract(user_circuit.circuit_hash.clone(), user_circuit.reduction_circuit_id.unwrap())?;
-            register_cricuit_in_contract(vk_hash, &quantum_contract).await?;
+            register_cricuit_in_contract(decode_keccak_hex(&user_circuit.circuit_hash)?, &quantum_contract).await?;
             update_user_circuit_data_reduction_status(get_pool().await, &user_circuit.circuit_hash, CircuitReductionStatus::Completed).await?;
         }
         sleep(Duration::from_secs(REGISTER_CIRCUIT_LOOP_DURATION)).await;
@@ -275,7 +263,7 @@ async fn initialize_circuit_registration_loop() -> AnyhowResult<()> {
 
 #[tokio::main]
 async fn main() {
-    // gen_quantum_structs().unwrap();
+    gen_quantum_structs().unwrap();
 
     dotenv().ok();
     info!(" --- Starting quantum contract --- ");

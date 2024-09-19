@@ -10,6 +10,11 @@
         "internalType": "bytes32",
         "name": "initRoot",
         "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "aggVerifierId_",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "nonpayable",
@@ -32,11 +37,11 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "",
+        "name": "combinedVKeyHash",
         "type": "bytes32"
       }
     ],
-    "name": "pubInputsHashes",
+    "name": "pubInputsHash",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -51,11 +56,24 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "vkHash",
+        "name": "combinedVKeyHash",
         "type": "bytes32"
       }
     ],
     "name": "registerProtocol",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "aggVerifierId_",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setAggVerifierid",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -139,26 +157,19 @@
       {
         "components": [
           {
-            "components": [
-              {
-                "internalType": "bytes32",
-                "name": "vkHash",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "bytes32",
-                "name": "pubInputsHash",
-                "type": "bytes32"
-              }
-            ],
-            "internalType": "struct Quantum.Protocol[20]",
-            "name": "protocols",
-            "type": "tuple[20]"
+            "internalType": "bytes32",
+            "name": "combinedVkeyHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "pisHash",
+            "type": "bytes32"
           }
         ],
-        "internalType": "struct Quantum.Batch",
-        "name": "batch",
-        "type": "tuple"
+        "internalType": "struct Quantum.Protocol[]",
+        "name": "protocols",
+        "type": "tuple[]"
       },
       {
         "components": [
