@@ -23,7 +23,7 @@ use quantum_db::repository::{
     },
     user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, get_user_circuits_by_circuit_status, update_user_circuit_data_reduction_status},
 };
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes}, types::halo2_plonk::Halo2PlonkPis};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes}, types::{gnark_plonk::GnarkPlonkPis, halo2_plonk::Halo2PlonkPis}};
 use quantum_types::traits::pis;
 use quantum_types::{
     enums::{proof_status::ProofStatus, superproof_status::SuperproofStatus},
@@ -138,6 +138,9 @@ async fn initialize_superproof_submission_loop(
                 }
                 ProvingSchemes::Halo2Plonk => {
                     pis_hash = Halo2PlonkPis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
+                }
+                ProvingSchemes::GnarkPlonk => {
+                    pis_hash = GnarkPlonkPis::read_pis(&proof.pis_path)?.extended_keccak_hash()?
                 }
                 _ => {
                     error!("{:?}",error_line!("unsupoorted proving scheme"));

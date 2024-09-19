@@ -14,12 +14,7 @@ use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
     traits::{circuit_interactor::CircuitInteractorAMQP, pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::{AMQPConfigData, ConfigData},
-        db::proof::Proof as DBProof,
-        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey},
-        halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey},
-        imt::ImtTree,
-        snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
+        config::{AMQPConfigData, ConfigData}, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, imt::ImtTree, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
     },
 };
 use quantum_utils::{error_line, keccak::encode_keccak_hash, paths::get_superproof_leaves_path};
@@ -139,6 +134,13 @@ async fn handle_imt_proof_generation(
                 protocol_vkey_hashes.push(protocol_vkey.extended_keccak_hash(user_circuit_data.n_commitments)?.to_vec());
 
                 let protocol_pis = Halo2PlonkPis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.extended_keccak_hash()?.to_vec());
+            }
+            ProvingSchemes::GnarkPlonk => {
+                let protocol_vkey = GnarkPlonkVkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.extended_keccak_hash(user_circuit_data.n_commitments)?.to_vec());
+
+                let protocol_pis = GnarkPlonkPis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.extended_keccak_hash()?.to_vec());
             }
             _ => todo!(),

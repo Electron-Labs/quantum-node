@@ -1,6 +1,7 @@
 use crate::types::{
     config::AMQPConfigData,
     gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, GnarkVerifier},
+    gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey},
     halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey},
     hash::KeccakHashOut,
     imt::QuantumLeaf,
@@ -55,6 +56,11 @@ pub trait CircuitInteractorFFI {
     fn build_snarkjs_groth16_circuit() -> ReductionCircuitBuildResult;
     // Build reducer circuit when inner circuit is halo2 plonk
     fn build_halo2_plonk_circuit(vk: Halo2PlonkVkey) -> ReductionCircuitBuildResult;
+    // Build reducer circuit when inner circuit is gnark plonk
+    fn build_gnark_plonk_circuit(
+        inner_vk: GnarkPlonkVkey,
+        bh: bool, // uses binary hasher in recursion circuit
+    ) -> ReductionCircuitBuildResult;
     // Generate reduction circuit proof corresponding to inner gnark groth16 proof
     fn generate_gnark_groth16_reduced_proof(
         inner_proof: GnarkGroth16Proof,
@@ -78,6 +84,15 @@ pub trait CircuitInteractorFFI {
         inner_vk: Halo2PlonkVkey,
         outer_vk: GnarkGroth16Vkey,
         outer_pk_bytes: Vec<u8>,
+    ) -> GenerateReductionProofResult;
+    // Generate reduction circuit proof corresponding to inner gnark groth16 proof
+    fn generate_gnark_plonk_reduced_proof(
+        inner_proof: GnarkPlonkSolidityProof,
+        inner_vk: GnarkPlonkVkey,
+        inner_pis: GnarkPlonkPis,
+        outer_vk: GnarkGroth16Vkey,
+        outer_pk_bytes: Vec<u8>,
+        bh: bool,
     ) -> GenerateReductionProofResult;
 }
 
