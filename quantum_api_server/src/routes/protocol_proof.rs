@@ -1,7 +1,6 @@
 use anyhow::Result as AnyhowResult;
 use quantum_db::repository::{proof_repository::get_proof_by_proof_hash, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes}, types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey}, gnark_plonk::GnarkPlonkVkey, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}}};
-use quantum_types::{enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes}, types::{config::ConfigData, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}}};
+use quantum_types::{enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes}, types::{config::ConfigData, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}}};
 use quantum_utils::error_line;
 use rocket::{get, serde::json::Json, State};
 use tracing::error;
