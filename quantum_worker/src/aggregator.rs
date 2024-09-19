@@ -14,7 +14,7 @@ use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
     traits::{pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
+        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof}, gnark_plonk::GnarkPlonkVkey, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
     },
 };
 use quantum_utils::{
@@ -125,6 +125,15 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
                 let protocol_pis = Halo2PlonkPis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(1);
+            }
+
+            ProvingSchemes::GnarkPlonk => {
+                let protocol_vkey = GnarkPlonkVkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
+
+                let protocol_pis = GnarkGroth16Pis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
+                protocol_ids.push(4);
             }
             _ => todo!(),
         }
