@@ -12,14 +12,10 @@ use quantum_utils::{
     file::{read_bytes_from_file, write_bytes_to_file},
 };
 use serde::{Deserialize, Serialize};
-use crate::{
-    traits::{pis::Pis, proof::Proof, vkey::Vkey},
-    types::gnark_groth16::{Fq, Fq2, Fq_2, G1Struct, G2Struct, PedersenCommitmentKey},
-};
+use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
 use utils::{groth16_vkey_hash, hash::KeccakHasher, public_inputs_hash};
-use super::gnark_groth16::GnarkGroth16Vkey;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
@@ -185,10 +181,7 @@ impl Vkey for SnarkJSGroth16Vkey {
         Ok(snarkjs_vkey)
     }
 
-    fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()> {
-        if self.IC.len() as u8 != num_public_inputs + 1 {
-            return Err(anyhow!("not valid"));
-        }
+    fn validate(&self) -> AnyhowResult<()> {
         SnarkJSGroth16Vkey::validate_fq_point(&self.vk_alpha_1)?;
         for ic in &self.IC {
             SnarkJSGroth16Vkey::validate_fq_point(ic)?;

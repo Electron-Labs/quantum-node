@@ -4,6 +4,7 @@
 use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
+use gnark_bn254_verifier::load_plonk_verifying_key_from_bytes;
 use quantum_utils::{
     error_line,
     file::{read_bytes_from_file, write_bytes_to_file},
@@ -45,8 +46,11 @@ impl Vkey for GnarkPlonkVkey {
         Ok(vkey)
     }
 
-    fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()> {
-        Ok(())
+    fn validate(&self) -> AnyhowResult<()> {
+        match load_plonk_verifying_key_from_bytes(&self.vkey_bytes) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {

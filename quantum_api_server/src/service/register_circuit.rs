@@ -15,14 +15,14 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
 
     // Borsh deserialise to corresponding vkey struct
     let vkey: T = T::deserialize_vkey(&mut vkey_bytes.as_slice())?;
-    // let _ = match vkey.validate(data.num_public_inputs) {
-    //     Ok(_) => Ok(()),
-    //     Err(e) => {
-    //         info!("vk is not valid");
-    //         Err(anyhow!(CustomError::Internal(format!("vk is invalid. {}",e))))
-    //     },
-    // }?;
-    // println!("validated");
+    let _ = match vkey.validate() {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            info!("vk is not valid");
+            Err(anyhow!(CustomError::Internal(format!("vk is invalid. {}",e))))
+        },
+    }?;
+    println!("validated");
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit
 
     let bonsai_image = get_bonsai_image_by_proving_scheme(get_pool().await, data.proof_type).await?;
