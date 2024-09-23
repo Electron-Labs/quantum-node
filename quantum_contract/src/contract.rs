@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use ethers::contract::Abigen;
-use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
+use quantum_types::types::gnark_groth16::{GnarkGroth16Proof, SuperproofGnarkGroth16Proof};
 use quantum_utils::error_line;
 use tracing::info;
 
@@ -45,10 +45,15 @@ pub async fn update_quantum_contract_state(
     contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
     protocols: Vec<Protocol>,
     tree_update: TreeUpdate,
-    gnark_proof: &GnarkGroth16Proof,
+    gnark_proof: &SuperproofGnarkGroth16Proof,
 ) -> AnyhowResult<TransactionReceipt> {
     let proof = get_proof_from_gnark_groth16_proof(&gnark_proof)?;
 
+    println!("--------------------------------------------------------------------------------");
+    println!("final proof: {:?}", proof);
+    println!("protocols: {:?}", protocols);
+    println!("tree_update: {:?}", tree_update);
+    println!("--------------------------------------------------------------------------------");
     info!("calling verify_superproof");
     let receipt = contract
         .verify_superproof(proof, protocols, tree_update)
@@ -68,7 +73,7 @@ pub async fn register_cricuit_in_contract(
     Ok(())
 }
 
-pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<Proof> {
+pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &SuperproofGnarkGroth16Proof) -> AnyhowResult<Proof> {
     info!("gmarl+[ {:?}", gnark_proof);
 
     let arx = U256::from_dec_str(&gnark_proof.Ar.X).expect("arx");

@@ -23,7 +23,7 @@ use quantum_db::repository::{
     },
     user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, get_user_circuits_by_circuit_status, update_user_circuit_data_reduction_status},
 };
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes}, types::{gnark_plonk::GnarkPlonkPis, halo2_plonk::Halo2PlonkPis}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes}, types::{gnark_groth16::SuperproofGnarkGroth16Proof, gnark_plonk::GnarkPlonkPis, halo2_plonk::Halo2PlonkPis}};
 use quantum_types::traits::pis;
 use quantum_types::{
     enums::{proof_status::ProofStatus, superproof_status::SuperproofStatus},
@@ -46,7 +46,7 @@ use crate::{
 };
 
 const SUPERPROOF_SUBMISSION_RETRY: u64 = 5 * 60;
-const SUPERPROOF_SUBMISSION_DURATION: u64 = 25 * 60;
+const SUPERPROOF_SUBMISSION_DURATION: u64 = 5 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const REGISTER_CIRCUIT_LOOP_DURATION: u64 = 1*60;
 const RETRY_COUNT: u64 = 3;
@@ -112,7 +112,7 @@ async fn initialize_superproof_submission_loop(
         };
 
         let superproof_proof_path = first_superproof_not_verfied.superproof_proof_path.unwrap();
-        let gnark_proof = GnarkGroth16Proof::read_proof(&superproof_proof_path)?;
+        let gnark_proof = SuperproofGnarkGroth16Proof::read_proof(&superproof_proof_path)?;
 
         let new_superproof_id = match first_superproof_not_verfied.id {
             Some(id) => Ok(id),
@@ -208,7 +208,7 @@ async fn initialize_superproof_submission_loop(
     }
 }
 
-async fn make_smart_contract_call_with_retry(protocols: Vec<Protocol>, new_root: [u8; 32], gnark_proof: &GnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
+async fn make_smart_contract_call_with_retry(protocols: Vec<Protocol>, new_root: [u8; 32], gnark_proof: &SuperproofGnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
     let mut retry_count = 0;
     let transaction_hash;
     let quantum_contract = get_quantum_contract()?;
@@ -263,7 +263,7 @@ async fn initialize_circuit_registration_loop() -> AnyhowResult<()> {
 
 #[tokio::main]
 async fn main() {
-    gen_quantum_structs().unwrap();
+    // gen_quantum_structs().unwrap();
 
     dotenv().ok();
     info!(" --- Starting quantum contract --- ");
