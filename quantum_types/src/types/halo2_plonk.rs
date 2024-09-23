@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::Fr;
 use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G1Affine;
 use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G2Affine;
-// use snark_verifier::halo2_base::halo2_proofs::halo2curves::grumpkin::G1Affine;
 use snark_verifier::halo2_base::utils::ScalarField;
 use snark_verifier::verifier::plonk::PlonkProtocol;
 use utils::hash::KeccakHasher;
@@ -52,7 +51,9 @@ impl Vkey for Halo2PlonkVkey {
         Ok(vkey)
     }
 
-    fn validate(&self, _num_public_inputs: u8) -> AnyhowResult<()> {
+    fn validate(&self) -> AnyhowResult<()> {
+        let _ = self.get_sg2()?;
+        let _ = self.get_protocol()?;
         Ok(())
     }
 

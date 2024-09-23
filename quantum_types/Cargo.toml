@@ -35,3 +35,4 @@ dotenv = "0.15.0"
 utils = {path = "../../quantum-risc0-circuits/utils"}
 agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}
 quantum_circuits_interface = {path = "../../quantum-risc0-circuits/quantum_circuits_interface"}
+gnark-bn254-verifier = {path = "../../gnark-bn254-verifier"}

@@ -5,19 +5,14 @@ use std::str::FromStr;
 
 use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
-use ark_bn254::g1::Config;
-use ark_ec::short_weierstrass::Affine;
 use borsh::{BorshDeserialize, BorshSerialize};
-use keccak_hash::keccak;
-use num_bigint::BigUint;
+use gnark_bn254_verifier::load_groth16_verifying_key_from_bytes;
 use quantum_circuits_interface::ffi::circuit_builder::{GnarkProof, G1, G1A, G2};
 use quantum_utils::{
     error_line,
     file::{read_bytes_from_file , write_bytes_to_file},
-    keccak::convert_string_to_be_bytes,
 };
 use serde::{Deserialize, Serialize};
-use tracing::info;
 use utils::{hash::{Hasher, KeccakHasher}, public_inputs_hash};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
@@ -188,36 +183,11 @@ impl Vkey for GnarkGroth16Vkey {
         Ok(gnark_vkey)
     }
 
-    fn validate(&self, num_public_inputs: u8) -> AnyhowResult<()> {
-        // GnarkGroth16Vkey::validate_fq_point(&self.G1.Alpha)?;
-        // for point in &self.G1.K {
-        //     GnarkGroth16Vkey::validate_fq_point(point)?;
-        // }
-        // GnarkGroth16Vkey::validate_fq2_points(&self.G2.Beta)?;
-        // GnarkGroth16Vkey::validate_fq2_points(&self.G2.Delta)?;
-        // GnarkGroth16Vkey::validate_fq2_points(&self.G2.Gamma)?;
-        // GnarkGroth16Vkey::validate_fq2_points(&self.CommitmentKey.G)?;
-        // GnarkGroth16Vkey::validate_fq2_points(&self.CommitmentKey.GRootSigmaNeg)?;
-
-        // if !(self.G1.K.len() as u8 == num_public_inputs + 1
-        //     || self.G1.K.len() as u8 == num_public_inputs + 2)
-        // {
-        //     return Err(anyhow!(error_line!("Vkey not valid")));
-        // }
-
-        // if self.G1.K.len() as u8 == num_public_inputs + 1
-        //     && self.PublicAndCommitmentCommitted.len() != 0
-        // {
-        //     return Err(anyhow!(error_line!("Vkey not valid")));
-        // }
-        // if self.G1.K.len() as u8 == num_public_inputs + 2
-        //     && (self.PublicAndCommitmentCommitted.len() != 1
-        //         || self.PublicAndCommitmentCommitted[0].len() != 0)
-        // {
-        //     return Err(anyhow!(error_line!("Vkey not valid")));
-        // }
-        // info!("vkey validated");
-        Ok(())
+    fn validate(&self) -> AnyhowResult<()> {
+        match load_groth16_verifying_key_from_bytes(&self.vkey_bytes)  {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
