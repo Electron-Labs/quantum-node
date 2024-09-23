@@ -14,7 +14,7 @@ use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
     traits::{pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof}, gnark_plonk::GnarkPlonkVkey, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
+        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
     },
 };
 use quantum_utils::{
@@ -56,7 +56,7 @@ pub async fn handle_proof_aggregation_and_updation(
     dump_object(snark_receipt, &superproof_snark_receipt_path)?;
     // superproof_proof.dump_proof(&superproof_proof_path)?;
 
-    let superproof_proof = GnarkGroth16Proof::from_risc0_gnark_proof_result(aggregation_result.proof);
+    let superproof_proof = SuperproofGnarkGroth16Proof::from_risc0_gnark_proof_result(aggregation_result.proof);
     let superproof_pis = GnarkGroth16Pis(aggregation_result.pub_inputs);
 
     let superproof_proof_path = get_superproof_proof_path(&config.storage_folder_path, &config.supperproof_path, superproof_id);
@@ -126,12 +126,20 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(1);
             }
+            ProvingSchemes::GnarkGroth16 => {
+                let protocol_vkey = GnarkGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
+
+                let protocol_pis = GnarkGroth16Pis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
+                protocol_ids.push(3);
+            }
 
             ProvingSchemes::GnarkPlonk => {
                 let protocol_vkey = GnarkPlonkVkey::read_vk(&protocol_circuit_vkey_path)?;
                 protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
 
-                let protocol_pis = GnarkGroth16Pis::read_pis(&protocol_pis_path)?;
+                let protocol_pis = GnarkPlonkPis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(4);
             }
@@ -154,8 +162,8 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
     update_superproof_leaves_path(get_pool().await, &superproof_leaves_path, superproof_id).await?;
 
     //TODO: fix this
-    // let old_root = last_verified_superproof.unwrap().previous_superproof_root.unwrap();
-    let old_root: &str = "";
+    let old_root = last_verified_superproof.unwrap().superproof_root.unwrap();
+    // let old_root: &str = "";
     update_previous_superproof_root(get_pool().await, &old_root, superproof_id).await?;
 
     let new_root = encode_keccak_hash(&new_superproof_root)?;

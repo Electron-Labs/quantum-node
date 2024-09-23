@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::io::BufWriter;
-
 use agg_core::inputs::get_init_tree_data;
 use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
@@ -13,6 +10,7 @@ use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
 use quantum_utils::error_line;
 use quantum_utils::file::dump_object;
+use quantum_utils::keccak::encode_keccak_hash;
 use quantum_utils::paths::{
     get_imt_pis_path, get_imt_proof_path, get_reduced_proof_receipt_path
 };
