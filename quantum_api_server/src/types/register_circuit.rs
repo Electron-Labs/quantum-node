@@ -9,7 +9,6 @@ use tracing::info;
 #[derive(Clone, Debug, Deserialize)]
 pub struct RegisterCircuitRequest {
     pub vkey: Vec<u8>, // borsh serialised vkey
-    pub num_public_inputs: u8,
     pub proof_type: ProvingSchemes
 }
 
