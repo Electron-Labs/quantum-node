@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufWriter, time::Duration};
+use std::time::Duration;
 
 use bonsai_sdk::{non_blocking::{Client, SessionId}, responses::SnarkReceipt};
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::update_session_id_in_proof, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};

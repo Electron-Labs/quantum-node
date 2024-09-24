@@ -3,17 +3,13 @@ pub mod contract;
 pub mod contract_utils;
 pub mod quantum_contract;
 
-use std::time::Instant;
-
 use chrono::{DateTime, Utc};
 use connection::get_pool;
 use contract::{gen_quantum_structs, register_cricuit_in_contract};
 use contract_utils::get_bytes_from_hex_string;
 use dotenv::dotenv;
-use ethers::{etherscan::gas, types::TransactionReceipt, utils::hex::ToHexExt};
+use ethers::utils::hex::ToHexExt;
 use quantum_contract::{Protocol, TreeUpdate};
-// use ethers::utils::hex::traits::ToHex;
-use keccak_hash::keccak;
 use quantum_db::repository::{
     cost_saved_repository::udpate_cost_saved_data,
     proof_repository::{get_proofs_in_superproof_id, update_proof_status},
@@ -24,18 +20,17 @@ use quantum_db::repository::{
     user_circuit_data_repository::{get_user_circuit_data_by_circuit_hash, get_user_circuits_by_circuit_status, update_user_circuit_data_reduction_status},
 };
 use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proving_schemes::ProvingSchemes}, types::{gnark_groth16::SuperproofGnarkGroth16Proof, gnark_plonk::GnarkPlonkPis, halo2_plonk::Halo2PlonkPis}};
-use quantum_types::traits::pis;
 use quantum_types::{
     enums::{proof_status::ProofStatus, superproof_status::SuperproofStatus},
     traits::{pis::Pis, proof::Proof},
     types::{
-        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof},
+        gnark_groth16::GnarkGroth16Pis,
         snarkjs_groth16::SnarkJSGroth16Pis,
     },
 };
 use quantum_utils::{error_line, keccak::decode_keccak_hex, logger::initialize_logger};
 
-use anyhow::{anyhow, Error, Result as AnyhowResult};
+use anyhow::{anyhow, Result as AnyhowResult};
 use sqlx::types::chrono::NaiveDateTime;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info};
@@ -122,7 +117,7 @@ async fn initialize_superproof_submission_loop(
         let proofs = get_proofs_in_superproof_id(get_pool().await, new_superproof_id).await?;
 
         let mut protocols = vec![];
-        for (i, proof) in proofs.clone().iter().enumerate() {
+        for (_, proof) in proofs.clone().iter().enumerate() {
             let user_circuit =
                 get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash)
                     .await?;

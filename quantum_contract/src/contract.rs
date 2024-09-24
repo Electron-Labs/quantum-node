@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use ethers::contract::Abigen;
-use quantum_types::types::gnark_groth16::{GnarkGroth16Proof, SuperproofGnarkGroth16Proof};
+use quantum_types::types::gnark_groth16::SuperproofGnarkGroth16Proof;
 use quantum_utils::error_line;
 use tracing::info;
 

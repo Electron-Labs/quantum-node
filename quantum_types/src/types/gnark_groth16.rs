@@ -6,7 +6,7 @@ use std::str::FromStr;
 use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
-use gnark_bn254_verifier::load_groth16_verifying_key_from_bytes;
+use gnark_bn254_verifier::{load_groth16_verifying_key_from_bytes, verify};
 use quantum_circuits_interface::ffi::circuit_builder::{GnarkProof, G1, G1A, G2};
 use quantum_utils::{
     error_line,
@@ -235,6 +235,10 @@ impl Proof for SuperproofGnarkGroth16Proof {
         let gnark_proof = SuperproofGnarkGroth16Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
+    
+    fn validate_proof(&self, _vkey_path: &str, _pis_bytes: &[u8]) -> AnyhowResult<()> {
+        Ok(())
+    }
 }
 
 impl SuperproofGnarkGroth16Proof {
@@ -282,6 +286,17 @@ impl Proof for GnarkGroth16Proof {
         let proof_bytes = read_bytes_from_file(full_path)?;
         let gnark_proof = GnarkGroth16Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
+    }
+    
+    fn validate_proof(&self, vkey_path: &str, mut pis_bytes: &[u8]) -> AnyhowResult<()> {
+        let vk = GnarkGroth16Vkey::read_vk(vkey_path)?;
+        let pis = GnarkGroth16Pis::deserialize_pis(&mut pis_bytes)?;
+
+        let is_vreified = verify(&self.proof_bytes, &vk.vkey_bytes, &pis.get_ark_pis_for_gnark_groth16_pis()?, gnark_bn254_verifier::ProvingSystem::Groth16);
+        if !is_vreified {
+            return Err(anyhow!(error_line!("gnark-groth16 proof validation failed")))
+        }
+        Ok(())
     }
 }
 

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use quantum_utils::{error_line, keccak::decode_keccak_hex};
-use tracing::{info, error};
+use tracing::info;
 
 pub fn get_f64_from_json_value_object(json_value: serde_json::Value) -> Option<f64> {
     Some(json_value.as_number()?.as_f64()?)
