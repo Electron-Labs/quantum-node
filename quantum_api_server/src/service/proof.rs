@@ -29,6 +29,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(data: SubmitProofReque
     let proof_hash = encode_keccak_hash(&proof_id_hash)?;
 
     proof.validate_proof(&user_circuit_data.vk_path, &data.pis.clone())?;
+    info!("proof validated");
     check_if_proof_already_exist(&proof_hash, &data.circuit_hash).await?;
 
     // Dump proof and pis binaries

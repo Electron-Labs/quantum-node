@@ -18,7 +18,7 @@ use snark_verifier::halo2_base::utils::ScalarField;
 use snark_verifier::loader::native::NativeLoader;
 use snark_verifier::system::halo2::transcript::evm::EvmTranscript;
 use snark_verifier::verifier::plonk::PlonkProtocol;
-use snark_verifier::verifier::plonk::PlonkVerifier;
+use snark_verifier_sdk::PlonkVerifier;
 use snark_verifier::verifier::SnarkVerifier;
 use snark_verifier_sdk::SHPLONK;
 use utils::hash::KeccakHasher;
@@ -127,11 +127,10 @@ impl Proof for Halo2PlonkProof {
         let instances = pis.get_instance()?;
 
         let dk = (G1Affine::generator(), G2Affine::generator(), s_g2).into();
-
         let loader = NativeLoader;
         let protocol = protocol.loaded(&loader);
         let mut transcript = EvmTranscript::<_, NativeLoader, _, _>::new(self.proof_bytes.as_slice());
-    
+        
         let proof_ = PlonkVerifier::<SHPLONK>::read_proof(&dk, &protocol, &instances, &mut transcript).map_err(|e| {anyhow!(error_line!(format!("error in halo2-plonk proof validation {:?}", e)))})?;
         PlonkVerifier::<SHPLONK>::verify(&dk, &protocol, &instances, &proof_).map_err(|e| {anyhow!(error_line!(format!("Halo2Plonk proof validation failed: {:?}", e)))})?;
         Ok(())
