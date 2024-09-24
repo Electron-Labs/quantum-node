@@ -4,7 +4,7 @@
 use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
-use gnark_bn254_verifier::load_plonk_verifying_key_from_bytes;
+use gnark_bn254_verifier::{load_plonk_verifying_key_from_bytes, verify};
 use quantum_utils::{
     error_line,
     file::{read_bytes_from_file, write_bytes_to_file},
@@ -93,6 +93,17 @@ impl Proof for GnarkPlonkSolidityProof {
         let proof_bytes = read_bytes_from_file(full_path)?;
         let gnark_proof = GnarkPlonkSolidityProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
+    }
+    
+    fn validate_proof(&self, vkey_path: &str,mut pis_bytes: &[u8]) -> AnyhowResult<()> {
+        let vk = GnarkPlonkVkey::read_vk(vkey_path)?;
+        let pis = GnarkPlonkPis::deserialize_pis(&mut pis_bytes)?;
+
+        let is_vreified = verify(&self.proof_bytes, &vk.vkey_bytes, &pis.get_ark_pis_for_gnark_plonk_pis()?, gnark_bn254_verifier::ProvingSystem::Plonk);
+        if !is_vreified {
+            return Err(anyhow!(error_line!("gnark-plonk proof validation failed")))
+        }
+        Ok(())
     }
 }
 

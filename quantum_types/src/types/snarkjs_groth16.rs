@@ -4,7 +4,7 @@
 use std::str::FromStr;
 use agg_core::inputs::compute_combined_vkey_hash;
 use ark_bn254::{Bn254, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
-use ark_groth16::{verifier, VerifyingKey, Proof as ArkProof};
+use ark_groth16::{verifier, Groth16, Proof as ArkProof, VerifyingKey};
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use quantum_utils::{
@@ -248,6 +248,22 @@ impl Proof for SnarkJSGroth16Proof {
         let proof_bytes = read_bytes_from_file(full_path)?;
         let snarkjs_proof = SnarkJSGroth16Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(snarkjs_proof)
+    }
+    
+    fn validate_proof(&self, vkey_path: &str, mut pis_bytes: &[u8]) -> AnyhowResult<()> {
+        let vkey = SnarkJSGroth16Vkey::read_vk(vkey_path)?;
+        let pis = SnarkJSGroth16Pis::deserialize_pis(&mut pis_bytes)?;
+        let ark_vk = vkey.get_ark_vk_for_snarkjs_groth16()?;
+        let pvk = verifier::prepare_verifying_key(&ark_vk);
+
+        let ark_proof = self.get_ark_proof_for_snarkjs_groth16_proof()?;
+        let ark_pis = pis.get_ark_pis_for_snarkjs_groth16_pis()?;
+
+        let res = Groth16::<Bn254>::verify_proof(&pvk, &ark_proof, &ark_pis).map_err(|e| {anyhow!(error_line!(format!("error while validating proof: {}", e)))})?;
+        if !res {
+            return Err(anyhow!(error_line!("snarkJS-groth16 proof validation failed")))
+        }
+        Ok(()) 
     }
 }
 

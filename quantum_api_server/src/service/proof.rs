@@ -3,7 +3,7 @@ use std::str::FromStr;
 use agg_core::inputs::{compute_combined_vkey_hash, compute_leaf_value, get_init_tree_data, get_mtree_from_leaves};
 use num_bigint::BigUint;
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::{get_latest_proof_by_circuit_hash, insert_proof}, superproof_repository::{get_last_verified_superproof, get_superproof_by_id}, task_repository::create_proof_task, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof, vkey::Vkey}, types::{config::ConfigData, hash::KeccakHashOut, imt::ImtTree}};
+use quantum_types::{enums::{circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus, task_status::TaskStatus, task_type::TaskType}, traits::{pis::Pis, proof::Proof, vkey::Vkey}, types::config::ConfigData};
 use quantum_types::types::db::proof::Proof as DbProof;
 use quantum_utils::{keccak::encode_keccak_hash, paths::{get_user_pis_path, get_user_proof_path},error_line};
 use rocket::State;
@@ -20,16 +20,15 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(data: SubmitProofReque
     validate_circuit_data_in_submit_proof_request(&data).await?;
 
     let proof: T = T::deserialize_proof(&mut data.proof.as_slice())?;
-
     let pis: F = F::deserialize_pis(&mut data.pis.as_slice())?;
 
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
     let user_vk = V::read_vk(&user_circuit_data.vk_path)?;
 
     let proof_id_hash =  KeccakHasher::combine_hash(&user_vk.keccak_hash()?,&pis.keccak_hash()?);
-
     let proof_hash = encode_keccak_hash(&proof_id_hash)?;
 
+    proof.validate_proof(&user_circuit_data.vk_path, &data.pis.clone())?;
     check_if_proof_already_exist(&proof_hash, &data.circuit_hash).await?;
 
     // Dump proof and pis binaries
@@ -127,7 +126,7 @@ pub async fn validate_on_ongoing_proof_with_same_circuit_hash(circuit_hash: &str
 }
 
 // TODO: need to change
-pub async fn check_if_proof_already_exist(proof_hash: &str, circuit_hash: &str) -> AnyhowResult<()> {
+pub async fn check_if_proof_already_exist(proof_hash: &str, _circuit_hash: &str) -> AnyhowResult<()> {
     let proof = get_proof_by_proof_hash(get_pool().await, proof_hash).await;
     if proof.is_ok() {
         let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, proof?.user_circuit_hash.as_str()).await?;

@@ -13,11 +13,8 @@ use quantum_types::{
         vkey::Vkey,
     },
     types::{
-        config::ConfigData, db::{proof::Proof as DBProof, task::Task, user_circuit_data}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
-        // config::ConfigData,
+        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
         db::user_circuit_data::UserCircuitData,
-        // halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey},
-        // snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
     },
 };
 use quantum_utils::error_line;
@@ -25,9 +22,7 @@ use risc0_zkvm::{serde::to_vec, Receipt};
 use tokio::time::Instant;
 use tracing::info;
 use quantum_db::repository::proof_repository::get_proof_by_proof_id;
-// use quantum_types::types::db::reduction_circuit::ReductionCircuit;
-// use quantum_types::types::db::user_circuit_data::UserCircuitData;
-use crate::{connection::get_pool, AVAIL_BH};
+use crate::connection::get_pool;
 use crate::bonsai::execute_proof_reduction;
 use crate::utils::dump_reduction_proof_data;
 

@@ -15,7 +15,7 @@ pub async fn submit_proof(_auth_token: AuthToken, data: SubmitProofRequest, conf
         response = submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis, SnarkJSGroth16Vkey>(data, config_data).await;
     } else if data.proof_type == ProvingSchemes::Halo2Plonk {
         response = submit_proof_exec::<Halo2PlonkProof, Halo2PlonkPis, Halo2PlonkVkey>(data, config_data).await;
-    } else if (data.proof_type == ProvingSchemes::GnarkPlonk ){
+    } else if data.proof_type == ProvingSchemes::GnarkPlonk {
         response = submit_proof_exec::<GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey>(data, config_data).await;
     }else {
         error!("unsupported proving scheme");
