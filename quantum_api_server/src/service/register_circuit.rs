@@ -60,8 +60,19 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
 pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResult<CircuitRegistrationStatusResponse> {
     let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash.as_str()).await?;
     let status = user_circuit.circuit_reduction_status;
+    let bonsai_image = get_bonsai_image_by_proving_scheme(get_pool().await, user_circuit.proving_scheme).await?;
+    
+    let mut circuit_verifying_id_bytes = vec![];
+    for i in bonsai_image.circuit_verifying_id {
+        circuit_verifying_id_bytes.extend_from_slice(&i.to_le_bytes());
+    }
+
+    let mut circuit_verifying_id_bytes_array = [0u8;32];
+    circuit_verifying_id_bytes_array.copy_from_slice(&circuit_verifying_id_bytes);
+    let reduction_circuit_hash = encode_keccak_hash(&circuit_verifying_id_bytes_array)?;
     return Ok(CircuitRegistrationStatusResponse {
         circuit_registration_status: status.to_string(),
+        reduction_circuit_hash,
     })
 }
 
