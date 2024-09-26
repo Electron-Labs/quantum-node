@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS user_circuit_data (
   circuit_reduction_status INT,
   bonsai_image_id varchar(255) DEFAULT NULL,
   protocol_name VARCHAR(255),
+  version INT DEFAULT NULL,
   FOREIGN KEY (reduction_circuit_id) REFERENCES reduction_circuit(circuit_id),
   FOREIGN KEY (protocol_name) REFERENCES protocol(protocol_name)
 );
@@ -75,6 +76,7 @@ CREATE TABLE IF NOT EXISTS proof (
   input_id varchar(255) DEFAULT NULL,
   session_id varchar(255) DEFAULT NULL,
   reducded_proof_receipt_path varchar(255) DEFAULT NULL,
+  version INT DEFAULT NULL,
   FOREIGN KEY (user_circuit_hash) REFERENCES user_circuit_data(circuit_hash)
 );
 
