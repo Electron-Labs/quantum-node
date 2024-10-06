@@ -8,7 +8,8 @@ pub enum ProvingSchemes {
     Groth16,
     Plonky2,
     Halo2Plonk,
-    GnarkPlonk
+    GnarkPlonk,
+    Halo2Poseidon
 }
 
 impl FromStr for ProvingSchemes {
@@ -27,6 +28,7 @@ impl FromStr for ProvingSchemes {
             "plonky2" => Ok(ProvingSchemes::Plonky2),
             "halo2plonk" => Ok(ProvingSchemes::Halo2Plonk),
             "gnarkplonk" => Ok(ProvingSchemes::GnarkPlonk),
+            "halo2poseidon" => Ok(ProvingSchemes::Halo2Poseidon),
             _ => Err(format!("Invalid proving scheme: {}", s)),
         }
     }
@@ -39,7 +41,8 @@ impl ToString for ProvingSchemes {
             ProvingSchemes::Groth16 => String::from("Groth16"),
             ProvingSchemes::Halo2Plonk => String::from("Halo2Plonk"),
             ProvingSchemes::Plonky2 => String::from("Plonky2"),
-            ProvingSchemes::GnarkPlonk => String::from("GnarkPlonk")
+            ProvingSchemes::GnarkPlonk => String::from("GnarkPlonk"),
+            ProvingSchemes::Halo2Poseidon => String::from("Halo2Poseidon")
         }
     }
 }

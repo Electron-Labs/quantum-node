@@ -14,7 +14,7 @@ use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
     traits::{pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
+        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
     },
 };
 use quantum_utils::{
@@ -134,7 +134,6 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(3);
             }
-
             ProvingSchemes::GnarkPlonk => {
                 let protocol_vkey = GnarkPlonkVkey::read_vk(&protocol_circuit_vkey_path)?;
                 protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
@@ -143,7 +142,22 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(4);
             }
-            _ => todo!(),
+            ProvingSchemes::Plonky2 => {
+                let protocol_vkey = Plonky2Vkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
+
+                let protocol_pis = Plonky2Pis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
+                protocol_ids.push(2);
+            },
+            ProvingSchemes::Halo2Poseidon => {
+                let protocol_vkey = Halo2PoseidonVkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
+
+                let protocol_pis = Halo2PoseidonPis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
+                protocol_ids.push(5);
+            },
         }
     }
 

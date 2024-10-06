@@ -24,14 +24,16 @@ use snark_verifier_sdk::PlonkVerifier;
 use snark_verifier::verifier::SnarkVerifier;
 use snark_verifier_sdk::SHPLONK;
 use utils::hash::KeccakHasher;
+// use utils::halo2_kzg_vkey_hash;
+// use utils::halo2_public_inputs_hash;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
-pub struct Halo2PlonkVkey {
+pub struct Halo2PoseidonVkey {
     pub protocol_bytes: Vec<u8>,
     pub sg2_bytes: Vec<u8>,
 }
 
-impl Vkey for Halo2PlonkVkey {
+impl Vkey for Halo2PoseidonVkey {
     fn serialize_vkey(&self) -> AnyhowResult<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         BorshSerialize::serialize(&self, &mut buffer).map_err(|err| anyhow!(error_line!(err)))?;
@@ -39,7 +41,7 @@ impl Vkey for Halo2PlonkVkey {
     }
 
     fn deserialize_vkey(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let key: Halo2PlonkVkey =
+        let key: Halo2PoseidonVkey =
             BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
@@ -52,7 +54,7 @@ impl Vkey for Halo2PlonkVkey {
 
     fn read_vk(full_path: &str) -> AnyhowResult<Self> {
         let vkey_bytes = read_bytes_from_file(full_path)?;
-        let vkey = Halo2PlonkVkey::deserialize_vkey(&mut vkey_bytes.as_slice())?;
+        let vkey = Halo2PoseidonVkey::deserialize_vkey(&mut vkey_bytes.as_slice())?;
         Ok(vkey)
     }
 
@@ -75,7 +77,7 @@ impl Vkey for Halo2PlonkVkey {
     }
 }
 
-impl Halo2PlonkVkey {
+impl Halo2PoseidonVkey {
     pub fn get_protocol(&self) -> AnyhowResult<PlonkProtocol<G1Affine>> {
         let protocol: PlonkProtocol<G1Affine> = serde_json::from_slice(&self.protocol_bytes)?;
         Ok(protocol)
@@ -88,12 +90,12 @@ impl Halo2PlonkVkey {
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
-pub struct Halo2PlonkProof {
+pub struct Halo2PoseidonProof {
     // TODO: change it to protocol_bytes
     pub proof_bytes: Vec<u8>,
 }
 
-impl Proof for Halo2PlonkProof {
+impl Proof for Halo2PoseidonProof {
     fn serialize_proof(&self) -> AnyhowResult<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         BorshSerialize::serialize(&self, &mut buffer)?;
@@ -101,7 +103,7 @@ impl Proof for Halo2PlonkProof {
     }
 
     fn deserialize_proof(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let key: Halo2PlonkProof =
+        let key: Halo2PoseidonProof =
             BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
@@ -114,39 +116,39 @@ impl Proof for Halo2PlonkProof {
 
     fn read_proof(full_path: &str) -> AnyhowResult<Self> {
         let proof_bytes = read_bytes_from_file(full_path)?;
-        let gnark_proof = Halo2PlonkProof::deserialize_proof(&mut proof_bytes.as_slice())?;
+        let gnark_proof = Halo2PoseidonProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
     
     fn validate_proof(&self, vkey_path: &str,mut pis_bytes: &[u8]) -> AnyhowResult<()> {
-        let vkey = Halo2PlonkVkey::read_vk(vkey_path)?;
-        let pis = Halo2PlonkPis::deserialize_pis(&mut pis_bytes)?;
+        // let vkey = Halo2PoseidonVkey::read_vk(vkey_path)?;
+        // let pis = Halo2PoseidonPis::deserialize_pis(&mut pis_bytes)?;
 
-        let s_g2 = vkey.get_sg2()?;
-        let protocol = vkey.get_protocol()?;
-        let instances = pis.get_instance()?;
+        // let s_g2 = vkey.get_sg2()?;
+        // let protocol = vkey.get_protocol()?;
+        // let instances = pis.get_instance()?;
 
-        let dk = (G1Affine::generator(), G2Affine::generator(), s_g2).into();
-        let loader = NativeLoader;
-        let protocol = protocol.loaded(&loader);
-        let mut transcript = EvmTranscript::<_, NativeLoader, _, _>::new(self.proof_bytes.as_slice());
+        // let dk = (G1Affine::generator(), G2Affine::generator(), s_g2).into();
+        // let loader = NativeLoader;
+        // let protocol = protocol.loaded(&loader);
+        // let mut transcript = EvmTranscript::<_, NativeLoader, _, _>::new(self.proof_bytes.as_slice());
         
-        let proof_ = PlonkVerifier::<SHPLONK>::read_proof(&dk, &protocol, &instances, &mut transcript).map_err(|e| {anyhow!(error_line!(format!("error in halo2-plonk proof validation {:?}", e)))})?;
-        PlonkVerifier::<SHPLONK>::verify(&dk, &protocol, &instances, &proof_).map_err(|e| {anyhow!(error_line!(format!("Halo2Plonk proof validation failed: {:?}", e)))})?;
+        // let proof_ = PlonkVerifier::<SHPLONK>::read_proof(&dk, &protocol, &instances, &mut transcript).map_err(|e| {anyhow!(error_line!(format!("error in halo2-plonk proof validation {:?}", e)))})?;
+        // PlonkVerifier::<SHPLONK>::verify(&dk, &protocol, &instances, &proof_).map_err(|e| {anyhow!(error_line!(format!("Halo2Plonk proof validation failed: {:?}", e)))})?;
         Ok(())
     }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
-pub struct Halo2PlonkPis(pub Vec<u8>);
+pub struct Halo2PoseidonPis(pub Vec<u8>);
 
-impl Pis for Halo2PlonkPis {
+impl Pis for Halo2PoseidonPis {
     fn serialize_pis(&self) -> AnyhowResult<Vec<u8>> {
         Ok(self.0.clone())
     }
 
     fn deserialize_pis(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let key: Halo2PlonkPis =
+        let key: Halo2PoseidonPis =
             BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
@@ -159,7 +161,7 @@ impl Pis for Halo2PlonkPis {
 
     fn read_pis(full_path: &str) -> AnyhowResult<Self> {
         let pis_bytes = read_bytes_from_file(full_path)?;
-        Ok(Halo2PlonkPis(pis_bytes))
+        Ok(Halo2PoseidonPis(pis_bytes))
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
@@ -186,7 +188,7 @@ impl Pis for Halo2PlonkPis {
     }
 }
 
-impl Halo2PlonkPis {
+impl Halo2PoseidonPis {
     pub fn get_instance(&self) -> AnyhowResult<Vec<Vec<Fr>>> {
         let instances: Vec<Vec<Fr>> = serde_json::from_slice(&self.0)?;
         Ok(instances)

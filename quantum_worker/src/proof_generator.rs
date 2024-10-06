@@ -13,8 +13,7 @@ use quantum_types::{
         vkey::Vkey,
     },
     types::{
-        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey},
-        db::user_circuit_data::UserCircuitData,
+        config::ConfigData, db::{proof::Proof as DBProof, user_circuit_data::UserCircuitData}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Proof, Plonky2Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}
     },
 };
 use quantum_utils::error_line;
@@ -78,6 +77,10 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
         (receipt, reduction_time) = generate_halo2_plonk_reduced_proof(user_circuit_data, proof_data).await?;
     } else if user_circuit_data.proving_scheme == ProvingSchemes::GnarkPlonk {
         (receipt, reduction_time) = generate_gnark_plonk_reduced_proof(user_circuit_data, proof_data).await?;
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::Halo2Poseidon {
+        (receipt, reduction_time) = generate_halo2_poseidon_reduced_proof(user_circuit_data, proof_data).await?;
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::Plonky2 {
+        (receipt, reduction_time) = generate_plonky2_reduced_proof(user_circuit_data, proof_data).await?;
     } 
     else {
         return Err(anyhow!(error_line!("unsupported proving scheme in proof reduction")));
@@ -88,39 +91,6 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
     Ok((receipt, reduction_time))
 }
 
-// async fn generate_gnark_groth16_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof, outer_pk_bytes: Vec<u8>, outer_vk: GnarkGroth16Vkey) -> AnyhowResult<(GenerateReductionProofResult, u64)> {
-//     // Get inner_proof
-//     let inner_proof_path = &proof_data.proof_path;
-//     println!("inner_proof_path :: {:?}", inner_proof_path);
-
-//     // Get inner_vk
-//     let inner_vk_path = &user_circuit_data.vk_path;
-//     println!("inner_vk_path :: {:?}", inner_vk_path);
-
-//     // Get inner_pis
-//     let inner_pis_path = &proof_data.pis_path;
-//     println!("inner_pis_path :: {:?}", inner_pis_path);
-//     // 1.Reconstruct inner proof
-//     let gnark_inner_proof: GnarkGroth16Proof =
-//         GnarkGroth16Proof::read_proof(&inner_proof_path)?;
-//     let gnark_inner_vk: GnarkGroth16Vkey = GnarkGroth16Vkey::read_vk(&inner_vk_path)?;
-//     let gnark_inner_pis: GnarkGroth16Pis = GnarkGroth16Pis::read_pis(&inner_pis_path)?;
-
-//     let reduction_start_time = Instant::now();
-
-//     // 2.Call reduced proof generator for gnark inner proof
-//     let prove_result = QuantumV2CircuitInteractor::generate_gnark_groth16_reduced_proof(
-//         gnark_inner_proof,
-//         gnark_inner_vk.clone(),
-//         gnark_inner_pis.clone(),
-//         outer_vk,
-//         outer_pk_bytes,
-//     );
-//     let reduction_time = reduction_start_time.elapsed().as_secs();
-
-//     // verify_proof_reduction_result(&prove_result, &user_circuit_data, gnark_inner_vk, gnark_inner_pis)?;
-//     Ok((prove_result, reduction_time))
-// }
 fn form_snarkjs_groth16_bonsai_inputs(vk: SnarkJSGroth16Vkey, proof: SnarkJSGroth16Proof, pis: SnarkJSGroth16Pis) ->  AnyhowResult<Vec<u8>>{
     let ark_vk = vk.get_ark_vk_for_snarkjs_groth16()?;
     let pvk = verifier::prepare_verifying_key(&ark_vk);
@@ -209,6 +179,88 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
 
     Ok((receipt, reduction_time))
 }
+
+
+fn form_halo2_poseidon_bonsai_inputs(proof: &Halo2PoseidonProof, vk: &Halo2PoseidonVkey, pis: &Halo2PoseidonPis) -> AnyhowResult<Vec<u8>> {
+    let protocol = vk.get_protocol()?;
+    let s_g2 = vk.get_sg2()?;
+    let instances = pis.get_instance()?;
+    let proof = &proof.proof_bytes;
+
+    let protocol_bytes = to_vec(&protocol)?;
+    let s_g2_bytes = to_vec(&s_g2)?;
+    let instances_bytes = to_vec(&instances)?;
+    let proof_bytes = to_vec(&proof)?;
+
+    let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&protocol_bytes).to_vec();
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&s_g2_bytes));
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&instances_bytes));
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&proof_bytes));
+
+    Ok(input_data_vec)
+}
+
+async fn generate_halo2_poseidon_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
+    // Get inner_proof
+    let proof_path = &proof_data.proof_path;
+    println!("proof_path :: {:?}", proof_path);
+
+    // Get inner_vk
+    let vk_path = &user_circuit_data.vk_path;
+    println!("vk_path :: {:?}", vk_path);
+
+    // Get inner_pis
+    let pis_path = &proof_data.pis_path;
+    println!("pis_path :: {:?}", pis_path);
+
+    let proof = Halo2PoseidonProof::read_proof(&proof_path)?;
+    let vk = Halo2PoseidonVkey::read_vk(&vk_path)?;
+    let pis = Halo2PoseidonPis::read_pis(&pis_path)?;
+    
+    let input_data = form_halo2_poseidon_bonsai_inputs(&proof, &vk, &pis)?;
+
+    let reduction_start_time = Instant::now();
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let reduction_time = reduction_start_time.elapsed().as_secs();
+
+    Ok((receipt, reduction_time))
+}
+
+
+fn form_plonk2_bonsai_inputs(proof: &Plonky2Proof, vk: &Plonky2Vkey) -> AnyhowResult<Vec<u8>> {
+
+    let common_bytes = to_vec(&vk.common_bytes)?;
+    let verifier_only_bytes = to_vec(&vk.verifier_only_bytes)?;
+    let proof_bytes = to_vec(&proof.proof_bytes)?;
+
+    let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&common_bytes).to_vec();
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&verifier_only_bytes));
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&proof_bytes));
+
+    Ok(input_data_vec)
+}
+
+async fn generate_plonky2_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
+    // Get inner_proof
+    let proof_path = &proof_data.proof_path;
+    println!("proof_path :: {:?}", proof_path);
+
+    // Get inner_vk
+    let vk_path = &user_circuit_data.vk_path;
+    println!("vk_path :: {:?}", vk_path);
+
+    let proof = Plonky2Proof::read_proof(&proof_path)?;
+    let vk = Plonky2Vkey::read_vk(&vk_path)?;
+    
+    let input_data = form_plonk2_bonsai_inputs(&proof, &vk)?;
+
+    let reduction_start_time = Instant::now();
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let reduction_time = reduction_start_time.elapsed().as_secs();
+
+    Ok((receipt, reduction_time))
+}
+
 
 fn form_gnark_plonk_bonsai_inputs(proof: &GnarkPlonkSolidityProof, vk: &GnarkPlonkVkey, pis: &GnarkPlonkPis)-> AnyhowResult<Vec<u8>> {
     let proof_bytes = to_vec(&proof.proof_bytes)?;

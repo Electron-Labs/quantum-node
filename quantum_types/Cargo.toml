@@ -39,3 +39,9 @@ utils = {path = "../../quantum-risc0-circuits/utils"}
 agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}
 quantum_circuits_interface = {path = "../../quantum-risc0-circuits/quantum_circuits_interface"}
 gnark-bn254-verifier = {path = "../../gnark-bn254-verifier"}
+
+plonky2 = { git = "https://github.com/0xPolygonZero/plonky2.git", default-features = false }
+
+groth16-core = {path = "../../quantum-risc0-circuits/reduction/groth16/core"}
+plonky2-core = {path = "../../quantum-risc0-circuits/reduction/plonky2/core"}
+halo2-kzg-evm-core = {path = "../../quantum-risc0-circuits/reduction/halo2_kzg_evm/core"}
