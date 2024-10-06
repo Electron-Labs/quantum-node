@@ -84,6 +84,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
 
             
         } else {
+            info!("sesion status: {:?}", res.status);
             error!("error occured in bonsai session: {:?} with status {:?}, and error messgae: {:?}", &session.uuid, res.status, res.error_msg);
             return Err(anyhow!(error_line!("bonsai_session_failed")));
             // panic!(

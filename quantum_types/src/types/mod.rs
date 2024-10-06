@@ -7,3 +7,5 @@ pub mod snarkjs_groth16;
 pub mod imt;
 pub mod hash;
 pub mod gnark_plonk;
+pub mod halo2_poseidon;
+pub mod plonk2;

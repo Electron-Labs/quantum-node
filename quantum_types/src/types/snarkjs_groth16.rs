@@ -6,6 +6,7 @@ use agg_core::inputs::compute_combined_vkey_hash;
 use ark_bn254::{Bn254, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
 use ark_groth16::{verifier, Groth16, Proof as ArkProof, VerifyingKey};
 use borsh::{BorshDeserialize, BorshSerialize};
+use groth16_core::utils::groth16_vkey_hash;
 use num_bigint::BigUint;
 use quantum_utils::{
     error_line,
@@ -15,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
-use utils::{groth16_vkey_hash, hash::KeccakHasher, public_inputs_hash};
+use utils::{hash::KeccakHasher, public_inputs_hash};
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
