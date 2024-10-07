@@ -61,7 +61,8 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
         // TODO: store Risc0 status in DB
         if res.status == "RUNNING" {
             info!(
-                "Current status: {} - state: {} - continue polling...",
+                "Current status for session_id {} : {} - state: {} - continue polling...",
+                session.uuid,
                 res.status,
                 res.state.unwrap_or_default()
             );
@@ -70,7 +71,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
         }
         if res.status == "SUCCEEDED" {
             // TODO: store Risc0 status in DB
-            info!("proof reduction completed");
+            info!("proof reduction completed for session_id: {:?}", session.uuid);
             // Download the receipt, containing the output
             let receipt_url = res
                 .receipt_url

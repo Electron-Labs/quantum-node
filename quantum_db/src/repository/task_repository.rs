@@ -22,38 +22,37 @@ pub async fn create_circuit_reduction_task(pool: &Pool<MySql>,user_circuit_hash:
     row_affected
 }
 
-
-
-pub async fn get_unpicked_task(pool: &Pool<MySql>) -> Result<Option<Task>, Error> {
+pub async fn get_all_unpicked_tasks(pool: &Pool<MySql>) -> Result<Vec<Task>, Error> {
     // oldest_entry(task_status: TaskStatus::NotPicked)
-    let query  = sqlx::query("SELECT * from task where task_status = ? order by id LIMIT 1")
+    let query  = sqlx::query("SELECT * from task where task_status = ? order by id")
                 .bind(TaskStatus::NotPicked.as_u8());
 
     info!("{}", query.sql());
     info!("arguments: {}", TaskStatus::NotPicked.as_u8());
 
-    let reduction_circuit = match query.fetch_optional(pool).await{
-        Ok(t) => get_task_from_mysql_row(t),
+    let reduction_circuit = match query.fetch_all(pool).await{
+        Ok(t) => {
+            let mut rows = vec![];
+            for row in t {
+                rows.push(get_task_from_mysql_row(row)?);
+            }
+            Ok(rows)
+        },
         Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
     };
     reduction_circuit
 }
 
-fn get_task_from_mysql_row(row: Option<MySqlRow>) -> AnyhowResult<Option<Task>> {
-    let task = match row {
-        Some(r) => {
-            let task_type: u8 = r.try_get_unchecked("task_type")?;
-            let task_status: u8 = r.try_get_unchecked("task_status")?;
-            Some(Task{
-                id: r.try_get_unchecked("id")?,
-                user_circuit_hash: r.try_get_unchecked("user_circuit_hash")?,
-                task_type: TaskType::from(task_type),
-                proof_hash: r.try_get_unchecked("proof_hash")?,
-                proof_id: r.try_get_unchecked("proof_id")?,
-                task_status: TaskStatus::from(task_status)
-            })
-        },
-        None => None
+fn get_task_from_mysql_row(r: MySqlRow) -> AnyhowResult<Task> {
+    let task_type: u8 = r.try_get_unchecked("task_type")?;
+    let task_status: u8 = r.try_get_unchecked("task_status")?;
+    let task = Task{
+        id: r.try_get_unchecked("id")?,
+        user_circuit_hash: r.try_get_unchecked("user_circuit_hash")?,
+        task_type: TaskType::from(task_type),
+        proof_hash: r.try_get_unchecked("proof_hash")?,
+        proof_id: r.try_get_unchecked("proof_id")?,
+        task_status: TaskStatus::from(task_status)
     };
     Ok(task)
 }
