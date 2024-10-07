@@ -15,3 +15,4 @@ worker_sleep_secs: 10
 reduced_proof_receipt_path: /receipt
 aggregation_wait_time: 600
 snark_reduction_data_path: /snark_reduction
+parallel_bonsai_session_limit: 5
