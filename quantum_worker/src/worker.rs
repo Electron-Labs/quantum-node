@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use chrono::Utc;
+use once_cell::sync::Lazy;
 use quantum_db::
     repository::{
         proof_repository::{
@@ -18,11 +19,19 @@ use quantum_types::{
     },
 };
 use quantum_utils::error_line;
-use tokio::{sync::Semaphore, time::Instant};
+use tokio::{sync::{Mutex, Semaphore}, time::Instant};
 use std::{sync::Arc, thread::sleep, time::Duration};
 use tracing::{error, info};
 use crate::{aggregator::handle_proof_aggregation_and_updation, connection::get_pool};
 use crate::proof_generator;
+
+
+pub static GLOBAL_CYCLE_COUNTER: Lazy<Arc<Mutex<i64>>> = Lazy::new(|| Arc::new(Mutex::new(0)));
+pub async fn increment_cycle(cycle_used: i64) {
+    let counter: Arc<Mutex<i64>> = GLOBAL_CYCLE_COUNTER.clone(); // Clone the Arc for shared ownership
+    let mut num = counter.lock().await; // Lock the mutex to safely modify the counter
+    *num += cycle_used;
+}
 
 pub async fn handle_aggregate_proof_task(
     proofs: Vec<Proof>,
@@ -162,7 +171,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
         );
-        if last_verified_superproof.is_some() && aggregation_awaiting_proofs.len() > 0{
+        if last_verified_superproof.is_some() && aggregation_awaiting_proofs.len() > 0 && false{
             let last_verified_superproof = last_verified_superproof.unwrap(); // safe to use unwrap here, already check 
             let last_superproof_onchain_time = match last_verified_superproof.onchain_submission_time {
                 Some(t) => Ok(t),
@@ -175,47 +184,52 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
                 let permit: tokio::sync::OwnedSemaphorePermit = semaphore.clone().acquire_owned().await.map_err(|e| anyhow!(error_line!(format!("error in acquiring the semaphore: {:?}", e))))?;
                 info!("Picked up Proofs aggregation");
                 aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
+                increment_cycle(-1 as i64 * (config_data.pr_batch_max_cycle_count as i64)).await;
                 drop(permit);
             }
         }
         
         let unpicked_tasks = get_all_unpicked_tasks(get_pool().await).await?;
         let start =  Instant::now();
-        if unpicked_tasks.len() > 0 {
-            for t in unpicked_tasks {
-                if t.task_type == TaskType::ProofGeneration {
-                    let permit: tokio::sync::OwnedSemaphorePermit = semaphore.clone().acquire_owned().await.map_err(|e| anyhow!(error_line!(format!("error in acquiring the semaphore: {:?}", e))))?;
-                    info!("Picked up proof generation task --> {:?}", t);
-                    let config_data_clone = config_data.clone();
-                    let task = t.clone();
-                    let handle = tokio::spawn(async move {
-                        let result = handle_proof_generation_task(task, &config_data_clone).await;
-                        // Release the permit when the task is done
-                        drop(permit);
-                        result
-                    });
+        info!("unpicked task count: {:?}", unpicked_tasks.len());
+        for t in unpicked_tasks {
+            if t.task_type == TaskType::ProofGeneration {
+                let permit: tokio::sync::OwnedSemaphorePermit = semaphore.clone().acquire_owned().await.map_err(|e| anyhow!(error_line!(format!("error in acquiring the semaphore: {:?}", e))))?;
+                info!("Picked up proof generation task --> {:?}", t);
+                let config_data_clone = config_data.clone();
+                let task = t.clone();
 
-                    tokio::spawn(async move {
-                        
-                        match handle.await {
-                            
-                            Ok(Ok(())) => {
-                                info!("Task {:?} finished successfully.", t.id);
-                                let total_time = start.elapsed().as_secs();
-                                info!("total time taken for 5 proofs: {:?}", total_time);
-                            }
-                            Ok(Err(e)) => {
-                                error!("Task {:?} failed with error: {:?}, error in task updation", t.id, e);
-                            }
-                            Err(join_err) => {
-                                error!("Failed to join task {:?}: {:?}", t.id, join_err);
-                            }
-                        }
-                    });
+                let final_value = *GLOBAL_CYCLE_COUNTER.lock().await;
+                info!("current cycle used count: {:?}", final_value);
+                if final_value >= 0  && final_value as u64 >= config_data_clone.pr_batch_max_cycle_count {
+                    info!("cycle count for current batch exceeds the limit");
+                    continue;
                 }
+                
+                let handle = tokio::spawn(async move {
+                    let result = handle_proof_generation_task(task, &config_data_clone).await;
+                    // Release the permit when the task is done
+                    drop(permit);
+                    result
+                });
+
+                tokio::spawn(async move {
+                    
+                    match handle.await {
+                        Ok(Ok(())) => {
+                            info!("Task {:?} finished successfully.", t.id);
+                            let total_time = start.elapsed().as_secs();
+                            info!("total time taken for 5 proofs: {:?}", total_time);
+                        }
+                        Ok(Err(e)) => {
+                            error!("Task {:?} failed with error: {:?}, error in task updation", t.id, e);
+                        }
+                        Err(join_err) => {
+                            error!("Failed to join task {:?}: {:?}", t.id, join_err);
+                        }
+                    }
+                });
             }
-        } else {
-            info!("No task available to pick");
         }
         
         sleep(sleep_duration);

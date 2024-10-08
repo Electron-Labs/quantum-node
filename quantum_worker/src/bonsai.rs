@@ -6,7 +6,7 @@ use quantum_utils::error_line;
 use risc0_zkvm::Receipt;
 use tracing::{info, error};
 
-use crate::connection::get_pool;
+use crate::{connection::get_pool, worker::increment_cycle};
 
 use anyhow::{anyhow, Result as AnyhowResult};
 pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_id: u64) -> AnyhowResult<(Option<Receipt>, String)> {
@@ -72,6 +72,11 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
         if res.status == "SUCCEEDED" {
             // TODO: store Risc0 status in DB
             info!("proof reduction completed for session_id: {:?}", session.uuid);
+            
+            //TODO: remove the unwrap
+            let cycle_used = res.stats.unwrap().cycles;
+            increment_cycle(cycle_used as i64).await;
+            
             // Download the receipt, containing the output
             let receipt_url = res
                 .receipt_url
