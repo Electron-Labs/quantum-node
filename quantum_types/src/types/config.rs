@@ -23,7 +23,8 @@ pub struct ConfigData {
     pub worker_sleep_secs: u64,
     pub aggregation_wait_time: u64,
     pub snark_reduction_data_path: String,
-    pub parallel_bonsai_session_limit: u64
+    pub parallel_bonsai_session_limit: u64,
+    pub pr_batch_max_cycle_count: u64
 }
 
 impl ConfigData {
