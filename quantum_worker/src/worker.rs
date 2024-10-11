@@ -7,7 +7,7 @@ use quantum_db::
             get_n_reduced_proofs, update_proof_status, update_superproof_id_in_proof,
         },
         superproof_repository::{get_last_verified_superproof, insert_new_superproof, update_superproof_status},
-        task_repository::{get_all_unpicked_tasks, update_task_status}
+        task_repository::{get_unpicked_tasks, update_task_status}
     };
 use quantum_types::{
     enums::{ proof_status::ProofStatus,
@@ -171,7 +171,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
         );
-        if last_verified_superproof.is_some() && aggregation_awaiting_proofs.len() > 0 && false{
+        if last_verified_superproof.is_some() && aggregation_awaiting_proofs.len() > 0{
             let last_verified_superproof = last_verified_superproof.unwrap(); // safe to use unwrap here, already check 
             let last_superproof_onchain_time = match last_verified_superproof.onchain_submission_time {
                 Some(t) => Ok(t),
@@ -188,13 +188,15 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
                 drop(permit);
             }
         }
-        
-        let unpicked_tasks = get_all_unpicked_tasks(get_pool().await).await?;
+
+        let current_available_permits: u64 = semaphore.clone().available_permits() as u64;
+        let unpicked_tasks = get_unpicked_tasks(get_pool().await, current_available_permits).await?;
         let start =  Instant::now();
-        info!("unpicked task count: {:?}", unpicked_tasks.len());
+        info!("unpicked task count: {:?} and current available permit: {:?}", unpicked_tasks.len(), current_available_permits);
         for t in unpicked_tasks {
             if t.task_type == TaskType::ProofGeneration {
                 let permit: tokio::sync::OwnedSemaphorePermit = semaphore.clone().acquire_owned().await.map_err(|e| anyhow!(error_line!(format!("error in acquiring the semaphore: {:?}", e))))?;
+                
                 info!("Picked up proof generation task --> {:?}", t);
                 let config_data_clone = config_data.clone();
                 let task = t.clone();
