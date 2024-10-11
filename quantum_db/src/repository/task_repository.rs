@@ -22,13 +22,13 @@ pub async fn create_circuit_reduction_task(pool: &Pool<MySql>,user_circuit_hash:
     row_affected
 }
 
-pub async fn get_all_unpicked_tasks(pool: &Pool<MySql>) -> Result<Vec<Task>, Error> {
+pub async fn get_unpicked_tasks(pool: &Pool<MySql>, limit: u64) -> Result<Vec<Task>, Error> {
     // oldest_entry(task_status: TaskStatus::NotPicked)
-    let query  = sqlx::query("SELECT * from task where task_status = ? order by id")
-                .bind(TaskStatus::NotPicked.as_u8());
+    let query  = sqlx::query("SELECT * from task where task_status = ? order by id limit ?")
+                .bind(TaskStatus::NotPicked.as_u8()).bind(limit);
 
     info!("{}", query.sql());
-    info!("arguments: {}", TaskStatus::NotPicked.as_u8());
+    info!("arguments: {}, {}", TaskStatus::NotPicked.as_u8(), limit);
 
     let reduction_circuit = match query.fetch_all(pool).await{
         Ok(t) => {
