@@ -14,7 +14,7 @@ use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
     traits::{pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}
+        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Vkey}
     },
 };
 use quantum_utils::{
@@ -157,6 +157,22 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
                 let protocol_pis = Halo2PoseidonPis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(5);
+            },
+            ProvingSchemes::Risc0 => {
+                let protocol_vkey = Risc0Vkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
+
+                let protocol_pis = Risc0Pis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
+                protocol_ids.push(6);
+            },
+            ProvingSchemes::Sp1 => {
+                let protocol_vkey = Sp1Vkey::read_vk(&protocol_circuit_vkey_path)?;
+                protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
+
+                let protocol_pis = Sp1Pis::read_pis(&protocol_pis_path)?;
+                protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
+                protocol_ids.push(7);
             },
         }
     }

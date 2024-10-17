@@ -13,17 +13,21 @@ use quantum_types::{
         vkey::Vkey,
     },
     types::{
-        config::ConfigData, db::{proof::Proof as DBProof, user_circuit_data::UserCircuitData}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Proof, Plonky2Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}
+        config::ConfigData, db::{proof::Proof as DBProof, user_circuit_data::UserCircuitData}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Proof, Sp1Vkey}
     },
 };
 use quantum_utils::error_line;
 use risc0_zkvm::{serde::to_vec, Receipt};
+use sp1_core::structs::SP1ReductionInput;
+// use sp1_core::structs::SP1ReductionInput;
 use tokio::time::Instant;
 use tracing::info;
 use quantum_db::repository::proof_repository::get_proof_by_proof_id;
-use crate::connection::get_pool;
+use crate::{bonsai::upload_receipt, connection::get_pool};
 use crate::bonsai::execute_proof_reduction;
 use crate::utils::dump_reduction_proof_data;
+use std::ops::Deref;
+pub const SP1_CIRCUIT_VERSION: &str = "v3.0.0-rc1";
 
 pub async fn handle_proof_generation_and_updation(
     proof_id: u64,
@@ -81,6 +85,10 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
         (receipt, reduction_time) = generate_halo2_poseidon_reduced_proof(user_circuit_data, proof_data).await?;
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Plonky2 {
         (receipt, reduction_time) = generate_plonky2_reduced_proof(user_circuit_data, proof_data).await?;
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::Risc0 {
+        (receipt, reduction_time) = generate_risc0_reduced_proof(user_circuit_data, proof_data).await?;
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::Sp1 {
+        (receipt, reduction_time) = generate_sp1_reduced_proof(user_circuit_data, proof_data).await?;
     } 
     else {
         return Err(anyhow!(error_line!("unsupported proving scheme in proof reduction")));
@@ -130,7 +138,8 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
     let input_data_vec = form_snarkjs_groth16_bonsai_inputs(vk, proof, public_inputs)?;
     
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let assumptions = vec![];
+    let (receipt, _) = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
     Ok((receipt,reduction_time))
 }
@@ -172,9 +181,10 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let pis = Halo2PlonkPis::read_pis(&pis_path)?;
     
     let input_data = form_halo2_plonk_bonsai_inputs(&proof, &vk, &pis)?;
+    let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
@@ -218,9 +228,10 @@ async fn generate_halo2_poseidon_reduced_proof(user_circuit_data: &UserCircuitDa
     let pis = Halo2PoseidonPis::read_pis(&pis_path)?;
     
     let input_data = form_halo2_poseidon_bonsai_inputs(&proof, &vk, &pis)?;
+    let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
@@ -253,14 +264,92 @@ async fn generate_plonky2_reduced_proof(user_circuit_data: &UserCircuitData, pro
     let vk = Plonky2Vkey::read_vk(&vk_path)?;
     
     let input_data = form_plonk2_bonsai_inputs(&proof, &vk)?;
+    let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
 }
 
+fn form_risc0_bonsai_inputs(proof: &Risc0Proof, vk: &Risc0Vkey) -> AnyhowResult<Vec<u8>> {
+
+    // TODO: to check whether this to_vec is needed, vkey is already u32 type
+    let image_id = to_vec(&vk.vkey_bytes)?;
+    let pis_bytes = to_vec(&proof.receipt.journal.bytes)?;
+
+    let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&image_id).to_vec();
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&pis_bytes));
+
+    Ok(input_data_vec)
+}
+
+// TODO: add assumption also
+async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
+    // Get inner_proof
+    let proof_path = &proof_data.proof_path;
+    println!("proof_path :: {:?}", proof_path);
+
+    // Get inner_vk
+    let vk_path = &user_circuit_data.vk_path;
+    println!("vk_path :: {:?}", vk_path);
+
+    let proof = Risc0Proof::read_proof(&proof_path)?;
+    let vk = Risc0Vkey::read_vk(&vk_path)?;
+    
+    let input_data = form_risc0_bonsai_inputs(&proof, &vk)?;
+
+    let receipt_id = upload_receipt(proof.receipt).await?;
+    let assumptions = vec![receipt_id];
+    let reduction_start_time = Instant::now();
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let reduction_time = reduction_start_time.elapsed().as_secs();
+
+    Ok((receipt, reduction_time))
+}
+
+fn form_sp1_bonsai_inputs(proof: &Sp1Proof, vk: &Sp1Vkey) -> AnyhowResult<Vec<u8>> {
+
+    // TODO: to check whether this to_vec is needed, vkey is already u32 type
+    // let image_id = to_vec(&vk.vkey_bytes)?;
+    // let pis_bytes = to_vec(&proof.receipt.journal.bytes)?;
+
+    let sp1_reduction_input = SP1ReductionInput {
+            vk: vk.vkey.vk.clone(),
+            //TODO: remove unwrap
+            compressed_proof: proof.proof.proof.clone().try_as_compressed().unwrap().deref().clone(),
+            public_values: proof.proof.public_values.clone(),
+            sp1_version: proof.proof.sp1_version.clone(),
+        };
+
+    let sp1_reduction_input_bytes = to_vec(&sp1_reduction_input)?;
+    let input_data_vec: Vec<u8> = bytemuck::cast_slice(&sp1_reduction_input_bytes).to_vec();
+    Ok(input_data_vec)
+}
+
+
+async fn generate_sp1_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
+    // Get inner_proof
+    let proof_path = &proof_data.proof_path;
+    println!("proof_path :: {:?}", proof_path);
+
+    // Get inner_vk
+    let vk_path = &user_circuit_data.vk_path;
+    println!("vk_path :: {:?}", vk_path);
+
+    let proof = Sp1Proof::read_proof(&proof_path)?;
+    let vk = Sp1Vkey::read_vk(&vk_path)?;
+    
+    let input_data = form_sp1_bonsai_inputs(&proof, &vk)?;
+    let assumptions = vec![];
+
+    let reduction_start_time = Instant::now();
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let reduction_time = reduction_start_time.elapsed().as_secs();
+
+    Ok((receipt, reduction_time))
+}
 
 fn form_gnark_plonk_bonsai_inputs(proof: &GnarkPlonkSolidityProof, vk: &GnarkPlonkVkey, pis: &GnarkPlonkPis)-> AnyhowResult<Vec<u8>> {
     let proof_bytes = to_vec(&proof.proof_bytes)?;
@@ -296,9 +385,10 @@ async fn generate_gnark_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let pis = GnarkPlonkPis::read_pis(&pis_path)?;
 
     let input_data = form_gnark_plonk_bonsai_inputs(&proof, &vk, &pis)?;
+    let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
@@ -338,9 +428,10 @@ async fn generate_gnark_groth16_reduced_proof(user_circuit_data: &UserCircuitDat
     let pis = GnarkGroth16Pis::read_pis(&pis_path)?;
 
     let input_data = form_gnark_groth16_bonsai_inputs(&proof, &vk, &pis)?;
+    let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap()).await?;
+    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
