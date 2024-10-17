@@ -7,7 +7,7 @@ use num_bigint::BigUint;
 use quantum_circuits_interface::ffi::circuit_builder::{CircomProof, CircomVKey, CircuitBuilder, CircuitBuilderImpl, GnarkVKey, ProveResult, Risc0SnarkProveArgs};
 use quantum_db::repository::{
     bonsai_image::get_aggregate_circuit_bonsai_image, superproof_repository::{
-        get_last_verified_superproof, update_previous_superproof_root, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_superproof_receipts_path, update_superproof_root, update_superproof_total_proving_time
+        get_last_verified_superproof, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_superproof_receipts_path, update_superproof_root, update_superproof_total_proving_time
     }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
 };
 use quantum_types::{
@@ -25,8 +25,7 @@ use serde::Serialize;
 use tracing::info;
 use utils::hash::{Hasher, KeccakHasher};
 use crate::{bonsai::{execute_aggregation, run_stark2snark}, connection::get_pool};
-use crate::utils::get_last_superproof_leaves;
-// use 
+
 pub async fn handle_proof_aggregation_and_updation(
     proofs: Vec<DBProof>,
     superproof_id: u64,
@@ -102,13 +101,6 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
         let protocol_pis_path = proof.pis_path.clone();
 
         match user_circuit_data.proving_scheme {
-            // ProvingSchemes::GnarkGroth16 => {
-            //     let protocol_vkey = GnarkGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
-            //     protocol_vkey_hashes.push(protocol_vkey.extended_keccak_hash(user_circuit_data.n_commitments)?.to_vec());
-
-            //     let protocol_pis = GnarkGroth16Pis::read_pis(&protocol_pis_path)?;
-            //     protocol_pis_hashes.push(protocol_pis.extended_keccak_hash()?.to_vec());
-            // }
             ProvingSchemes::Groth16 => {
                 let protocol_vkey = SnarkJSGroth16Vkey::read_vk(&protocol_circuit_vkey_path)?;
                 protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
@@ -177,27 +169,22 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
         }
     }
 
-    let last_leaves = get_last_superproof_leaves(config).await?;
-
-    let (agg_input, new_leaves, new_superproof_root ) = get_agg_inputs::<KeccakHasher>(protocol_ids, protocol_vkey_hashes, protocol_pis_hashes, proofs.len(), last_leaves, config.imt_depth)?;
+    let (agg_input, leaves, batch_root_bytes) = get_agg_inputs::<KeccakHasher>(protocol_ids, protocol_vkey_hashes, protocol_pis_hashes, proofs.len())?;
 
     let superproof_leaves_path = get_superproof_leaves_path(
         &config.storage_folder_path,
         &config.supperproof_path,
         superproof_id,
     );
-    // TODO: check this.
-    let new_leaves_bytes = bincode::serialize(&new_leaves)?;
-    write_bytes_to_file(&new_leaves_bytes, &superproof_leaves_path)?;
+
+    let leaves_serialized = bincode::serialize(&leaves)?;
+    write_bytes_to_file(&leaves_serialized, &superproof_leaves_path)?;
     update_superproof_leaves_path(get_pool().await, &superproof_leaves_path, superproof_id).await?;
 
-    //TODO: fix this
-    let old_root = last_verified_superproof.unwrap().superproof_root.unwrap();
-    // let old_root: &str = "";
-    update_previous_superproof_root(get_pool().await, &old_root, superproof_id).await?;
 
-    let new_root = encode_keccak_hash(&new_superproof_root)?;
-    update_superproof_root(get_pool().await, &new_root, superproof_id).await?;
+
+    let batch_root = encode_keccak_hash(&batch_root_bytes)?;
+    update_superproof_root(get_pool().await, &batch_root, superproof_id).await?;
 
     let aggregation_start = Instant::now();
 
@@ -209,6 +196,7 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
     receipt.clone().unwrap().verify(agg_image.circuit_verifying_id).expect("agg receipt not verified");
     let snark_receipt = run_stark2snark(agg_session_id, superproof_id).await?.unwrap();
 
+    println!("snark receipt: {:?}", snark_receipt);
     let prove_result = snark_to_gnark_reduction(&snark_receipt, config, agg_image.circuit_verifying_id)?;
 
     let aggregation_time = aggregation_start.elapsed();
