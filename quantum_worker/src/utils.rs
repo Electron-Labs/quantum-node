@@ -1,7 +1,7 @@
-use agg_core::inputs::get_init_tree_data;
+// use agg_core::inputs::get_init_tree_data;
 use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
-use imt_core::types::Leaf;
+// use imt_core::types::Leaf;
 use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::traits::pis::Pis;
 use quantum_types::traits::proof::Proof;
@@ -68,54 +68,54 @@ pub fn dump_reduction_proof_data(
 }
 
 // Returns imt_proof_path, imt_pis_path
-pub fn dump_imt_proof_data(
-    config: &ConfigData,
-    superproof_id: u64,
-    proof: GnarkGroth16Proof,
-    pis: GnarkGroth16Pis,
-) -> AnyhowResult<(String, String)> {
-    let proof_path = get_imt_proof_path(
-        &config.storage_folder_path,
-        &config.imt_circuit_data_path,
-        superproof_id,
-    );
-    let pis_path = get_imt_pis_path(
-        &config.storage_folder_path,
-        &config.imt_circuit_data_path,
-        superproof_id,
-    );
-    proof.dump_proof(&proof_path)?;
-    pis.dump_pis(&pis_path)?;
-    Ok((proof_path, pis_path))
-}
+// pub fn dump_imt_proof_data(
+//     config: &ConfigData,
+//     superproof_id: u64,
+//     proof: GnarkGroth16Proof,
+//     pis: GnarkGroth16Pis,
+// ) -> AnyhowResult<(String, String)> {
+//     let proof_path = get_imt_proof_path(
+//         &config.storage_folder_path,
+//         &config.imt_circuit_data_path,
+//         superproof_id,
+//     );
+//     let pis_path = get_imt_pis_path(
+//         &config.storage_folder_path,
+//         &config.imt_circuit_data_path,
+//         superproof_id,
+//     );
+//     proof.dump_proof(&proof_path)?;
+//     pis.dump_pis(&pis_path)?;
+//     Ok((proof_path, pis_path))
+// }
 
-// returns empty tree root if leaves not found
-pub async fn get_last_superproof_leaves<H:Hasher>(
-    config: &ConfigData,
-) -> AnyhowResult<Vec<Leaf<H>>> {
-    let some_superproof = get_last_verified_superproof(get_pool().await).await?;
-    let last_leaves: Vec<Leaf<H>>;
-    match some_superproof {
-        Some(superproof) => match superproof.superproof_leaves_path {
-            Some(superproof_leaves_path) => {
-                last_leaves = bincode::deserialize(&std::fs::read(&superproof_leaves_path)?)?;
-            }
-            _ => {
-                info!(
-                    "No superproof_leaves_path for superproof_id={} => using last empty tree root",
-                    superproof.id.unwrap() // can't be null
-                );
-                (last_leaves, _) = get_init_tree_data::<H>(config.imt_depth as u8)?;
-            }
-        },
-        // TODO: handle case when we shift to risc0, we dont want to read last superproof leaf(in prod);
-        _ => {
-            info!("No superproof => using last empty tree root");
-            (last_leaves, _) = get_init_tree_data::<H>(config.imt_depth as u8)?;
-        }
-    }
-    Ok(last_leaves)
-}
+// // returns empty tree root if leaves not found
+// pub async fn get_last_superproof_leaves<H:Hasher>(
+//     config: &ConfigData,
+// ) -> AnyhowResult<Vec<Leaf<H>>> {
+//     let some_superproof = get_last_verified_superproof(get_pool().await).await?;
+//     let last_leaves: Vec<Leaf<H>>;
+//     match some_superproof {
+//         Some(superproof) => match superproof.superproof_leaves_path {
+//             Some(superproof_leaves_path) => {
+//                 last_leaves = bincode::deserialize(&std::fs::read(&superproof_leaves_path)?)?;
+//             }
+//             _ => {
+//                 info!(
+//                     "No superproof_leaves_path for superproof_id={} => using last empty tree root",
+//                     superproof.id.unwrap() // can't be null
+//                 );
+//                 (last_leaves, _) = get_init_tree_data::<H>(config.imt_depth as u8)?;
+//             }
+//         },
+//         // TODO: handle case when we shift to risc0, we dont want to read last superproof leaf(in prod);
+//         _ => {
+//             info!("No superproof => using last empty tree root");
+//             (last_leaves, _) = get_init_tree_data::<H>(config.imt_depth as u8)?;
+//         }
+//     }
+//     Ok(last_leaves)
+// }
 
 #[cfg(test)]
 mod tests {

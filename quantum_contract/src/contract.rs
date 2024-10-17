@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use ethers::contract::Abigen;
 use quantum_types::types::gnark_groth16::SuperproofGnarkGroth16Proof;
-use quantum_utils::error_line;
 use tracing::info;
 
 use ethers::types::U256;
@@ -15,7 +14,7 @@ use ethers::{
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::quantum_contract::{Proof, Protocol, Quantum, TreeUpdate};
+use crate::quantum_contract::{Proof, Quantum};
 
 pub fn gen_quantum_structs() -> Result<(), Box<dyn std::error::Error>> {
     Abigen::new("Quantum", "quantum_contract/src/abi/Quantum.json")?
@@ -43,34 +42,22 @@ pub fn get_quantum_contract(
 
 pub async fn update_quantum_contract_state(
     contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    protocols: Vec<Protocol>,
-    tree_update: TreeUpdate,
+    batch_root: [u8;32],
     gnark_proof: &SuperproofGnarkGroth16Proof,
 ) -> AnyhowResult<TransactionReceipt> {
     let proof = get_proof_from_gnark_groth16_proof(&gnark_proof)?;
 
     println!("--------------------------------------------------------------------------------");
     println!("final proof: {:?}", proof);
-    println!("protocols: {:?}", protocols);
-    println!("tree_update: {:?}", tree_update);
+    println!("batch root: {:?}", batch_root);
     println!("--------------------------------------------------------------------------------");
     info!("calling verify_superproof");
-    let receipt = contract
-        .verify_superproof(proof, protocols, tree_update)
+    let receipt = contract.verify_superproof(proof, batch_root)
         .send()
         .await?
         .await?
         .ok_or(anyhow!("could not verify superproof"));
     return receipt;
-}
-
-pub async fn register_cricuit_in_contract(
-    vk_hash: [u8;32],
-    contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-) -> AnyhowResult<()> {
-    info!("calling register circuit contract call with vkey hash: {:?}", vk_hash);
-    let _ = contract.register_protocol(vk_hash).send().await?.await.map_err(|err| anyhow!(error_line!(err)));
-    Ok(())
 }
 
 pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &SuperproofGnarkGroth16Proof) -> AnyhowResult<Proof> {

@@ -8,11 +8,6 @@
       },
       {
         "internalType": "bytes32",
-        "name": "initRoot",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bytes32",
         "name": "aggVerifierId_",
         "type": "bytes32"
       }
@@ -37,56 +32,11 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "combinedVKeyHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "pubInputsHash",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "combinedVKeyHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "registerProtocol",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
         "name": "aggVerifierId_",
         "type": "bytes32"
       }
     ],
     "name": "setAggVerifierid",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "treeRoot_",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setTreeRoot",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -105,8 +55,14 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "treeRoot",
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "root",
+        "type": "bytes32"
+      }
+    ],
+    "name": "treeRootVerified",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -155,33 +111,9 @@
         "type": "tuple"
       },
       {
-        "components": [
-          {
-            "internalType": "bytes32",
-            "name": "combinedVkeyHash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "pisHash",
-            "type": "bytes32"
-          }
-        ],
-        "internalType": "struct Quantum.Protocol[]",
-        "name": "protocols",
-        "type": "tuple[]"
-      },
-      {
-        "components": [
-          {
-            "internalType": "bytes32",
-            "name": "newRoot",
-            "type": "bytes32"
-          }
-        ],
-        "internalType": "struct Quantum.TreeUpdate",
-        "name": "treeUpdate",
-        "type": "tuple"
+        "internalType": "bytes32",
+        "name": "batchRoot",
+        "type": "bytes32"
       }
     ],
     "name": "verifySuperproof",
