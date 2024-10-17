@@ -9,17 +9,21 @@ use tracing::{info, error};
 use crate::{connection::get_pool, worker::increment_cycle};
 
 use anyhow::{anyhow, Result as AnyhowResult};
-pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_id: u64) -> AnyhowResult<(Option<Receipt>, String)> {
-    
+
+pub fn get_bonsai_client() -> AnyhowResult<Client> {
     let client = Client::from_env(risc0_zkvm::VERSION)?;
+    Ok(client)
+}
+
+pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_id: u64, assumptions: Vec<String>) -> AnyhowResult<(Option<Receipt>, String)> {
+    
+    let client = get_bonsai_client()?;
 
     // TODO: store it in DB
     let input_id = client.upload_input(input_data).await?;
     println!("input_id: {:?}", input_id);
 
     let bonsai_image = get_bonsai_image_by_image_id(get_pool().await, image_id).await?;
-
-    let assumptions: Vec<String> = vec![];
 
     // Wether to run in execute only mode
     let execute_only = false;
@@ -37,7 +41,7 @@ pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_
 
 pub async fn execute_aggregation(input_data: Vec<u8>, image_id: &str, assumptions: Vec<String>, superproof_id: u64, ) -> AnyhowResult<(Option<Receipt>, String)> {
     
-    let client = Client::from_env(risc0_zkvm::VERSION)?;
+    let client = get_bonsai_client()?;
     let bonsai_image = get_bonsai_image_by_image_id(get_pool().await, image_id).await?;
     // TODO: store it in DB
     let input_id = client.upload_input(input_data).await?;
@@ -141,6 +145,14 @@ pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> Anyh
         }
     }
     Ok(receipt)
+}
+
+
+pub async fn upload_receipt(receipt: Receipt) -> AnyhowResult<String> {
+    let client = get_bonsai_client()?;
+    let serialized_receipt = bincode::serialize(&receipt)?;
+    let receipt_id = client.upload_receipt(serialized_receipt).await?;
+    Ok(receipt_id)
 }
 
 // #[cfg(test)]

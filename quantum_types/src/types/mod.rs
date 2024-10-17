@@ -9,3 +9,5 @@ pub mod hash;
 pub mod gnark_plonk;
 pub mod halo2_poseidon;
 pub mod plonk2;
+pub mod riscs0;
+pub mod sp1;
