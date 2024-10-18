@@ -41,7 +41,7 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
     }  else if data.proof_type == ProvingSchemes::Risc0 {
         let proof_bytes = data.proof.clone();
         let proof = Risc0Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
-        let pis_bytes = proof.receipt.journal.bytes;
+        let pis_bytes = proof.get_receipt()?.journal.bytes;
         let pis = hex::encode(pis_bytes);
         let risco_pis = Risc0Pis(vec![pis]);
         let pis_bytes = risco_pis.serialize_pis()?;

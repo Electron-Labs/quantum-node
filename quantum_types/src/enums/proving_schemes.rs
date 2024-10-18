@@ -10,8 +10,8 @@ pub enum ProvingSchemes {
     Halo2Plonk,
     GnarkPlonk,
     Halo2Poseidon,
-    Sp1,
-    Risc0
+    Risc0,
+    Sp1
 }
 
 impl FromStr for ProvingSchemes {
@@ -48,7 +48,7 @@ impl ToString for ProvingSchemes {
             ProvingSchemes::GnarkPlonk => String::from("GnarkPlonk"),
             ProvingSchemes::Halo2Poseidon => String::from("Halo2Poseidon"),
             ProvingSchemes::Sp1 => String::from("Sp1"),
-            ProvingSchemes::Risc0 => String::from("risc0"),
+            ProvingSchemes::Risc0 => String::from("Risc0"),
         }
     }
 }

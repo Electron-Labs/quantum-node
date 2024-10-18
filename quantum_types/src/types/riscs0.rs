@@ -10,7 +10,7 @@ use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Risc0Vkey {
-    pub vkey_bytes: [u8;32]
+    pub vkey_bytes: [u32;8]
 }
 
 impl Vkey for Risc0Vkey {
@@ -43,7 +43,11 @@ impl Vkey for Risc0Vkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        Ok(self.vkey_bytes)
+        let mut output = [0u8; 32];
+        for (i, &num) in self.vkey_bytes.iter().enumerate() {
+            output[i * 4..(i + 1) * 4].copy_from_slice(&num.to_le_bytes());
+        }
+        Ok(output)
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
@@ -54,20 +58,21 @@ impl Vkey for Risc0Vkey {
 }
 
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
 pub struct Risc0Proof {
-    pub receipt: Receipt
+    pub proof_bytes: Vec<u8>
 }
 
 impl Proof for Risc0Proof {
     fn serialize_proof(&self) -> AnyhowResult<Vec<u8>> {
-        let bytes = serde_json::to_vec(self)?;
-        Ok(bytes)
+        let mut buffer: Vec<u8> = Vec::new();
+        BorshSerialize::serialize(&self, &mut buffer)?;
+        Ok(buffer)
     }
 
     fn deserialize_proof(bytes: &mut &[u8]) -> AnyhowResult<Self> {
         let key: Risc0Proof =
-            serde_json::from_slice(bytes).map_err(|err| anyhow!(error_line!(err)))?;
+            BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
 
@@ -85,8 +90,15 @@ impl Proof for Risc0Proof {
     
     fn validate_proof(&self, vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = Risc0Vkey::read_vk(vkey_path)?;
-        self.receipt.verify(vkey.vkey_bytes)?;
+        self.get_receipt()?.verify(vkey.vkey_bytes)?;
         Ok(())
+    }
+}
+
+impl Risc0Proof {
+    pub fn get_receipt(&self) -> AnyhowResult<Receipt> {
+        let key: Receipt = bincode::deserialize(&self.proof_bytes).map_err(|err| anyhow!(error_line!(err)))?;
+        Ok(key)
     }
 }
 
