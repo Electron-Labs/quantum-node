@@ -277,7 +277,7 @@ fn form_risc0_bonsai_inputs(proof: &Risc0Proof, vk: &Risc0Vkey) -> AnyhowResult<
 
     // TODO: to check whether this to_vec is needed, vkey is already u32 type
     let image_id = to_vec(&vk.vkey_bytes)?;
-    let pis_bytes = to_vec(&proof.receipt.journal.bytes)?;
+    let pis_bytes = to_vec(&proof.get_receipt()?.journal.bytes)?;
 
     let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&image_id).to_vec();
     input_data_vec.extend_from_slice(bytemuck::cast_slice(&pis_bytes));
@@ -300,7 +300,7 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
     
     let input_data = form_risc0_bonsai_inputs(&proof, &vk)?;
 
-    let receipt_id = upload_receipt(proof.receipt).await?;
+    let receipt_id = upload_receipt(proof.get_receipt()?).await?;
     let assumptions = vec![receipt_id];
     let reduction_start_time = Instant::now();
     let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
