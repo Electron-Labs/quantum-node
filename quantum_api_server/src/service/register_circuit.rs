@@ -49,7 +49,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     println!("User vkey path dumped");
 
     // Add user circuit data to DB
-    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, data.proof_type, &protocol.protocol_name, &bonsai_image.image_id, CircuitReductionStatus::SmartContractRgistrationPending).await?;
+    insert_user_circuit_data(get_pool().await, &circuit_hash_string, &vkey_path, data.proof_type, &protocol.protocol_name, &bonsai_image.image_id, CircuitReductionStatus::Completed).await?;
     println!("insert_user_circuit_data DONE");
 
     Ok(
