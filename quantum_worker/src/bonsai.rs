@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bonsai_sdk::{non_blocking::{Client, SessionId}, responses::SnarkReceipt};
+use bonsai_sdk::non_blocking::{Client, SessionId};
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::update_session_id_in_proof, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};
 use quantum_utils::error_line;
 use risc0_zkvm::Receipt;
@@ -110,27 +110,31 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
 }
 
 
-pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> AnyhowResult<Option<SnarkReceipt>> {
+pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> AnyhowResult<Option<Receipt>> {
     let client = Client::from_env(risc0_zkvm::VERSION)?;
-    let mut receipt: Option<SnarkReceipt> = None;
+    let mut receipt: Option<Receipt> = None;
     let snark_session = client.create_snark(agg_session_id).await?;
     println!("Created snark session: {}", snark_session.uuid);
     update_snark_session_id_superproof(get_pool().await, &snark_session.uuid, superproof_id).await?;
     loop {
-        let res = snark_session.status(&client).await?;
+        let res = snark_session.status(&client).await.map_err(|err| anyhow!(error_line!(err)))?;
+        println!("Current status: {}", res.status,);
         match res.status.as_str() {
             "RUNNING" => {
-                println!("Current status: {} - continue polling...", res.status,);
+                println!("continue polling...");
                 std::thread::sleep(Duration::from_secs(15));
                 continue;
             }
             "SUCCEEDED" => {
-                let snark_receipt = res.output;
+                let snark_receipt_url = res.output.unwrap();
+
+                let receipt_buf = client.download(&snark_receipt_url).await?;
+                let snark_receipt: Receipt  = bincode::deserialize(&receipt_buf)?;
                 println!("Snark proof!: {snark_receipt:?}");
                 // let file = File::create("snark_receipt.json").unwrap();
                 // let mut writer = BufWriter::new(file);
                 // serde_json::to_writer(&mut writer, &snark_receipt.unwrap()).unwrap();
-                receipt = snark_receipt;
+                receipt = Some(snark_receipt);
                 break;
             }
             _ => {
