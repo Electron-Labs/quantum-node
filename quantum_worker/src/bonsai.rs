@@ -1,9 +1,9 @@
-use std::time::Duration;
+use std::{fs, time::Duration};
 
 use bonsai_sdk::non_blocking::{Client, SessionId};
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::update_session_id_in_proof, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};
 use quantum_utils::error_line;
-use risc0_zkvm::Receipt;
+use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use tracing::{info, error};
 
 use crate::{connection::get_pool, worker::increment_cycle};
@@ -62,7 +62,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
     let mut receipt: Option<Receipt> = None;
     loop {
         let res = session.status(&client).await?;
-        // TODO: store Risc0 status in DB
+        println!("Current status: {}", res.status);
         if res.status == "RUNNING" {
             info!(
                 "Current status for session_id {} : {} - state: {} - continue polling...",
@@ -111,7 +111,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
 
 
 pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> AnyhowResult<Option<Receipt>> {
-    let client = Client::from_env(risc0_zkvm::VERSION)?;
+    let client = get_bonsai_client()?;
     let mut receipt: Option<Receipt> = None;
     let snark_session = client.create_snark(agg_session_id).await?;
     println!("Created snark session: {}", snark_session.uuid);
@@ -165,13 +165,16 @@ pub async fn upload_receipt(receipt: Receipt) -> AnyhowResult<String> {
 //     use dotenv::dotenv;
 //     use quantum_db::repository::proof_repository::get_proofs_in_superproof_id;
 
-//     #[tokio::test]
-//     #[ignore]
-//     pub async fn test_start_to_snark() {
-//         // NOTE: it connect to database mentioned in the env file, to connect to the test db use .env.test file
-//         // dotenv::from_filename("../.env.test").ok();
-//         dotenv().ok();
-//         let session_id = "090c5ffa-3ed1-4bc5-a430-d6fb5d32d969";
-//         run_stark2snark(session_id.to_string()).await;
-//     }
+//     // #[tokio::test]
+//     // #[ignore]
+//     // #[test]
+//     // pub fn test_start_to_snark() {
+//     //     let bytes = fs::read("./storage/0xceeb414032c1ce1d0d9e8627bf132e49c6e528f2c60c8c8d12890d99ffdaecc3/receipt/reduced_proof_receipt_0xb50ea463d922cc7aad3d1e420782f412a44d80039cb915e89d45189469e1be6b.bin").unwrap();
+//     //     let receipt: Receipt = serde_json::from_slice(&bytes).unwrap();
+
+//     //     let image_id = [4041203892,1423599498,480885055,2897245618,1324039803,3635355280,3442530142,2448524712];
+
+//     //     risc0_execute(receipt, image_id).unwrap();
+
+//     // }
 // }

@@ -28,7 +28,7 @@ impl<'r> FromData<'r> for SubmitProofRequest {
             return Outcome::Forward((data, Status::UnsupportedMediaType));
         }
         // Deserialise the request body into RegisterCircuitRequest
-        let stream = match data.open(1024.kibibytes()).into_string().await {
+        let stream = match data.open(10.mebibytes()).into_string().await {
             Ok(string) if string.is_complete() => string.into_inner(),
             Ok(_) => return Outcome::Error((Status::PayloadTooLarge, TooLarge)),
             Err(e) => return Outcome::Error((Status::InternalServerError, Io(e))),

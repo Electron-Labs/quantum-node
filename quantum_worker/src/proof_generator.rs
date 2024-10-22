@@ -301,6 +301,7 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
     let input_data = form_risc0_bonsai_inputs(&proof, &vk)?;
 
     let receipt_id = upload_receipt(proof.get_receipt()?).await?;
+    println!("uploaded recepit_id: {:?}", receipt_id);
     let assumptions = vec![receipt_id];
     let reduction_start_time = Instant::now();
     let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
@@ -316,11 +317,11 @@ fn form_sp1_bonsai_inputs(proof: &Sp1Proof, vk: &Sp1Vkey) -> AnyhowResult<Vec<u8
     // let pis_bytes = to_vec(&proof.receipt.journal.bytes)?;
 
     let sp1_reduction_input = SP1ReductionInput {
-            vk: vk.vkey.vk.clone(),
+            vk: vk.get_verifying_key()?.vk.clone(),
             //TODO: remove unwrap
-            compressed_proof: proof.proof.proof.clone().try_as_compressed().unwrap().deref().clone(),
-            public_values: proof.proof.public_values.clone(),
-            sp1_version: proof.proof.sp1_version.clone(),
+            compressed_proof: proof.get_proof_with_public_inputs()?.proof.clone().try_as_compressed().unwrap().deref().clone(),
+            public_values: proof.get_proof_with_public_inputs()?.public_values.clone(),
+            sp1_version: proof.get_proof_with_public_inputs()?.sp1_version.clone(),
         };
 
     let sp1_reduction_input_bytes = to_vec(&sp1_reduction_input)?;

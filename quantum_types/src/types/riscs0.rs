@@ -71,8 +71,7 @@ impl Proof for Risc0Proof {
     }
 
     fn deserialize_proof(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let key: Risc0Proof =
-            BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
+        let key: Risc0Proof = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
 
