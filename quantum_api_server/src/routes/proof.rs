@@ -32,7 +32,7 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
     }  else if data.proof_type == ProvingSchemes::Sp1 {
         let proof_bytes = data.proof.clone();
         let proof = Sp1Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
-        let pis_bytes = proof.proof.public_values.to_vec();
+        let pis_bytes = proof.get_proof_with_public_inputs()?.public_values.to_vec();
         let pis = hex::encode(pis_bytes);
         let sp1_pis = Sp1Pis(vec![pis]);
         let pis_bytes = sp1_pis.serialize_pis()?;

@@ -7,7 +7,7 @@ use plonky2::{field::{goldilocks_field::GoldilocksField, types::{Field, PrimeFie
 use plonky2_core::utils::{plonky2_public_inputs_hash, plonky2_vkey_hash};
 use quantum_utils::{error_line, file::{read_bytes_from_file, write_bytes_to_file}};
 use serde::{Deserialize, Serialize};
-use utils::{hash::KeccakHasher};
+use utils::hash::KeccakHasher;
 use anyhow::{anyhow, Result as AnyhowResult};
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 

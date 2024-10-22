@@ -3,27 +3,27 @@ use anyhow::{anyhow , Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
 use quantum_utils::{error_line, file::{read_bytes_from_file, write_bytes_to_file}};
 use serde::{Deserialize, Serialize};
-use sp1_prover::{types::SP1VerifyingKey};
+use sp1_prover::types::SP1VerifyingKey;
 use sp1_sdk::{HashableKey, SP1ProofWithPublicValues};
 use utils::hash::{Hasher, KeccakHasher};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone,BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Sp1Vkey {
-    pub vkey: SP1VerifyingKey
+    pub vkey_bytes: Vec<u8>
 }
 
 impl Vkey for Sp1Vkey {
     fn serialize_vkey(&self) -> anyhow::Result<Vec<u8>> {
-        let bytes = serde_json::to_vec(self)?;
-        Ok(bytes)
+        let mut buffer: Vec<u8> = Vec::new();
+        BorshSerialize::serialize(&self, &mut buffer).map_err(|err| anyhow!(error_line!(err)))?;
+        Ok(buffer)
     }
 
     fn deserialize_vkey(bytes: &mut &[u8]) -> anyhow::Result<Self> {
-        let key: Sp1Vkey =
-        serde_json::from_slice(bytes).map_err(|err| anyhow!(error_line!(err)))?;
-    Ok(key)
+        let key: Sp1Vkey = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
+        Ok(key)
     }
 
     fn dump_vk(&self, path: &str) -> AnyhowResult<()> {
@@ -43,7 +43,7 @@ impl Vkey for Sp1Vkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        Ok(self.vkey.hash_bytes())
+        Ok(self.get_verifying_key()?.hash_bytes())
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
@@ -53,21 +53,28 @@ impl Vkey for Sp1Vkey {
     }
 }
 
+impl Sp1Vkey {
+    pub fn get_verifying_key(&self) -> AnyhowResult<SP1VerifyingKey> {
+        let vkey = bincode::deserialize(&self.vkey_bytes)?;
+        Ok(vkey)
+    }
+}
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
 pub struct Sp1Proof {
-    pub proof: SP1ProofWithPublicValues
+    pub proof_bytes: Vec<u8>
 }
 
 impl Proof for Sp1Proof {
     fn serialize_proof(&self) -> AnyhowResult<Vec<u8>> {
-        let bytes = serde_json::to_vec(self)?;
-        Ok(bytes)
+        let mut buffer: Vec<u8> = Vec::new();
+        BorshSerialize::serialize(&self, &mut buffer)?;
+        Ok(buffer)
     }
 
     fn deserialize_proof(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let key: Sp1Proof =
-            serde_json::from_slice(bytes).map_err(|err| anyhow!(error_line!(err)))?;
+        let key: Sp1Proof = BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
 
@@ -86,8 +93,15 @@ impl Proof for Sp1Proof {
     fn validate_proof(&self, vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = Sp1Vkey::read_vk(vkey_path)?;
         let client = sp1_sdk::ProverClient::local();
-        client.verify(&self.proof, &vkey.vkey)?;
+        client.verify(&self.get_proof_with_public_inputs()?, &vkey.get_verifying_key()?)?;
         Ok(())
+    }
+}
+
+impl Sp1Proof {
+    pub fn get_proof_with_public_inputs(&self) -> AnyhowResult<SP1ProofWithPublicValues> {
+        let proof = bincode::deserialize(&self.proof_bytes)?;
+        Ok(proof)
     }
 }
 
