@@ -36,7 +36,7 @@
         "type": "bytes32"
       }
     ],
-    "name": "setAggVerifierid",
+    "name": "setAggVerifierId",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -58,16 +58,16 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "root",
+        "name": "",
         "type": "bytes32"
       }
     ],
-    "name": "treeRootVerified",
+    "name": "superRootVerified",
     "outputs": [
       {
-        "internalType": "bytes32",
+        "internalType": "bool",
         "name": "",
-        "type": "bytes32"
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
