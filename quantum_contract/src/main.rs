@@ -200,7 +200,7 @@ fn get_current_time() -> NaiveDateTime {
 
 #[tokio::main]
 async fn main() {
-    gen_quantum_structs().unwrap();
+    // gen_quantum_structs().unwrap();
 
     dotenv().ok();
     info!(" --- Starting quantum contract --- ");

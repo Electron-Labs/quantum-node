@@ -166,7 +166,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
     loop {
         println!("Running worker loop");
         let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
-        let aggregation_awaiting_proofs = get_n_reduced_proofs(get_pool().await, config_data.batch_size).await?;
+        let aggregation_awaiting_proofs = get_n_reduced_proofs(get_pool().await, config_data.max_batch_size).await?;
         println!(
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
@@ -185,6 +185,8 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
                 info!("Picked up Proofs aggregation");
                 aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
                 increment_cycle(-1 as i64 * (config_data.pr_batch_max_cycle_count as i64)).await;
+                let final_value = *GLOBAL_CYCLE_COUNTER.lock().await;
+                info!("current cycle used count: {:?}", final_value);
                 drop(permit);
             }
         }
