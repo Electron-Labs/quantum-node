@@ -168,12 +168,12 @@ pub async fn update_session_id_in_proof(pool: &Pool<MySql>, proof_id: u64, sessi
     row_affected
 }
 
-pub async fn get_n_reduced_proofs(pool: &Pool<MySql>, n: u64) -> AnyhowResult<Vec<Proof>> {
-    let query  = sqlx::query("SELECT * from proof where proof_status = ? order by id LIMIT ?")
-                .bind(ProofStatus::Reduced.as_u8()).bind(n);
+pub async fn get_reduced_proofs(pool: &Pool<MySql>) -> AnyhowResult<Vec<Proof>> {
+    let query  = sqlx::query("SELECT * from proof where proof_status = ? order by id")
+                .bind(ProofStatus::Reduced.as_u8());
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}", ProofStatus::Reduced.as_u8(), n);
+    info!("arguments: {}", ProofStatus::Reduced.as_u8());
 
     let db_rows = match query.fetch_all(pool).await {
         Ok(t) => Ok(t),

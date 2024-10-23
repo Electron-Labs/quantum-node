@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 use quantum_db::
     repository::{
         proof_repository::{
-            get_n_reduced_proofs, update_proof_status, update_superproof_id_in_proof,
+            get_reduced_proofs, update_proof_status, update_superproof_id_in_proof
         },
         superproof_repository::{get_last_verified_superproof, insert_new_superproof, update_superproof_status},
         task_repository::{get_unpicked_tasks, update_task_status}
@@ -166,7 +166,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
     loop {
         println!("Running worker loop");
         let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
-        let aggregation_awaiting_proofs = get_n_reduced_proofs(get_pool().await, config_data.max_batch_size).await?;
+        let aggregation_awaiting_proofs = get_reduced_proofs(get_pool().await).await?;
         println!(
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
@@ -179,7 +179,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             }?;
             let next_agg_start_time = last_superproof_onchain_time + Duration::from_secs(config_data.aggregation_wait_time);
             let remaining_time = next_agg_start_time - Utc::now().naive_utc();
-            println!("remaining time for agg : {:?} seconds", remaining_time.num_seconds());
+            println!("remaining time for agg start: {:?} seconds", remaining_time.num_seconds());
             if next_agg_start_time <= Utc::now().naive_utc() {
                 let permit: tokio::sync::OwnedSemaphorePermit = semaphore.clone().acquire_owned().await.map_err(|e| anyhow!(error_line!(format!("error in acquiring the semaphore: {:?}", e))))?;
                 info!("Picked up Proofs aggregation");
