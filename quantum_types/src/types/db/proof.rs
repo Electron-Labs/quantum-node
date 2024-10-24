@@ -14,5 +14,6 @@ pub struct Proof {
     pub superproof_id: Option<u64>,
     pub reduction_time: Option<u64>,
     pub proof_status: ProofStatus,
-    pub user_circuit_hash: String
+    pub user_circuit_hash: String,
+    pub cycle_used: Option<u64>
 }

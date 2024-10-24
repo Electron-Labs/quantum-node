@@ -122,6 +122,20 @@ pub async fn update_superproof_root(pool: &Pool<MySql>, superproof_root: &str, s
     row_affected
 }
 
+pub async fn update_cycles_in_superproof(pool: &Pool<MySql>, agg_cycle: u64, total_cycle_used: u64, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set agg_cycle_used = ?, total_cycle_used =?  where id = ?")
+                .bind(agg_cycle).bind(total_cycle_used).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}, {}", agg_cycle, total_cycle_used, superproof_id );
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
 pub async fn update_superproof_agg_time(pool: &Pool<MySql>, agg_time: u64, superproof_id: u64) -> AnyhowResult<()>{
     let query  = sqlx::query("UPDATE superproof set agg_time = ? where id = ?")
                 .bind(agg_time).bind(superproof_id);

@@ -1,7 +1,7 @@
 use std::{fs, time::Duration};
 
 use bonsai_sdk::non_blocking::{Client, SessionId};
-use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::update_session_id_in_proof, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};
+use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::{update_cycle_used_in_proof, update_session_id_in_proof}, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};
 use quantum_utils::error_line;
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use tracing::{info, error};
@@ -35,11 +35,14 @@ pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_
 
     update_session_id_in_proof(get_pool().await, proof_id, &session.uuid).await?;
 
-    let receipt = check_session_status(session, client, &bonsai_image.circuit_verifying_id).await?;
+    let (receipt, cycle_used) = check_session_status(session, client, &bonsai_image.circuit_verifying_id).await?;
+
+    update_cycle_used_in_proof(get_pool().await, proof_id, cycle_used).await?;
+
     Ok((receipt, session_uuid_id))
 }
 
-pub async fn execute_aggregation(input_data: Vec<u8>, image_id: &str, assumptions: Vec<String>, superproof_id: u64, ) -> AnyhowResult<(Option<Receipt>, String)> {
+pub async fn execute_aggregation(input_data: Vec<u8>, image_id: &str, assumptions: Vec<String>, superproof_id: u64, ) -> AnyhowResult<(Option<Receipt>, String, u64)> {
     
     let client = get_bonsai_client()?;
     let bonsai_image = get_bonsai_image_by_image_id(get_pool().await, image_id).await?;
@@ -54,11 +57,11 @@ pub async fn execute_aggregation(input_data: Vec<u8>, image_id: &str, assumption
     println!("sessionId: {:?}", session.uuid);
     update_session_id_superproof(get_pool().await,  &session.uuid, superproof_id).await?;
 
-    let receipt = check_session_status(session, client, &bonsai_image.circuit_verifying_id).await?;    
-    Ok((receipt, session_uuid_id))
+    let (receipt, cycle_used )= check_session_status(session, client, &bonsai_image.circuit_verifying_id).await?;    
+    Ok((receipt, session_uuid_id, cycle_used))
 }
 
-async fn check_session_status(session: SessionId, client: Client, circuit_verifying_id: &[u32;8] ) -> AnyhowResult<Option<Receipt>> {
+async fn check_session_status(session: SessionId, client: Client, circuit_verifying_id: &[u32;8] ) -> AnyhowResult<(Option<Receipt>, u64)> {
     let mut receipt: Option<Receipt> = None;
     loop {
         let res = session.status(&client).await?;
@@ -79,6 +82,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
             
             //TODO: remove the unwrap
             let cycle_used = res.stats.unwrap().cycles;
+            info!("cycle used in session {:?}: {:?}", &session.uuid, cycle_used);
             increment_cycle(cycle_used as i64).await;
             
             // Download the receipt, containing the output
@@ -91,7 +95,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
             // let METHOD_ID = get_verifier_id(0);
             receipt.clone().unwrap().verify(circuit_verifying_id.clone())
                 .expect("Receipt verification failed");
-
+            return Ok((receipt, cycle_used));
             
         } else {
             info!("sesion status: {:?}", res.status);
@@ -104,9 +108,9 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
             // );
             // error!("session status: {:?}, wit")
         }
-        break;
+        // break;
     }
-    Ok(receipt)
+    // Ok(receipt)
 }
 
 
