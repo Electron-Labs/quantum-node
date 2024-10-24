@@ -34,7 +34,7 @@ use crate::{
 };
 
 const SUPERPROOF_SUBMISSION_RETRY: u64 = 5 * 60;
-const SUPERPROOF_SUBMISSION_DURATION: u64 = 5 * 60;
+const SUPERPROOF_SUBMISSION_DURATION: u64 = 15 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const RETRY_COUNT: u64 = 3;
 const DIRECT_PROOF_VERIFICATION_GAS_COST: u64 = 350_000;
@@ -179,7 +179,7 @@ async fn make_smart_contract_call_with_retry(batch_root: [u8; 32], gnark_proof: 
             }
             Err(e) => {
                 retry_count = retry_count+1;
-                info!("error occured in smart contract call, retrying count {:?}, error: {:?}",retry_count, error_line!(e));
+                error!("error occured in smart contract call, retrying count {:?}, error: {:?}",retry_count, error_line!(e));
                 info!("Trying again in 10 seconds");
                 sleep(Duration::from_secs(10)).await;
                 error =  Err(anyhow!(error_line!(e)));
