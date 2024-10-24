@@ -168,6 +168,20 @@ pub async fn update_session_id_in_proof(pool: &Pool<MySql>, proof_id: u64, sessi
     row_affected
 }
 
+pub async fn update_cycle_used_in_proof(pool: &Pool<MySql>, proof_id: u64, cycle_used: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE proof set cycle_used = ? where id = ?")
+                .bind(cycle_used).bind(proof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", cycle_used, proof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
 pub async fn get_reduced_proofs(pool: &Pool<MySql>) -> AnyhowResult<Vec<Proof>> {
     let query  = sqlx::query("SELECT * from proof where proof_status = ? order by id")
                 .bind(ProofStatus::Reduced.as_u8());
@@ -202,6 +216,7 @@ fn get_proof_from_mysql_row(row: &MySqlRow) -> AnyhowResult<Proof>{
         user_circuit_hash: row.try_get_unchecked("user_circuit_hash")?,
         input_id: row.try_get_unchecked("input_id")?,
         session_id: row.try_get_unchecked("session_id")?,
+        cycle_used: row.try_get_unchecked("cycle_used")?,
     };
     Ok(proof)
 }

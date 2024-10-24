@@ -6,7 +6,7 @@ use num_bigint::BigUint;
 use quantum_circuits_interface::ffi::circuit_builder::{CircomProof, CircomVKey, CircuitBuilder, CircuitBuilderImpl, GnarkVKey, ProveResult, Risc0SnarkProveArgs};
 use quantum_db::repository::{
     bonsai_image::get_aggregate_circuit_bonsai_image, superproof_repository::{
-        get_last_verified_superproof, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_superproof_receipts_path, update_superproof_root, update_superproof_total_proving_time
+        get_last_verified_superproof, update_cycles_in_superproof, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_superproof_receipts_path, update_superproof_root, update_superproof_total_proving_time
     }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
 };
 use quantum_types::{
@@ -191,10 +191,12 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
 
     //TODO: move it to DB;
     let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
-    let (receipt, agg_session_id) = execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
-    receipt.clone().unwrap().verify(agg_image.circuit_verifying_id).expect("agg receipt not verified");
-    let snark_receipt = run_stark2snark(agg_session_id, superproof_id).await?.unwrap();
+    let (receipt, agg_session_id, agg_cycle_used) = execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
 
+    let total_cycle_used = calc_total_cycle_used(agg_cycle_used, &proofs);
+    update_cycles_in_superproof(get_pool().await, agg_cycle_used, total_cycle_used, superproof_id).await?;
+    
+    let snark_receipt = run_stark2snark(agg_session_id, superproof_id).await?.unwrap();
     println!("snark receipt: {:?}", snark_receipt);
     let prove_result = snark_to_gnark_reduction(&snark_receipt, config, agg_image.circuit_verifying_id)?;
 
@@ -202,6 +204,10 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
     Ok((receipt, snark_receipt, prove_result, aggregation_time))
 }
 
+fn calc_total_cycle_used(agg_cycle_used: u64, proofs: &[DBProof] ) -> u64{
+    let proof_cycles: u64 = proofs.iter().map(|item| item.cycle_used.unwrap_or(0)).sum();
+    agg_cycle_used + proof_cycles
+}
 
 
 fn snark_to_gnark_reduction(snark_receipt: &Receipt, config: &ConfigData, circuit_verifying_id: [u32;8]) -> AnyhowResult<ProveResult> {
