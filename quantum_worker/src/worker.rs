@@ -6,7 +6,7 @@ use quantum_db::
         proof_repository::{
             get_reduced_proofs, update_proof_status, update_superproof_id_in_proof
         },
-        superproof_repository::{get_last_verified_superproof, insert_new_superproof, update_superproof_status},
+        superproof_repository::{get_last_aggregated_superproof, get_last_verified_superproof, insert_new_superproof, update_superproof_status},
         task_repository::{get_unpicked_tasks, update_task_status}
     };
 use quantum_types::{
@@ -167,11 +167,12 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
         println!("Running worker loop");
         let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
         let aggregation_awaiting_proofs = get_reduced_proofs(get_pool().await).await?;
+        let last_agg_superproof = get_last_aggregated_superproof(get_pool().await).await?;
         println!(
             "Aggregation awaiting proofs {:?}",
             aggregation_awaiting_proofs.len()
         );
-        if last_verified_superproof.is_some() && aggregation_awaiting_proofs.len() > 0{
+        if last_verified_superproof.is_some() && aggregation_awaiting_proofs.len() > 0 && last_agg_superproof.is_none(){
             let last_verified_superproof = last_verified_superproof.unwrap(); // safe to use unwrap here, already check 
             let last_superproof_onchain_time = match last_verified_superproof.onchain_submission_time {
                 Some(t) => Ok(t),
