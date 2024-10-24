@@ -1,14 +1,32 @@
-use anyhow::Result as AnyhowResult;
-use quantum_db::repository::user_circuit_data_repository::get_user_circuit_data_by_circuit_hash;
-use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey} }};
+use anyhow::{anyhow, Result as AnyhowResult};
+use quantum_db::repository::{protocol::get_protocol_by_auth_token, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::user_circuit_data, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey} }};
 use quantum_utils::error_line;
 use rocket::{get, post, serde::json::Json, State};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{connection::get_pool, error::error::CustomError, service::proof::{get_proof_data_exec, submit_proof_exec}, types::{auth::AuthToken, proof_data::ProofDataResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 
 #[post("/proof", data = "<data>")]
 pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
+    let protocol = get_protocol_by_auth_token(get_pool().await, &_auth_token.0).await?;
+    
+    let protocol = match protocol {
+        Some(p) => Ok(p),
+        None => {
+            error!("No protocol against this auth token");
+            Err(CustomError::Internal(error_line!("/register_circuit No protocol against this auth token".to_string())))
+        },
+    };
+    let protocol = protocol?;
+
+    let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
+    
+    if user_circuit_data.protocol_name.to_uppercase() != protocol.protocol_name.to_uppercase() {
+        info!("circuit reduction not completed");
+        return Err(CustomError::BadRequest(error_line!("circuit reduction not completed".to_string())));
+    }
+
     let response: AnyhowResult<SubmitProofResponse>;
     if data.proof_type == ProvingSchemes::GnarkGroth16 {
         response = submit_proof_exec::<GnarkGroth16Proof, GnarkGroth16Pis, GnarkGroth16Vkey>(data, config_data).await;
