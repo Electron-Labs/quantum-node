@@ -37,7 +37,6 @@ const SUPERPROOF_SUBMISSION_RETRY: u64 = 5 * 60;
 const SUPERPROOF_SUBMISSION_DURATION: u64 = 15 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const RETRY_COUNT: u64 = 3;
-const DIRECT_PROOF_VERIFICATION_GAS_COST: u64 = 350_000;
 
 
 async fn initialize_superproof_submission_loop(
@@ -136,7 +135,7 @@ async fn initialize_superproof_submission_loop(
         .await?;
 
         // TODO: remove unwrap
-        for proof in proofs {
+        for proof in &proofs {
             update_proof_status(get_pool().await, proof.id.unwrap(), ProofStatus::Verified).await?;
         }
 
@@ -153,7 +152,7 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
-        let total_gas_saved_batch = (DIRECT_PROOF_VERIFICATION_GAS_COST * 20) - gas_used;
+        let total_gas_saved_batch = gas_used*(proofs.len() as u64) - gas_used ;
         let total_usd_saved_batch = calc_total_cost_usd(total_gas_saved_batch, gas_cost, eth_price);
         udpate_cost_saved_data(get_pool().await, total_gas_saved_batch, total_usd_saved_batch).await?;
 
