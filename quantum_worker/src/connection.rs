@@ -18,7 +18,8 @@ pub async fn get_pool() -> &'static Pool<MySql> {
             .database(&database)
             .disable_statement_logging().clone();
 
-        let pool_options = MySqlPoolOptions::new().min_connections(5);
+        // change the number of connection to 1, to check the error `Got timeout reading communication packets`
+        let pool_options = MySqlPoolOptions::new().min_connections(1);
         pool_options.connect_with(connection_options).await.unwrap()
     })
     .await
