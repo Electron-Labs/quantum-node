@@ -12,7 +12,7 @@ pub use quantum::*;
 pub mod quantum {
     const _: () = {
         ::core::include_bytes!(
-            "/home/ubuntu/quantum/quantum-node/quantum_contract/src/abi/Quantum.json",
+            "/Users/utsavjain/Desktop/electron_labs/quantum-node/quantum_contract/src/abi/Quantum.json",
         );
     };
     #[allow(deprecated)]
@@ -28,7 +28,7 @@ pub mod quantum {
                         ),
                     },
                     ::ethers::core::abi::ethabi::Param {
-                        name: ::std::borrow::ToOwned::to_owned("initRoot"),
+                        name: ::std::borrow::ToOwned::to_owned("aggVerifierId_"),
                         kind: ::ethers::core::abi::ethabi::ParamType::FixedBytes(
                             32usize,
                         ),
@@ -60,67 +60,13 @@ pub mod quantum {
                     ],
                 ),
                 (
-                    ::std::borrow::ToOwned::to_owned("pubInputsHashes"),
+                    ::std::borrow::ToOwned::to_owned("setAggVerifierId"),
                     ::std::vec![
                         ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned("pubInputsHashes"),
+                            name: ::std::borrow::ToOwned::to_owned("setAggVerifierId"),
                             inputs: ::std::vec![
                                 ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::string::String::new(),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::FixedBytes(
-                                        32usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("bytes32"),
-                                    ),
-                                },
-                            ],
-                            outputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::string::String::new(),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::FixedBytes(
-                                        32usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("bytes32"),
-                                    ),
-                                },
-                            ],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::View,
-                        },
-                    ],
-                ),
-                (
-                    ::std::borrow::ToOwned::to_owned("registerProtocol"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned("registerProtocol"),
-                            inputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("vkHash"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::FixedBytes(
-                                        32usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("bytes32"),
-                                    ),
-                                },
-                            ],
-                            outputs: ::std::vec![],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
-                        },
-                    ],
-                ),
-                (
-                    ::std::borrow::ToOwned::to_owned("setTreeRoot"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned("setTreeRoot"),
-                            inputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("treeRoot_"),
+                                    name: ::std::borrow::ToOwned::to_owned("aggVerifierId_"),
                                     kind: ::ethers::core::abi::ethabi::ParamType::FixedBytes(
                                         32usize,
                                     ),
@@ -156,12 +102,11 @@ pub mod quantum {
                     ],
                 ),
                 (
-                    ::std::borrow::ToOwned::to_owned("treeRoot"),
+                    ::std::borrow::ToOwned::to_owned("superRootVerified"),
                     ::std::vec![
                         ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned("treeRoot"),
-                            inputs: ::std::vec![],
-                            outputs: ::std::vec![
+                            name: ::std::borrow::ToOwned::to_owned("superRootVerified"),
+                            inputs: ::std::vec![
                                 ::ethers::core::abi::ethabi::Param {
                                     name: ::std::string::String::new(),
                                     kind: ::ethers::core::abi::ethabi::ParamType::FixedBytes(
@@ -169,6 +114,15 @@ pub mod quantum {
                                     ),
                                     internal_type: ::core::option::Option::Some(
                                         ::std::borrow::ToOwned::to_owned("bytes32"),
+                                    ),
+                                },
+                            ],
+                            outputs: ::std::vec![
+                                ::ethers::core::abi::ethabi::Param {
+                                    name: ::std::string::String::new(),
+                                    kind: ::ethers::core::abi::ethabi::ParamType::Bool,
+                                    internal_type: ::core::option::Option::Some(
+                                        ::std::borrow::ToOwned::to_owned("bool"),
                                     ),
                                 },
                             ],
@@ -232,37 +186,12 @@ pub mod quantum {
                                     ),
                                 },
                                 ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("batch"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Tuple(
-                                        ::std::vec![
-                                            ::ethers::core::abi::ethabi::ParamType::FixedArray(
-                                                ::std::boxed::Box::new(
-                                                    ::ethers::core::abi::ethabi::ParamType::Tuple(
-                                                        ::std::vec![
-                                                            ::ethers::core::abi::ethabi::ParamType::FixedBytes(32usize),
-                                                            ::ethers::core::abi::ethabi::ParamType::FixedBytes(32usize),
-                                                        ],
-                                                    ),
-                                                ),
-                                                20usize,
-                                            ),
-                                        ],
+                                    name: ::std::borrow::ToOwned::to_owned("batchRoot"),
+                                    kind: ::ethers::core::abi::ethabi::ParamType::FixedBytes(
+                                        32usize,
                                     ),
                                     internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("struct Quantum.Batch"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("treeUpdate"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Tuple(
-                                        ::std::vec![
-                                            ::ethers::core::abi::ethabi::ParamType::FixedBytes(32usize),
-                                        ],
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned(
-                                            "struct Quantum.TreeUpdate",
-                                        ),
+                                        ::std::borrow::ToOwned::to_owned("bytes32"),
                                     ),
                                 },
                             ],
@@ -331,31 +260,13 @@ pub mod quantum {
                 .method_hash([141, 165, 203, 91], ())
                 .expect("method not found (this should never happen)")
         }
-        ///Calls the contract's `pubInputsHashes` (0x70e8daf7) function
-        pub fn pub_inputs_hashes(
+        ///Calls the contract's `setAggVerifierId` (0x799c8d6e) function
+        pub fn set_agg_verifier_id(
             &self,
-            p0: [u8; 32],
-        ) -> ::ethers::contract::builders::ContractCall<M, [u8; 32]> {
-            self.0
-                .method_hash([112, 232, 218, 247], p0)
-                .expect("method not found (this should never happen)")
-        }
-        ///Calls the contract's `registerProtocol` (0xbaa03062) function
-        pub fn register_protocol(
-            &self,
-            vk_hash: [u8; 32],
+            agg_verifier_id: [u8; 32],
         ) -> ::ethers::contract::builders::ContractCall<M, ()> {
             self.0
-                .method_hash([186, 160, 48, 98], vk_hash)
-                .expect("method not found (this should never happen)")
-        }
-        ///Calls the contract's `setTreeRoot` (0xa5a329c0) function
-        pub fn set_tree_root(
-            &self,
-            tree_root: [u8; 32],
-        ) -> ::ethers::contract::builders::ContractCall<M, ()> {
-            self.0
-                .method_hash([165, 163, 41, 192], tree_root)
+                .method_hash([121, 156, 141, 110], agg_verifier_id)
                 .expect("method not found (this should never happen)")
         }
         ///Calls the contract's `setVerifier` (0x5437988d) function
@@ -367,12 +278,13 @@ pub mod quantum {
                 .method_hash([84, 55, 152, 141], verifier_address)
                 .expect("method not found (this should never happen)")
         }
-        ///Calls the contract's `treeRoot` (0x14dc6c14) function
-        pub fn tree_root(
+        ///Calls the contract's `superRootVerified` (0x55a22a85) function
+        pub fn super_root_verified(
             &self,
-        ) -> ::ethers::contract::builders::ContractCall<M, [u8; 32]> {
+            p0: [u8; 32],
+        ) -> ::ethers::contract::builders::ContractCall<M, bool> {
             self.0
-                .method_hash([20, 220, 108, 20], ())
+                .method_hash([85, 162, 42, 133], p0)
                 .expect("method not found (this should never happen)")
         }
         ///Calls the contract's `verifier` (0x2b7ac3f3) function
@@ -386,15 +298,14 @@ pub mod quantum {
                 .method_hash([43, 122, 195, 243], ())
                 .expect("method not found (this should never happen)")
         }
-        ///Calls the contract's `verifySuperproof` (0x84f36951) function
+        ///Calls the contract's `verifySuperproof` (0x8aa1f82c) function
         pub fn verify_superproof(
             &self,
             proof: Proof,
-            batch: Batch,
-            tree_update: TreeUpdate,
+            batch_root: [u8; 32],
         ) -> ::ethers::contract::builders::ContractCall<M, ()> {
             self.0
-                .method_hash([132, 243, 105, 81], (proof, batch, tree_update))
+                .method_hash([138, 161, 248, 44], (proof, batch_root))
                 .expect("method not found (this should never happen)")
         }
     }
@@ -417,7 +328,7 @@ pub mod quantum {
     )]
     #[ethcall(name = "owner", abi = "owner()")]
     pub struct OwnerCall;
-    ///Container type for all input parameters for the `pubInputsHashes` function with signature `pubInputsHashes(bytes32)` and selector `0x70e8daf7`
+    ///Container type for all input parameters for the `setAggVerifierId` function with signature `setAggVerifierId(bytes32)` and selector `0x799c8d6e`
     #[derive(
         Clone,
         ::ethers::contract::EthCall,
@@ -428,37 +339,9 @@ pub mod quantum {
         Eq,
         Hash
     )]
-    #[ethcall(name = "pubInputsHashes", abi = "pubInputsHashes(bytes32)")]
-    pub struct PubInputsHashesCall(pub [u8; 32]);
-    ///Container type for all input parameters for the `registerProtocol` function with signature `registerProtocol(bytes32)` and selector `0xbaa03062`
-    #[derive(
-        Clone,
-        ::ethers::contract::EthCall,
-        ::ethers::contract::EthDisplay,
-        Default,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash
-    )]
-    #[ethcall(name = "registerProtocol", abi = "registerProtocol(bytes32)")]
-    pub struct RegisterProtocolCall {
-        pub vk_hash: [u8; 32],
-    }
-    ///Container type for all input parameters for the `setTreeRoot` function with signature `setTreeRoot(bytes32)` and selector `0xa5a329c0`
-    #[derive(
-        Clone,
-        ::ethers::contract::EthCall,
-        ::ethers::contract::EthDisplay,
-        Default,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash
-    )]
-    #[ethcall(name = "setTreeRoot", abi = "setTreeRoot(bytes32)")]
-    pub struct SetTreeRootCall {
-        pub tree_root: [u8; 32],
+    #[ethcall(name = "setAggVerifierId", abi = "setAggVerifierId(bytes32)")]
+    pub struct SetAggVerifierIdCall {
+        pub agg_verifier_id: [u8; 32],
     }
     ///Container type for all input parameters for the `setVerifier` function with signature `setVerifier(address)` and selector `0x5437988d`
     #[derive(
@@ -475,7 +358,7 @@ pub mod quantum {
     pub struct SetVerifierCall {
         pub verifier_address: ::ethers::core::types::Address,
     }
-    ///Container type for all input parameters for the `treeRoot` function with signature `treeRoot()` and selector `0x14dc6c14`
+    ///Container type for all input parameters for the `superRootVerified` function with signature `superRootVerified(bytes32)` and selector `0x55a22a85`
     #[derive(
         Clone,
         ::ethers::contract::EthCall,
@@ -486,8 +369,8 @@ pub mod quantum {
         Eq,
         Hash
     )]
-    #[ethcall(name = "treeRoot", abi = "treeRoot()")]
-    pub struct TreeRootCall;
+    #[ethcall(name = "superRootVerified", abi = "superRootVerified(bytes32)")]
+    pub struct SuperRootVerifiedCall(pub [u8; 32]);
     ///Container type for all input parameters for the `verifier` function with signature `verifier()` and selector `0x2b7ac3f3`
     #[derive(
         Clone,
@@ -501,7 +384,7 @@ pub mod quantum {
     )]
     #[ethcall(name = "verifier", abi = "verifier()")]
     pub struct VerifierCall;
-    ///Container type for all input parameters for the `verifySuperproof` function with signature `verifySuperproof((uint256[8],uint256[2],uint256[2]),((bytes32,bytes32)[20]),(bytes32))` and selector `0x84f36951`
+    ///Container type for all input parameters for the `verifySuperproof` function with signature `verifySuperproof((uint256[8],uint256[2],uint256[2]),bytes32)` and selector `0x8aa1f82c`
     #[derive(
         Clone,
         ::ethers::contract::EthCall,
@@ -514,22 +397,19 @@ pub mod quantum {
     )]
     #[ethcall(
         name = "verifySuperproof",
-        abi = "verifySuperproof((uint256[8],uint256[2],uint256[2]),((bytes32,bytes32)[20]),(bytes32))"
+        abi = "verifySuperproof((uint256[8],uint256[2],uint256[2]),bytes32)"
     )]
     pub struct VerifySuperproofCall {
         pub proof: Proof,
-        pub batch: Batch,
-        pub tree_update: TreeUpdate,
+        pub batch_root: [u8; 32],
     }
     ///Container type for all of the contract's call
     #[derive(Clone, ::ethers::contract::EthAbiType, Debug, PartialEq, Eq, Hash)]
     pub enum QuantumCalls {
         Owner(OwnerCall),
-        PubInputsHashes(PubInputsHashesCall),
-        RegisterProtocol(RegisterProtocolCall),
-        SetTreeRoot(SetTreeRootCall),
+        SetAggVerifierId(SetAggVerifierIdCall),
         SetVerifier(SetVerifierCall),
-        TreeRoot(TreeRootCall),
+        SuperRootVerified(SuperRootVerifiedCall),
         Verifier(VerifierCall),
         VerifySuperproof(VerifySuperproofCall),
     }
@@ -543,30 +423,20 @@ pub mod quantum {
             ) {
                 return Ok(Self::Owner(decoded));
             }
-            if let Ok(decoded) = <PubInputsHashesCall as ::ethers::core::abi::AbiDecode>::decode(
+            if let Ok(decoded) = <SetAggVerifierIdCall as ::ethers::core::abi::AbiDecode>::decode(
                 data,
             ) {
-                return Ok(Self::PubInputsHashes(decoded));
-            }
-            if let Ok(decoded) = <RegisterProtocolCall as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
-                return Ok(Self::RegisterProtocol(decoded));
-            }
-            if let Ok(decoded) = <SetTreeRootCall as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
-                return Ok(Self::SetTreeRoot(decoded));
+                return Ok(Self::SetAggVerifierId(decoded));
             }
             if let Ok(decoded) = <SetVerifierCall as ::ethers::core::abi::AbiDecode>::decode(
                 data,
             ) {
                 return Ok(Self::SetVerifier(decoded));
             }
-            if let Ok(decoded) = <TreeRootCall as ::ethers::core::abi::AbiDecode>::decode(
+            if let Ok(decoded) = <SuperRootVerifiedCall as ::ethers::core::abi::AbiDecode>::decode(
                 data,
             ) {
-                return Ok(Self::TreeRoot(decoded));
+                return Ok(Self::SuperRootVerified(decoded));
             }
             if let Ok(decoded) = <VerifierCall as ::ethers::core::abi::AbiDecode>::decode(
                 data,
@@ -585,19 +455,13 @@ pub mod quantum {
         fn encode(self) -> Vec<u8> {
             match self {
                 Self::Owner(element) => ::ethers::core::abi::AbiEncode::encode(element),
-                Self::PubInputsHashes(element) => {
-                    ::ethers::core::abi::AbiEncode::encode(element)
-                }
-                Self::RegisterProtocol(element) => {
-                    ::ethers::core::abi::AbiEncode::encode(element)
-                }
-                Self::SetTreeRoot(element) => {
+                Self::SetAggVerifierId(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
                 Self::SetVerifier(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
-                Self::TreeRoot(element) => {
+                Self::SuperRootVerified(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
                 Self::Verifier(element) => {
@@ -613,11 +477,9 @@ pub mod quantum {
         fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
             match self {
                 Self::Owner(element) => ::core::fmt::Display::fmt(element, f),
-                Self::PubInputsHashes(element) => ::core::fmt::Display::fmt(element, f),
-                Self::RegisterProtocol(element) => ::core::fmt::Display::fmt(element, f),
-                Self::SetTreeRoot(element) => ::core::fmt::Display::fmt(element, f),
+                Self::SetAggVerifierId(element) => ::core::fmt::Display::fmt(element, f),
                 Self::SetVerifier(element) => ::core::fmt::Display::fmt(element, f),
-                Self::TreeRoot(element) => ::core::fmt::Display::fmt(element, f),
+                Self::SuperRootVerified(element) => ::core::fmt::Display::fmt(element, f),
                 Self::Verifier(element) => ::core::fmt::Display::fmt(element, f),
                 Self::VerifySuperproof(element) => ::core::fmt::Display::fmt(element, f),
             }
@@ -628,19 +490,9 @@ pub mod quantum {
             Self::Owner(value)
         }
     }
-    impl ::core::convert::From<PubInputsHashesCall> for QuantumCalls {
-        fn from(value: PubInputsHashesCall) -> Self {
-            Self::PubInputsHashes(value)
-        }
-    }
-    impl ::core::convert::From<RegisterProtocolCall> for QuantumCalls {
-        fn from(value: RegisterProtocolCall) -> Self {
-            Self::RegisterProtocol(value)
-        }
-    }
-    impl ::core::convert::From<SetTreeRootCall> for QuantumCalls {
-        fn from(value: SetTreeRootCall) -> Self {
-            Self::SetTreeRoot(value)
+    impl ::core::convert::From<SetAggVerifierIdCall> for QuantumCalls {
+        fn from(value: SetAggVerifierIdCall) -> Self {
+            Self::SetAggVerifierId(value)
         }
     }
     impl ::core::convert::From<SetVerifierCall> for QuantumCalls {
@@ -648,9 +500,9 @@ pub mod quantum {
             Self::SetVerifier(value)
         }
     }
-    impl ::core::convert::From<TreeRootCall> for QuantumCalls {
-        fn from(value: TreeRootCall) -> Self {
-            Self::TreeRoot(value)
+    impl ::core::convert::From<SuperRootVerifiedCall> for QuantumCalls {
+        fn from(value: SuperRootVerifiedCall) -> Self {
+            Self::SuperRootVerified(value)
         }
     }
     impl ::core::convert::From<VerifierCall> for QuantumCalls {
@@ -675,7 +527,7 @@ pub mod quantum {
         Hash
     )]
     pub struct OwnerReturn(pub ::ethers::core::types::Address);
-    ///Container type for all return fields from the `pubInputsHashes` function with signature `pubInputsHashes(bytes32)` and selector `0x70e8daf7`
+    ///Container type for all return fields from the `superRootVerified` function with signature `superRootVerified(bytes32)` and selector `0x55a22a85`
     #[derive(
         Clone,
         ::ethers::contract::EthAbiType,
@@ -686,19 +538,7 @@ pub mod quantum {
         Eq,
         Hash
     )]
-    pub struct PubInputsHashesReturn(pub [u8; 32]);
-    ///Container type for all return fields from the `treeRoot` function with signature `treeRoot()` and selector `0x14dc6c14`
-    #[derive(
-        Clone,
-        ::ethers::contract::EthAbiType,
-        ::ethers::contract::EthAbiCodec,
-        Default,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash
-    )]
-    pub struct TreeRootReturn(pub [u8; 32]);
+    pub struct SuperRootVerifiedReturn(pub bool);
     ///Container type for all return fields from the `verifier` function with signature `verifier()` and selector `0x2b7ac3f3`
     #[derive(
         Clone,
@@ -711,20 +551,6 @@ pub mod quantum {
         Hash
     )]
     pub struct VerifierReturn(pub ::ethers::core::types::Address);
-    ///`Batch((bytes32,bytes32)[20])`
-    #[derive(
-        Clone,
-        ::ethers::contract::EthAbiType,
-        ::ethers::contract::EthAbiCodec,
-        Default,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash
-    )]
-    pub struct Batch {
-        pub protocols: [Protocol; 20],
-    }
     ///`Proof(uint256[8],uint256[2],uint256[2])`
     #[derive(
         Clone,
@@ -740,35 +566,5 @@ pub mod quantum {
         pub proof: [::ethers::core::types::U256; 8],
         pub commitments: [::ethers::core::types::U256; 2],
         pub commitment_pok: [::ethers::core::types::U256; 2],
-    }
-    ///`Protocol(bytes32,bytes32)`
-    #[derive(
-        Clone,
-        ::ethers::contract::EthAbiType,
-        ::ethers::contract::EthAbiCodec,
-        Default,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        Copy
-    )]
-    pub struct Protocol {
-        pub vk_hash: [u8; 32],
-        pub pub_inputs_hash: [u8; 32],
-    }
-    ///`TreeUpdate(bytes32)`
-    #[derive(
-        Clone,
-        ::ethers::contract::EthAbiType,
-        ::ethers::contract::EthAbiCodec,
-        Default,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash
-    )]
-    pub struct TreeUpdate {
-        pub new_root: [u8; 32],
     }
 }

@@ -242,7 +242,7 @@ impl Proof for SuperproofGnarkGroth16Proof {
 }
 
 impl SuperproofGnarkGroth16Proof {
-    pub fn from_risc0_gnark_proof_result(gnark_proof: GnarkProof) -> Self {
+    pub fn from_gnark_proof_result(gnark_proof: GnarkProof) -> Self {
         let commitments = gnark_proof.Commitments
             .iter()
             .map(|g1| Fq::from_risc_circuit_G1(&g1))

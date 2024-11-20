@@ -5,3 +5,4 @@ Cargo.lock
 /log
 /aggregated_circuit_data
 .env
+.vscode/

@@ -207,12 +207,12 @@ pub async fn update_superproof_pis_path(pool: &Pool<MySql>, superproof_pis_path:
     row_affected
 }
 
-pub async fn update_superproof_receipts_path(pool: &Pool<MySql>, superproof_receipt_path: &str, superproof_snark_receipt_path: &str, superproof_id: u64) -> AnyhowResult<()>{
-    let query  = sqlx::query("UPDATE superproof set receipt_path = ?, snark_receipt_path = ? where id = ?")
-                .bind(superproof_receipt_path).bind(superproof_snark_receipt_path).bind(superproof_id);
+pub async fn update_r0_receipts_path(pool: &Pool<MySql>, r0_receipt_path: &str, r0_snark_receipt_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set r0_receipt_path = ?, r0_snark_receipt_path = ? where id = ?")
+                .bind(r0_receipt_path).bind(r0_snark_receipt_path).bind(superproof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}", superproof_receipt_path, superproof_snark_receipt_path, superproof_id);
+    info!("arguments: {}, {}, {}", r0_receipt_path, r0_snark_receipt_path, superproof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),

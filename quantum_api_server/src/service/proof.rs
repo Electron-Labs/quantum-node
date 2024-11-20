@@ -22,7 +22,7 @@ use quantum_db::repository::{
     task_repository::create_proof_task,
     user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
 };
-use quantum_types::types::db::proof::Proof as DbProof;
+use quantum_types::{enums::proving_schemes::ProvingSchemes, types::db::proof::Proof as DbProof};
 use quantum_types::{
     enums::{
         circuit_reduction_status::CircuitReductionStatus, proof_status::ProofStatus,
@@ -36,7 +36,7 @@ use quantum_utils::{
     keccak::encode_keccak_hash,
     paths::{get_user_pis_path, get_user_proof_path},
 };
-use rocket::State;
+use rocket::{time::util::days_in_year, State};
 use tracing::{error, info};
 use utils::hash::{Hasher, KeccakHasher};
 // use imt_core::types::Leaf;
@@ -84,20 +84,22 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
         &proof_hash,
         &pis_full_path,
         &proof_full_path,
-        ProofStatus::Registered,
+        if data.proof_type==ProvingSchemes::Sp1 {ProofStatus::Reduced} else {ProofStatus::Registered},
         &data.circuit_hash,
         &public_inputs_json_string,
     )
     .await?;
-    create_proof_task(
-        get_pool().await,
-        &data.circuit_hash,
-        TaskType::ProofGeneration,
-        TaskStatus::NotPicked,
-        &proof_hash,
-        proof_id,
-    )
-    .await?;
+    if data.proof_type != ProvingSchemes::Sp1 {
+        create_proof_task(
+            get_pool().await,
+            &data.circuit_hash,
+            TaskType::ProofGeneration,
+            TaskStatus::NotPicked,
+            &proof_hash,
+            proof_id,
+        )
+        .await?;
+    }
 
     Ok(SubmitProofResponse {
         proof_id: proof_hash,

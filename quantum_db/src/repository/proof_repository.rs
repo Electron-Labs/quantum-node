@@ -1,4 +1,4 @@
-use quantum_types::{enums::proof_status::ProofStatus, types::db::proof::Proof};
+use quantum_types::{enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes}, types::db::proof::Proof};
 use sqlx::{mysql::MySqlRow, Execute, MySql, Pool, Row};
 use quantum_utils::error_line;
 use anyhow::{anyhow, Error, Result as AnyhowResult};
@@ -181,6 +181,49 @@ pub async fn update_cycle_used_in_proof(pool: &Pool<MySql>, proof_id: u64, cycle
     };
     row_affected
 }
+
+pub async fn get_reduced_proofs_r0(pool: &Pool<MySql>) -> AnyhowResult<Vec<Proof>> {
+    let query  = sqlx::query("
+        SELECT * from proof join user_circuit_data on proof.user_circuit_hash = user_circuit_data.circuit_hash where proof.proof_status = ? and user_circuit_data.proving_scheme != ? order by id desc;
+    ").bind(ProofStatus::Reduced.as_u8()).bind(ProvingSchemes::Sp1.to_string());
+
+    info!("{}", query.sql());
+    info!("arguments: {}", ProofStatus::Reduced.as_u8());
+
+    let db_rows = match query.fetch_all(pool).await {
+        Ok(t) => Ok(t),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+
+    let db_rows = db_rows?;
+    let mut proofs: Vec<Proof> = vec![];
+    for row in db_rows.iter()  {
+        proofs.push(get_proof_from_mysql_row(row)?);
+    }
+    Ok(proofs)
+}
+
+pub async fn get_reduced_proofs_sp1(pool: &Pool<MySql>) -> AnyhowResult<Vec<Proof>> {
+    let query  = sqlx::query("
+        SELECT * from proof join user_circuit_data on proof.user_circuit_hash = user_circuit_data.circuit_hash where proof.proof_status = ? and user_circuit_data.proving_scheme = ? order by id desc;
+    ").bind(ProofStatus::Reduced.as_u8()).bind(ProvingSchemes::Sp1.to_string());
+
+    info!("{}", query.sql());
+    info!("arguments: {}", ProofStatus::Reduced.as_u8());
+
+    let db_rows = match query.fetch_all(pool).await {
+        Ok(t) => Ok(t),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+
+    let db_rows = db_rows?;
+    let mut proofs: Vec<Proof> = vec![];
+    for row in db_rows.iter()  {
+        proofs.push(get_proof_from_mysql_row(row)?);
+    }
+    Ok(proofs)
+}
+
 
 pub async fn get_reduced_proofs(pool: &Pool<MySql>) -> AnyhowResult<Vec<Proof>> {
     let query  = sqlx::query("SELECT * from proof where proof_status = ? order by id")

@@ -218,6 +218,6 @@ async fn main() {
                 info!("Restarting in {} mins...", (SUPERPROOF_SUBMISSION_RETRY/60).to_string());
                 sleep(Duration::from_secs(SUPERPROOF_SUBMISSION_RETRY)).await;
             },
-    }
+        }
     };
 }

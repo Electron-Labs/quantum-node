@@ -6,7 +6,7 @@ use num_bigint::BigUint;
 use quantum_circuits_interface::ffi::circuit_builder::{CircomProof, CircomVKey, CircuitBuilder, CircuitBuilderImpl, GnarkVKey, ProveResult, Risc0SnarkProveArgs};
 use quantum_db::repository::{
     bonsai_image::get_aggregate_circuit_bonsai_image, superproof_repository::{
-        get_last_verified_superproof, update_cycles_in_superproof, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_superproof_receipts_path, update_superproof_root, update_superproof_total_proving_time
+        get_last_verified_superproof, update_cycles_in_superproof, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_r0_receipts_path, update_superproof_root, update_superproof_total_proving_time
     }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
 };
 use quantum_types::{
@@ -17,7 +17,7 @@ use quantum_types::{
     },
 };
 use quantum_utils::{
-    error_line, file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::encode_keccak_hash, paths::{get_cs_bytes_path, get_inner_vkey_path, get_snark_reduction_pk_bytes_path, get_snark_reduction_vk_path, get_superproof_leaves_path, get_superproof_pis_path, get_superproof_proof_path, get_superproof_proof_receipt_path, get_superproof_snark_receipt_path, get_user_vk_path}
+    error_line, file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::encode_keccak_hash, paths::{get_aggregated_r0_snark_receipt_path,get_aggregated_r0_proof_receipt_path, get_cs_bytes_path, get_inner_vkey_path, get_snark_reduction_pk_bytes_path, get_snark_reduction_vk_path, get_superproof_leaves_path, get_superproof_pis_path, get_superproof_proof_path, get_user_vk_path}
 };
 use risc0_zkvm::{serde::to_vec, Receipt};
 use serde::Serialize;
@@ -25,37 +25,55 @@ use tracing::info;
 use utils::hash::{Hasher, KeccakHasher};
 use crate::{bonsai::{execute_aggregation, run_stark2snark}, connection::get_pool};
 
+// pub async fn handle_proof_aggregation_and_updation_r0 {
+//     proofs: Vec<DBProof>,
+//     superproof_id: u64,
+//     config: &ConfigData,
+// } -> AnyhowResult<()> {
+//     Ok(())
+// }
+
 pub async fn handle_proof_aggregation_and_updation(
-    proofs: Vec<DBProof>,
+    proofs_r0: Vec<DBProof>,
+    proofs_sp1: Vec<DBProof>,
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
+    let (r0_receipt, r0_snark_receipt, r0_aggregation_time) = handle_proof_aggregation_r0(proofs_r0.clone(), superproof_id, config).await?;
+    let (sp1_gnark_proof, sp1_aggregation_time) = handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
+    info!("individual aggregations done in time : {:?}", r0_aggregation_time + sp1_aggregation_time);
 
-    // TODO: add all object inside a single object
-    let (receipt, snark_receipt, aggregation_result, aggregation_time) = handle_proof_aggregation(proofs.clone(), superproof_id, config).await?;
-    info!("aggregation done in time : {:?}", aggregation_time);
+    let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
 
-    if !aggregation_result.pass {
-        return Err(anyhow::Error::msg(error_line!(aggregation_result.msg)));
+    
+    let gnark_combination_start = Instant::now();
+
+    // TODO: Utkarsh Bhaiya
+    let prove_result = snark_to_gnark_reduction(&r0_snark_receipt, config, agg_image.circuit_verifying_id)?;
+
+    let total_aggregation_time = gnark_combination_start.elapsed()+r0_aggregation_time+sp1_aggregation_time;
+
+    if !prove_result.pass {
+        return Err(anyhow::Error::msg(error_line!(prove_result.msg)));
     }
-    // TODO: Dump superproof receipt and add to the DB
-    let superproof_receipt_path = get_superproof_proof_receipt_path(
-        &config.storage_folder_path,
-        &config.supperproof_path,
-        superproof_id,
-    );
-    dump_object(receipt.unwrap(), &superproof_receipt_path)?;
 
-    let superproof_snark_receipt_path = get_superproof_snark_receipt_path(
+    let aggregated_r0_receipt_path = get_aggregated_r0_proof_receipt_path(
         &config.storage_folder_path,
         &config.supperproof_path,
         superproof_id,
     );
-    dump_object(snark_receipt, &superproof_snark_receipt_path)?;
+    dump_object(r0_receipt.unwrap(), &aggregated_r0_receipt_path)?;
+
+    let aggregated_r0_snark_receipt_path = get_aggregated_r0_snark_receipt_path(
+        &config.storage_folder_path,
+        &config.supperproof_path,
+        superproof_id,
+    );
+    dump_object(r0_snark_receipt, &aggregated_r0_snark_receipt_path)?;
     // superproof_proof.dump_proof(&superproof_proof_path)?;
 
-    let superproof_proof = SuperproofGnarkGroth16Proof::from_risc0_gnark_proof_result(aggregation_result.proof);
-    let superproof_pis = GnarkGroth16Pis(aggregation_result.pub_inputs);
+    let superproof_proof = SuperproofGnarkGroth16Proof::from_gnark_proof_result(prove_result.proof);
+    let superproof_pis = GnarkGroth16Pis(prove_result.pub_inputs);
 
     let superproof_proof_path = get_superproof_proof_path(&config.storage_folder_path, &config.supperproof_path, superproof_id);
     let superproof_pis_path = get_superproof_pis_path(&config.storage_folder_path, &config.supperproof_path, superproof_id);
@@ -68,23 +86,32 @@ pub async fn handle_proof_aggregation_and_updation(
 
     update_superproof_pis_path(get_pool().await, &superproof_pis_path, superproof_id).await?;
     // Add agg_time to the db
-    update_superproof_agg_time(get_pool().await, aggregation_time.as_secs(), superproof_id).await?;
+    update_superproof_agg_time(get_pool().await, total_aggregation_time.as_secs(), superproof_id).await?;
 
-    update_superproof_receipts_path(get_pool().await, &superproof_receipt_path, &superproof_snark_receipt_path, superproof_id).await?;
+    update_r0_receipts_path(get_pool().await, &aggregated_r0_receipt_path, &aggregated_r0_snark_receipt_path, superproof_id).await?;
     
+    // We only do reduction for r0 proofs
+    let proof_with_max_reduction_time = proofs_r0.iter().max_by_key(|proof| proof.reduction_time);
 
-    let proof_with_max_reduction_time = proofs.iter().max_by_key(|proof| proof.reduction_time);
     // TODO: remove unwrap , check reduction time is not getting update in db
     let total_proving_time = proof_with_max_reduction_time
         .unwrap()
         .reduction_time
         .unwrap()
-        + aggregation_time.as_secs();
+        + total_aggregation_time.as_secs();
     update_superproof_total_proving_time(get_pool().await, total_proving_time, superproof_id).await?;
     Ok(())
 }
 
-async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(Option<Receipt>, Receipt, ProveResult, Duration)> {
+async fn handle_proof_aggregation_sp1(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(String, Duration)> {
+    // TODO: Parth Bhaiya
+    let aggregation_start = Instant::now();
+    let aggregation_time = aggregation_start.elapsed();
+    Ok(("Parth Bhaiya".to_string(), aggregation_time))
+
+}
+
+async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(Option<Receipt>, Receipt, Duration)> {
     info!("superproof_id {:?}", superproof_id);
     
     // let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
@@ -198,10 +225,9 @@ async fn handle_proof_aggregation(proofs: Vec<DBProof>, superproof_id: u64, conf
     
     let snark_receipt = run_stark2snark(agg_session_id, superproof_id).await?.unwrap();
     println!("snark receipt: {:?}", snark_receipt);
-    let prove_result = snark_to_gnark_reduction(&snark_receipt, config, agg_image.circuit_verifying_id)?;
 
     let aggregation_time = aggregation_start.elapsed();
-    Ok((receipt, snark_receipt, prove_result, aggregation_time))
+    Ok((receipt, snark_receipt, aggregation_time))
 }
 
 fn calc_total_cycle_used(agg_cycle_used: u64, proofs: &[DBProof] ) -> u64{

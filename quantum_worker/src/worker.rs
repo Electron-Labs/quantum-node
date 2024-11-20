@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 use quantum_db::
     repository::{
         proof_repository::{
-            get_reduced_proofs, update_proof_status, update_superproof_id_in_proof
+            get_reduced_proofs_r0, get_reduced_proofs_sp1, update_proof_status, update_superproof_id_in_proof
         },
         superproof_repository::{get_last_aggregated_superproof, get_last_verified_superproof, insert_new_superproof, update_superproof_status},
         task_repository::{get_unpicked_tasks, update_task_status}
@@ -34,13 +34,14 @@ pub async fn increment_cycle(cycle_used: i64) {
 }
 
 pub async fn handle_aggregate_proof_task(
-    proofs: Vec<Proof>,
+    proofs_r0: Vec<Proof>,
+    proofs_sp1: Vec<Proof>,
     config: &ConfigData,
     superproof_id: u64,
 ) -> AnyhowResult<()>
 {
     let mut proof_ids: Vec<u64> = vec![];
-    for proof in &proofs {
+    for proof in &proofs_r0 {
         let proof_id = match proof.id {
             Some(id) => Ok(id),
             None => Err(anyhow!(error_line!("not able to find proofId"))),
@@ -48,8 +49,17 @@ pub async fn handle_aggregate_proof_task(
         let proof_id = proof_id?;
         proof_ids.push(proof_id);
     }
+    for proof in &proofs_sp1 {
+        let proof_id = match proof.id {
+            Some(id) => Ok(id),
+            None => Err(anyhow!(error_line!("not able to find proofId"))),
+        };
+        let proof_id = proof_id?;
+        proof_ids.push(proof_id);
+    }
+    
 
-    let aggregation_request = handle_proof_aggregation_and_updation(proofs.clone(), superproof_id, config).await;
+    let aggregation_request = handle_proof_aggregation_and_updation(proofs_r0.clone(),proofs_sp1.clone(), superproof_id, config).await;
 
     match aggregation_request {
         Ok(_) => {
@@ -130,11 +140,22 @@ pub async fn handle_proof_generation_task(
     Ok(())
 }
 
-pub async fn aggregate_and_generate_new_superproof(aggregation_awaiting_proofs: Vec<Proof>, config_data: &ConfigData) -> AnyhowResult<()>
+pub async fn aggregate_and_generate_new_superproof(
+    aggregation_awaiting_proofs_r0: Vec<Proof>, 
+    aggregation_awaiting_proofs_sp1: Vec<Proof>, 
+    config_data: &ConfigData) -> AnyhowResult<()>
 {
     // INSERT NEW SUPERPROOF RECORD
     let mut proof_ids: Vec<u64> = vec![];
-    for proof in &aggregation_awaiting_proofs {
+    for proof in &aggregation_awaiting_proofs_r0 {
+        let proof_id = match proof.id {
+            Some(id) => Ok(id),
+            None => Err(anyhow!(error_line!("not able to find proofId"))),
+        };
+        let proof_id = proof_id?;
+        proof_ids.push(proof_id);
+    }
+    for proof in &aggregation_awaiting_proofs_sp1 {
         let proof_id = match proof.id {
             Some(id) => Ok(id),
             None => Err(anyhow!(error_line!("not able to find proofId"))),
@@ -155,8 +176,7 @@ pub async fn aggregate_and_generate_new_superproof(aggregation_awaiting_proofs: 
         update_superproof_id_in_proof(get_pool().await, proof_id, superproof_id).await?;
     }
 
-    // handle_imt_proof_generation_and_updation(aggregation_awaiting_proofs.clone(), superproof_id, config_data, ).await?;
-    handle_aggregate_proof_task(aggregation_awaiting_proofs, config_data, superproof_id).await?;
+    handle_aggregate_proof_task(aggregation_awaiting_proofs_r0, aggregation_awaiting_proofs_sp1, config_data, superproof_id).await?;
 
     Ok(())
 }
@@ -166,13 +186,19 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
     loop {
         println!("Running worker loop");
         let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
-        let aggregation_awaiting_proofs = get_reduced_proofs(get_pool().await).await?;
+        // Get reduced proofs through RISC0 stream
+        // Get reduced proofs through SP1 stream
+        let aggregation_awaiting_r0_proofs = get_reduced_proofs_r0(get_pool().await).await?;
+        let aggregation_awaitin_sp1_proofs = get_reduced_proofs_sp1(get_pool().await).await?;
+        // aggregation awaitin r0 proofs
+        // aggregation awaitin sp1 proofs
         let last_agg_superproof = get_last_aggregated_superproof(get_pool().await).await?;
+        let total_aggregation_awaiting_proofs = aggregation_awaiting_r0_proofs.len() + aggregation_awaitin_sp1_proofs.len();
         println!(
             "Aggregation awaiting proofs {:?}",
-            aggregation_awaiting_proofs.len()
+            total_aggregation_awaiting_proofs
         );
-        if last_verified_superproof.is_some() && aggregation_awaiting_proofs.len() > 0 && last_agg_superproof.is_none(){
+        if last_verified_superproof.is_some() && total_aggregation_awaiting_proofs > 0 && last_agg_superproof.is_none(){
             let last_verified_superproof = last_verified_superproof.unwrap(); // safe to use unwrap here, already check 
             let last_superproof_onchain_time = match last_verified_superproof.onchain_submission_time {
                 Some(t) => Ok(t),
@@ -184,7 +210,9 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
             if next_agg_start_time <= Utc::now().naive_utc() {
                 let permit: tokio::sync::OwnedSemaphorePermit = semaphore.clone().acquire_owned().await.map_err(|e| anyhow!(error_line!(format!("error in acquiring the semaphore: {:?}", e))))?;
                 info!("Picked up Proofs aggregation");
-                aggregate_and_generate_new_superproof(aggregation_awaiting_proofs.clone(), config_data).await?;
+
+                aggregate_and_generate_new_superproof(aggregation_awaiting_r0_proofs.clone(), aggregation_awaitin_sp1_proofs.clone(), config_data).await?;
+
                 increment_cycle(-1 as i64 * (config_data.pr_batch_max_cycle_count as i64)).await;
                 let final_value = *GLOBAL_CYCLE_COUNTER.lock().await;
                 info!("current cycle used count: {:?}", final_value);

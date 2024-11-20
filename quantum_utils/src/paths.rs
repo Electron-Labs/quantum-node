@@ -58,12 +58,12 @@ pub fn get_superproof_proof_path(storage_folder_path: &str, superproof_path: &st
     format!("{}{}/{}/proof.bin", storage_folder_path, superproof_path, superproof_id)
 }
 
-pub fn get_superproof_proof_receipt_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
-    format!("{}{}/{}/receipt.bin", storage_folder_path, superproof_path, superproof_id)
+pub fn get_aggregated_r0_proof_receipt_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
+    format!("{}{}/{}/r0_receipt.bin", storage_folder_path, superproof_path, superproof_id)
 }
 
-pub fn get_superproof_snark_receipt_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
-    format!("{}{}/{}/snark_receipt.bin", storage_folder_path, superproof_path, superproof_id)
+pub fn get_aggregated_r0_snark_receipt_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
+    format!("{}{}/{}/r0_snark_receipt.bin", storage_folder_path, superproof_path, superproof_id)
 }
 
 pub fn get_superproof_pis_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
