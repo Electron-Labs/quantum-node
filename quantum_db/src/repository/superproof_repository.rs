@@ -52,12 +52,12 @@ pub async fn update_superproof_status(pool: &Pool<MySql>, superproof_status: Sup
     row_affected
 }
 
-pub async fn update_superproof_leaves_path(pool: &Pool<MySql>, superproof_leaves_path: &str, superproof_id: u64) -> AnyhowResult<()>{
-    let query  = sqlx::query("UPDATE superproof set superproof_leaves_path = ? where id = ?")
-                .bind(superproof_leaves_path).bind(superproof_id);
+pub async fn update_r0_leaves_path(pool: &Pool<MySql>, r0_leaves_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set r0_leaves_path = ? where id = ?")
+                .bind(r0_leaves_path).bind(superproof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}", superproof_leaves_path, superproof_id);
+    info!("arguments: {}, {}", r0_leaves_path, superproof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
@@ -107,6 +107,36 @@ pub async fn update_previous_superproof_root(pool: &Pool<MySql>, previous_superp
     };
     row_affected
 }
+
+pub async fn update_r0_root(pool: &Pool<MySql>, r0_root: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set r0_root = ? where id = ?")
+                .bind(r0_root).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", r0_root, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+pub async fn update_sp1_root(pool: &Pool<MySql>, sp1_root: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set sp1_root = ? where id = ?")
+                .bind(sp1_root).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", sp1_root, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+
 
 pub async fn update_superproof_root(pool: &Pool<MySql>, superproof_root: &str, superproof_id: u64) -> AnyhowResult<()>{
     let query  = sqlx::query("UPDATE superproof set superproof_root = ? where id = ?")

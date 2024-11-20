@@ -6,7 +6,7 @@ use num_bigint::BigUint;
 use quantum_circuits_interface::ffi::circuit_builder::{CircomProof, CircomVKey, CircuitBuilder, CircuitBuilderImpl, GnarkVKey, ProveResult, Risc0SnarkProveArgs};
 use quantum_db::repository::{
     bonsai_image::get_aggregate_circuit_bonsai_image, superproof_repository::{
-        get_last_verified_superproof, update_cycles_in_superproof, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_r0_receipts_path, update_superproof_root, update_superproof_total_proving_time
+        get_last_verified_superproof, update_cycles_in_superproof, update_r0_leaves_path, update_r0_receipts_path, update_r0_root, update_sp1_root, update_superproof_agg_time, update_superproof_leaves_path, update_superproof_pis_path, update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time
     }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
 };
 use quantum_types::{
@@ -17,7 +17,7 @@ use quantum_types::{
     },
 };
 use quantum_utils::{
-    error_line, file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::encode_keccak_hash, paths::{get_aggregated_r0_snark_receipt_path,get_aggregated_r0_proof_receipt_path, get_cs_bytes_path, get_inner_vkey_path, get_snark_reduction_pk_bytes_path, get_snark_reduction_vk_path, get_superproof_leaves_path, get_superproof_pis_path, get_superproof_proof_path, get_user_vk_path}
+    error_line, file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::encode_keccak_hash, paths::{get_aggregated_r0_proof_receipt_path, get_aggregated_r0_snark_receipt_path, get_cs_bytes_path, get_inner_vkey_path, get_r0_aggregate_leaves_path, get_snark_reduction_pk_bytes_path, get_snark_reduction_vk_path, get_superproof_leaves_path, get_superproof_pis_path, get_superproof_proof_path, get_user_vk_path}
 };
 use risc0_zkvm::{serde::to_vec, Receipt};
 use serde::Serialize;
@@ -39,17 +39,25 @@ pub async fn handle_proof_aggregation_and_updation(
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
-    let (r0_receipt, r0_snark_receipt, r0_aggregation_time) = handle_proof_aggregation_r0(proofs_r0.clone(), superproof_id, config).await?;
-    let (sp1_gnark_proof, sp1_aggregation_time) = handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
+    let (r0_receipt, r0_snark_receipt, r0_root_bytes, r0_aggregation_time) = handle_proof_aggregation_r0(proofs_r0.clone(), superproof_id, config).await?;
+    let (sp1_gnark_proof, sp1_root_bytes ,sp1_aggregation_time) = handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
     info!("individual aggregations done in time : {:?}", r0_aggregation_time + sp1_aggregation_time);
 
     let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
 
-    
+    let r0_root = encode_keccak_hash(&r0_root_bytes)?;
+    let sp1_root  = encode_keccak_hash(&sp1_root_bytes)?;
+
+    update_r0_root(get_pool().await, &r0_root, superproof_id).await?;
+    update_sp1_root(get_pool().await, &sp1_root, superproof_id).await?;
+
     let gnark_combination_start = Instant::now();
 
     // TODO: Utkarsh Bhaiya
     let prove_result = snark_to_gnark_reduction(&r0_snark_receipt, config, agg_image.circuit_verifying_id)?;
+
+    // TODO: somehow get superproof root here and call
+    // update_superproof_root(pool, superproof_root, superproof_id)
 
     let total_aggregation_time = gnark_combination_start.elapsed()+r0_aggregation_time+sp1_aggregation_time;
 
@@ -103,15 +111,17 @@ pub async fn handle_proof_aggregation_and_updation(
     Ok(())
 }
 
-async fn handle_proof_aggregation_sp1(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(String, Duration)> {
+async fn handle_proof_aggregation_sp1(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(String, [u8;32], Duration)> {
     // TODO: Parth Bhaiya
     let aggregation_start = Instant::now();
     let aggregation_time = aggregation_start.elapsed();
-    Ok(("Parth Bhaiya".to_string(), aggregation_time))
-
+    // TODO: dump sp1 leaves like r0 too here
+    // return sp1 root bytes [u8;32] from here too
+    let sp1_root_bytes = [0u8; 32];
+    Ok(("Parth Bhaiya".to_string(), sp1_root_bytes, aggregation_time))
 }
 
-async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(Option<Receipt>, Receipt, Duration)> {
+async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(Option<Receipt>, Receipt, [u8;32], Duration)> {
     info!("superproof_id {:?}", superproof_id);
     
     // let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
@@ -197,21 +207,17 @@ async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, c
 
     let (agg_input, leaves, batch_root_bytes) = get_agg_inputs::<KeccakHasher>(protocol_ids, protocol_vkey_hashes, protocol_pis_hashes, proofs.len())?;
 
-    let superproof_leaves_path = get_superproof_leaves_path(
+    let r0_aggregate_leaves_path = get_r0_aggregate_leaves_path(
         &config.storage_folder_path,
         &config.supperproof_path,
         superproof_id,
     );
 
     let leaves_serialized = bincode::serialize(&leaves)?;
-    write_bytes_to_file(&leaves_serialized, &superproof_leaves_path)?;
-    update_superproof_leaves_path(get_pool().await, &superproof_leaves_path, superproof_id).await?;
+    write_bytes_to_file(&leaves_serialized, &r0_aggregate_leaves_path)?;
+    update_r0_leaves_path(get_pool().await, &r0_aggregate_leaves_path, superproof_id).await?;
 
-
-
-    let batch_root = encode_keccak_hash(&batch_root_bytes)?;
-    update_superproof_root(get_pool().await, &batch_root, superproof_id).await?;
-
+    // Update r0 root
     let aggregation_start = Instant::now();
 
     let input_data = form_bonsai_input_data(agg_input)?;
@@ -227,7 +233,7 @@ async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, c
     println!("snark receipt: {:?}", snark_receipt);
 
     let aggregation_time = aggregation_start.elapsed();
-    Ok((receipt, snark_receipt, aggregation_time))
+    Ok((receipt, snark_receipt, batch_root_bytes, aggregation_time))
 }
 
 fn calc_total_cycle_used(agg_cycle_used: u64, proofs: &[DBProof] ) -> u64{

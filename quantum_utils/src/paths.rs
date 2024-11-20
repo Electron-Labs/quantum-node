@@ -70,8 +70,12 @@ pub fn get_superproof_pis_path(storage_folder_path: &str, superproof_path: &str,
     format!("{}{}/{}/pis.bin", storage_folder_path, superproof_path, superproof_id)
 }
 
-pub fn get_superproof_leaves_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
-    format!("{}{}/{}/leaves.bin", storage_folder_path, superproof_path, superproof_id)
+pub fn get_r0_aggregate_leaves_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
+    format!("{}{}/{}/r0_leaves.bin", storage_folder_path, superproof_path, superproof_id)
+}
+
+pub fn get_sp1_aggregate_leaves_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
+    format!("{}{}/{}/sp1_leaves.bin", storage_folder_path, superproof_path, superproof_id)
 }
 
 pub fn get_imt_proof_path(storage_folder_path: &str, imt_circuit_data_path: &str, superproof_id: u64) -> String {
