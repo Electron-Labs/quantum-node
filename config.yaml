@@ -17,3 +17,4 @@ aggregation_wait_time: 780
 snark_reduction_data_path: /snark_reduction
 parallel_bonsai_session_limit: 5
 pr_batch_max_cycle_count: 3400000000
+# sp1_agg_pkey_path: /

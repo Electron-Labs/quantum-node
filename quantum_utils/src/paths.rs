@@ -66,6 +66,10 @@ pub fn get_aggregated_r0_snark_receipt_path(storage_folder_path: &str, superproo
     format!("{}{}/{}/r0_snark_receipt.bin", storage_folder_path, superproof_path, superproof_id)
 }
 
+pub fn get_aggregated_sp1_snark_receipt_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
+    format!("{}{}/{}/sp1_snark_receipt.bin", storage_folder_path, superproof_path, superproof_id)
+}
+
 pub fn get_superproof_pis_path(storage_folder_path: &str, superproof_path: &str, superproof_id: u64) -> String {
     format!("{}{}/{}/pis.bin", storage_folder_path, superproof_path, superproof_id)
 }
@@ -100,6 +104,10 @@ pub fn get_cs_bytes_path(storage_folder_path: &str, snark_folder_path: &str) -> 
 
 pub fn get_snark_reduction_pk_bytes_path(storage_folder_path: &str, snark_folder_path: &str) -> String {
     format!("{}{}/pk", storage_folder_path, snark_folder_path)
+}
+
+pub fn get_sp1_agg_pk_bytes_path(storage_folder_path: &str, snark_folder_path: &str) -> String {
+    format!("{}{}/sp1_agg_pk.bin", storage_folder_path, snark_folder_path)
 }
 
 pub fn get_snark_reduction_vk_path(storage_folder_path: &str, snark_folder_path: &str) -> String {

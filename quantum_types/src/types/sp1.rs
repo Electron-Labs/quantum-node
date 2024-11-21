@@ -3,8 +3,8 @@ use anyhow::{anyhow , Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
 use quantum_utils::{error_line, file::{read_bytes_from_file, write_bytes_to_file}};
 use serde::{Deserialize, Serialize};
-use sp1_prover::types::SP1VerifyingKey;
-use sp1_sdk::{HashableKey, SP1ProofWithPublicValues};
+// use sp1_sdk::types::SP1VerifyingKey;
+use sp1_sdk::{HashableKey, SP1ProofWithPublicValues, SP1VerifyingKey};
 use utils::hash::{Hasher, KeccakHasher};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};

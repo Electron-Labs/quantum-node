@@ -122,6 +122,9 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
+        println!("batch root {:?}", batch_root);
+        println!("gnark proof {:?}", gnark_proof);
+
         let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(batch_root, &gnark_proof).await?;
 
         // update tx data in DB for superproof
