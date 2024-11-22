@@ -1,30 +1,66 @@
-use std::{fs::{self, File}, io::{BufWriter, Read}, path::PathBuf, time::{Duration, Instant}};
+use std::{
+    fs::{self, File},
+    io::{BufWriter, Read},
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
+use crate::{
+    bonsai::{execute_aggregation, run_stark2snark},
+    connection::get_pool,
+};
 use agg_core::{inputs::get_agg_inputs, types::AggInputs};
-use anyhow::Result as AnyhowResult;
+use anyhow::{anyhow, Result as AnyhowResult};
 use num_bigint::BigUint;
-use quantum_circuits_interface::ffi::circuit_builder::{CircomProof, CircomVKey, CircuitBuilder, CircuitBuilderImpl, GnarkVKey, ProveResult, Risc0SnarkProveArgs};
+use quantum_circuits_interface::ffi::circuit_builder::{
+    self, CircomProof, CircomVKey, CircuitBuilder, CircuitBuilderImpl, GnarkProveArgs, ProveResult,
+    Risc0Data, Sp1Data, G1, G1A, G2,
+};
 use quantum_db::repository::{
-    bonsai_image::get_aggregate_circuit_bonsai_image, superproof_repository::{
-        get_last_verified_superproof, update_cycles_in_superproof, update_r0_leaves_path, update_r0_receipts_path, update_r0_root, update_sp1_leaves_path, update_sp1_root, update_sp1_snark_receipt_path, update_superproof_agg_time, update_superproof_pis_path, update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time
-    }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
+    bonsai_image::get_aggregate_circuit_bonsai_image,
+    superproof_repository::{
+        get_last_verified_superproof, update_cycles_in_superproof, update_r0_leaves_path,
+        update_r0_receipts_path, update_r0_root, update_sp1_leaves_path, update_sp1_root,
+        update_sp1_snark_receipt_path, update_superproof_agg_time, update_superproof_pis_path,
+        update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time,
+    },
+    user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
 };
 use quantum_types::{
     enums::proving_schemes::ProvingSchemes,
     traits::{pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey}
+        config::ConfigData,
+        db::proof::Proof as DBProof,
+        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof},
+        gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey},
+        halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey},
+        halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey},
+        plonk2::{Plonky2Pis, Plonky2Vkey},
+        riscs0::{Risc0Pis, Risc0Vkey},
+        snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
+        sp1::{Sp1Pis, Sp1Proof, Sp1Vkey},
     },
 };
 use quantum_utils::{
-    error_line, file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file}, keccak::encode_keccak_hash, logger, paths::{get_aggregated_r0_proof_receipt_path, get_aggregated_r0_snark_receipt_path, get_aggregated_sp1_snark_receipt_path, get_cs_bytes_path, get_inner_vkey_path, get_r0_aggregate_leaves_path, get_snark_reduction_pk_bytes_path, get_snark_reduction_vk_path, get_sp1_agg_pk_bytes_path, get_sp1_aggregate_leaves_path, get_superproof_pis_path, get_superproof_proof_path, get_user_vk_path}
+    error_line,
+    file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file},
+    keccak::encode_keccak_hash,
+    logger,
+    paths::{
+        get_aggregated_r0_proof_receipt_path, get_aggregated_r0_snark_receipt_path,
+        get_aggregated_sp1_snark_receipt_path, get_cs_bytes_path, get_inner_vkey_path,
+        get_r0_aggregate_leaves_path, get_snark_reduction_pk_bytes_path,
+        get_snark_reduction_vk_path, get_sp1_agg_pk_bytes_path, get_sp1_agg_vk_hash_bytes_path,
+        get_sp1_aggregate_leaves_path, get_superproof_pis_path, get_superproof_proof_path,
+        get_user_vk_path,
+    },
 };
 use risc0_zkvm::{serde::to_vec, Receipt};
 use serde::Serialize;
 use sp1_sdk::{ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1VerifyingKey};
 use tracing::info;
 use utils::hash::{Hasher, KeccakHasher};
-use crate::{bonsai::{execute_aggregation, run_stark2snark}, connection::get_pool};
 
 // pub async fn handle_proof_aggregation_and_updation_r0 {
 //     proofs: Vec<DBProof>,
@@ -34,33 +70,57 @@ use crate::{bonsai::{execute_aggregation, run_stark2snark}, connection::get_pool
 //     Ok(())
 // }
 
+
+// superroot = digest( risc0_root || sp1_root )
+pub fn get_superroot(risc0_root: &Vec<u8>, sp1_root: &Vec<u8>) -> [u8; 32] {
+    KeccakHasher::combine_hash(risc0_root, sp1_root)
+}
+
 pub async fn handle_proof_aggregation_and_updation(
     proofs_r0: Vec<DBProof>,
     proofs_sp1: Vec<DBProof>,
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
-    let (r0_receipt, r0_snark_receipt, r0_root_bytes, r0_aggregation_time) = handle_proof_aggregation_r0(proofs_r0.clone(), superproof_id, config).await?;
-    let (sp1_snark_proof, sp1_root_bytes ,sp1_aggregation_time) = handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
-    info!("individual aggregations done in time : {:?}", r0_aggregation_time + sp1_aggregation_time);
+    info!("superproof_id {:?}", superproof_id);
+
+    let (r0_receipt, r0_snark_receipt, r0_root_bytes, r0_aggregation_time) =
+        handle_proof_aggregation_r0(proofs_r0.clone(), superproof_id, config).await?;
+    let (sp1_snark_proof, sp1_root_bytes, sp1_aggregation_time) =
+        handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
+    info!(
+        "individual aggregations done in time : {:?}",
+        r0_aggregation_time + sp1_aggregation_time
+    );
 
     let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
 
     let r0_root = encode_keccak_hash(&r0_root_bytes)?;
-    let sp1_root  = encode_keccak_hash(&sp1_root_bytes)?;
+    let sp1_root = encode_keccak_hash(&sp1_root_bytes)?;
+    info!("r0_root {:?}", r0_root);
+    info!("sp1_root {:?}", sp1_root);
 
     update_r0_root(get_pool().await, &r0_root, superproof_id).await?;
     update_sp1_root(get_pool().await, &sp1_root, superproof_id).await?;
 
     let gnark_combination_start = Instant::now();
 
-    // TODO: Utkarsh Bhaiya
-    let prove_result = snark_to_gnark_reduction(&r0_snark_receipt, config, agg_image.circuit_verifying_id)?;
+    let prove_result = snark_to_gnark_reduction(
+        &r0_snark_receipt,
+        &sp1_snark_proof,
+        config,
+        agg_image.circuit_verifying_id,
+    )?;
 
-    // TODO: somehow get superproof root here and call
-    update_superproof_root(get_pool().await, &r0_root, superproof_id).await?;
+    let superroot = encode_keccak_hash(&get_superroot(
+        &r0_root_bytes.to_vec(),
+        &sp1_root_bytes.to_vec(),
+    ))?;
+    info!("superoot {:?}", superroot);
+    update_superproof_root(get_pool().await, &superroot, superproof_id).await?;
 
-    let total_aggregation_time = gnark_combination_start.elapsed()+r0_aggregation_time+sp1_aggregation_time;
+    let total_aggregation_time =
+        gnark_combination_start.elapsed() + r0_aggregation_time + sp1_aggregation_time;
 
     if !prove_result.pass {
         return Err(anyhow::Error::msg(error_line!(prove_result.msg)));
@@ -90,8 +150,16 @@ pub async fn handle_proof_aggregation_and_updation(
     let superproof_proof = SuperproofGnarkGroth16Proof::from_gnark_proof_result(prove_result.proof);
     let superproof_pis = GnarkGroth16Pis(prove_result.pub_inputs);
 
-    let superproof_proof_path = get_superproof_proof_path(&config.storage_folder_path, &config.supperproof_path, superproof_id);
-    let superproof_pis_path = get_superproof_pis_path(&config.storage_folder_path, &config.supperproof_path, superproof_id);
+    let superproof_proof_path = get_superproof_proof_path(
+        &config.storage_folder_path,
+        &config.supperproof_path,
+        superproof_id,
+    );
+    let superproof_pis_path = get_superproof_pis_path(
+        &config.storage_folder_path,
+        &config.supperproof_path,
+        superproof_id,
+    );
 
     superproof_proof.dump_proof(&superproof_proof_path)?;
     superproof_pis.dump_pis(&superproof_pis_path)?;
@@ -101,12 +169,28 @@ pub async fn handle_proof_aggregation_and_updation(
 
     update_superproof_pis_path(get_pool().await, &superproof_pis_path, superproof_id).await?;
     // Add agg_time to the db
-    update_superproof_agg_time(get_pool().await, total_aggregation_time.as_secs(), superproof_id).await?;
+    update_superproof_agg_time(
+        get_pool().await,
+        total_aggregation_time.as_secs(),
+        superproof_id,
+    )
+    .await?;
 
-    update_r0_receipts_path(get_pool().await, &aggregated_r0_receipt_path, &aggregated_r0_snark_receipt_path, superproof_id).await?;
-    
+    update_r0_receipts_path(
+        get_pool().await,
+        &aggregated_r0_receipt_path,
+        &aggregated_r0_snark_receipt_path,
+        superproof_id,
+    )
+    .await?;
+
     // update sp1 snark receipt path
-    update_sp1_snark_receipt_path(get_pool().await, &aggregated_sp1_snark_receipt_path, superproof_id).await?;
+    update_sp1_snark_receipt_path(
+        get_pool().await,
+        &aggregated_sp1_snark_receipt_path,
+        superproof_id,
+    )
+    .await?;
 
     // We only do reduction for r0 proofs
     let proof_with_max_reduction_time = proofs_r0.iter().max_by_key(|proof| proof.reduction_time);
@@ -117,11 +201,16 @@ pub async fn handle_proof_aggregation_and_updation(
         .reduction_time
         .unwrap()
         + total_aggregation_time.as_secs();
-    update_superproof_total_proving_time(get_pool().await, total_proving_time, superproof_id).await?;
+    update_superproof_total_proving_time(get_pool().await, total_proving_time, superproof_id)
+        .await?;
     Ok(())
 }
 
-async fn handle_proof_aggregation_sp1(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(SP1ProofWithPublicValues, [u8;32], Duration)> {
+async fn handle_proof_aggregation_sp1(
+    proofs: Vec<DBProof>,
+    superproof_id: u64,
+    config: &ConfigData,
+) -> AnyhowResult<(SP1ProofWithPublicValues, [u8; 32], Duration)> {
     // TODO: Parth Bhaiya
 
     println!("inside the sp1 aggregation");
@@ -129,25 +218,29 @@ async fn handle_proof_aggregation_sp1(proofs: Vec<DBProof>, superproof_id: u64, 
     let mut protocol_vkeys: Vec<SP1VerifyingKey> = vec![];
     let mut deserialised_proofs: Vec<SP1ProofWithPublicValues> = vec![];
     for proof in &proofs {
-        let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash).await?;
+        let user_circuit_data =
+            get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash)
+                .await?;
         let protocol_circuit_vkey_path = user_circuit_data.vk_path;
         let protocol_pis_path = proof.pis_path.clone();
         let protocol_proof_path = proof.proof_path.clone();
         // Proving Scheme for these will always be sp1
         let protocol_vkey = Sp1Vkey::read_vk(&protocol_circuit_vkey_path)?.get_verifying_key()?;
-        let deserialised_proof = Sp1Proof::read_proof(&protocol_proof_path)?.get_proof_with_public_inputs()?;
+        let deserialised_proof =
+            Sp1Proof::read_proof(&protocol_proof_path)?.get_proof_with_public_inputs()?;
         protocol_vkeys.push(protocol_vkey);
         deserialised_proofs.push(deserialised_proof);
     }
 
     println!("before sp1 agg input");
-    let (stdin, leaves, root)  = crate::utils::get_agg_inputs_sp1::<KeccakHasher>(protocol_vkeys, deserialised_proofs)?;
+    let (stdin, leaves, root) =
+        crate::utils::get_agg_inputs_sp1::<KeccakHasher>(protocol_vkeys, deserialised_proofs)?;
     println!("after sp1 agg input");
     let sp1_aggregate_leaves_path = get_sp1_aggregate_leaves_path(
         &config.storage_folder_path,
         &config.supperproof_path,
         superproof_id,
-    );    
+    );
 
     let leaves_serialized = bincode::serialize(&leaves)?;
     println!("after sp1 leave serailise");
@@ -157,9 +250,13 @@ async fn handle_proof_aggregation_sp1(proofs: Vec<DBProof>, superproof_id: u64, 
     let aggregation_start = Instant::now();
 
     // Execute Aggregation for sp1
-    let proving_key_path = get_sp1_agg_pk_bytes_path(&config.storage_folder_path, &config.snark_reduction_data_path); // TODO: Add this path to config and read from there
+    let proving_key_path = get_sp1_agg_pk_bytes_path(
+        &config.storage_folder_path,
+        &config.sp1_snark_reduction_data_path,
+    ); // TODO: Add this path to config and read from there
     println!("agg_pk deserialise");
-    let aggregation_pk: SP1ProvingKey = bincode::deserialize_from(std::fs::File::open(proving_key_path)?)?;
+    let aggregation_pk: SP1ProvingKey =
+        bincode::deserialize_from(std::fs::File::open(proving_key_path)?)?;
 
     let client = ProverClient::new();
     let aggregated_proof = client.prove(&aggregation_pk, stdin).groth16().run()?;
@@ -171,18 +268,24 @@ async fn handle_proof_aggregation_sp1(proofs: Vec<DBProof>, superproof_id: u64, 
     Ok((aggregated_proof, root, aggregation_time))
 }
 
-async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, config: &ConfigData) -> AnyhowResult<(Option<Receipt>, Receipt, [u8;32], Duration)> {
+async fn handle_proof_aggregation_r0(
+    proofs: Vec<DBProof>,
+    superproof_id: u64,
+    config: &ConfigData,
+) -> AnyhowResult<(Option<Receipt>, Receipt, [u8; 32], Duration)> {
     info!("superproof_id {:?}", superproof_id);
-    
+
     // let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
     let mut protocol_ids: Vec<u8> = vec![];
-    let mut protocol_vkey_hashes: Vec<[u8;32]> = vec![];
-    let mut protocol_pis_hashes: Vec<[u8;32]> = vec![];
+    let mut protocol_vkey_hashes: Vec<[u8; 32]> = vec![];
+    let mut protocol_pis_hashes: Vec<[u8; 32]> = vec![];
     let mut assumptions = vec![];
     for proof in &proofs {
         assumptions.push(proof.session_id.clone().unwrap());
 
-        let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash).await?;
+        let user_circuit_data =
+            get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash)
+                .await?;
         let protocol_circuit_vkey_path = user_circuit_data.vk_path;
         let protocol_pis_path = proof.pis_path.clone();
 
@@ -194,7 +297,6 @@ async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, c
                 let protocol_pis = SnarkJSGroth16Pis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(0);
-                
             }
             ProvingSchemes::Halo2Plonk => {
                 let protocol_vkey = Halo2PlonkVkey::read_vk(&protocol_circuit_vkey_path)?;
@@ -227,7 +329,7 @@ async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, c
                 let protocol_pis = Plonky2Pis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(2);
-            },
+            }
             ProvingSchemes::Halo2Poseidon => {
                 let protocol_vkey = Halo2PoseidonVkey::read_vk(&protocol_circuit_vkey_path)?;
                 protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
@@ -235,7 +337,7 @@ async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, c
                 let protocol_pis = Halo2PoseidonPis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(5);
-            },
+            }
             ProvingSchemes::Risc0 => {
                 let protocol_vkey = Risc0Vkey::read_vk(&protocol_circuit_vkey_path)?;
                 protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
@@ -243,22 +345,26 @@ async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, c
                 let protocol_pis = Risc0Pis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(6);
-            },
+            }
             _ => {
                 panic!("Shouldnt happen!!")
-            }
-            // ProvingSchemes::Sp1 => {
-            //     let protocol_vkey = Sp1Vkey::read_vk(&protocol_circuit_vkey_path)?;
-            //     protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
+            } // ProvingSchemes::Sp1 => {
+              //     let protocol_vkey = Sp1Vkey::read_vk(&protocol_circuit_vkey_path)?;
+              //     protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
 
-            //     let protocol_pis = Sp1Pis::read_pis(&protocol_pis_path)?;
-            //     protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
-            //     protocol_ids.push(7);
-            // },
+              //     let protocol_pis = Sp1Pis::read_pis(&protocol_pis_path)?;
+              //     protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
+              //     protocol_ids.push(7);
+              // },
         }
     }
 
-    let (agg_input, leaves, batch_root_bytes) = get_agg_inputs::<KeccakHasher>(protocol_ids, protocol_vkey_hashes, protocol_pis_hashes, proofs.len())?;
+    let (agg_input, leaves, batch_root_bytes) = get_agg_inputs::<KeccakHasher>(
+        protocol_ids,
+        protocol_vkey_hashes,
+        protocol_pis_hashes,
+        proofs.len(),
+    )?;
 
     let r0_aggregate_leaves_path = get_r0_aggregate_leaves_path(
         &config.storage_folder_path,
@@ -277,88 +383,141 @@ async fn handle_proof_aggregation_r0(proofs: Vec<DBProof>, superproof_id: u64, c
 
     //TODO: move it to DB;
     let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
-    let (receipt, agg_session_id, agg_cycle_used) = execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
+    let (receipt, agg_session_id, agg_cycle_used) =
+        execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
 
     let total_cycle_used = calc_total_cycle_used(agg_cycle_used, &proofs);
-    update_cycles_in_superproof(get_pool().await, agg_cycle_used, total_cycle_used, superproof_id).await?;
-    
-    let snark_receipt = run_stark2snark(agg_session_id, superproof_id).await?.unwrap();
+    update_cycles_in_superproof(
+        get_pool().await,
+        agg_cycle_used,
+        total_cycle_used,
+        superproof_id,
+    )
+    .await?;
+
+    let snark_receipt = run_stark2snark(agg_session_id, superproof_id)
+        .await?
+        .unwrap();
     println!("snark receipt: {:?}", snark_receipt);
 
     let aggregation_time = aggregation_start.elapsed();
     Ok((receipt, snark_receipt, batch_root_bytes, aggregation_time))
 }
 
-fn calc_total_cycle_used(agg_cycle_used: u64, proofs: &[DBProof] ) -> u64{
+fn calc_total_cycle_used(agg_cycle_used: u64, proofs: &[DBProof]) -> u64 {
     let proof_cycles: u64 = proofs.iter().map(|item| item.cycle_used.unwrap_or(0)).sum();
     agg_cycle_used + proof_cycles
 }
 
+fn snark_to_gnark_reduction(
+    risc0_snark: &Receipt,
+    sp1_snark: &SP1ProofWithPublicValues,
+    config: &ConfigData,
+    risc0_agg_image_id: [u32; 8],
+) -> AnyhowResult<ProveResult> {
+    let cs_bytes = read_bytes_from_file(&get_cs_bytes_path(
+        &config.storage_folder_path,
+        &config.risc0_snark_reduction_data_path,
+    ))?;
+    let pk_bytes = read_bytes_from_file(&get_snark_reduction_pk_bytes_path(
+        &config.storage_folder_path,
+        &config.risc0_snark_reduction_data_path,
+    ))?;
+    let v_key: circuit_builder::GnarkGroth16VKey = read_file(&get_snark_reduction_vk_path(
+        &config.storage_folder_path,
+        &config.risc0_snark_reduction_data_path,
+    ))?;
 
-fn snark_to_gnark_reduction(snark_receipt: &Receipt, config: &ConfigData, circuit_verifying_id: [u32;8]) -> AnyhowResult<ProveResult> {
-    
-    let inner_proof = form_circom_proof_from_snark_receipt(snark_receipt)?;
+    let risc0_inner_proof = form_circom_proof_from_snark_receipt(risc0_snark)?;
+    let risc0_inner_vkey_path = get_inner_vkey_path(
+        &config.storage_folder_path,
+        &config.risc0_snark_reduction_data_path,
+    );
+    let risc0_inner_v_key: CircomVKey = read_file(&risc0_inner_vkey_path)?;
 
-    println!("inner_proof: {:?}", inner_proof);
-    let inner_vkey_path = get_inner_vkey_path(&config.storage_folder_path, &config.snark_reduction_data_path);
-    let inner_v_key: CircomVKey = read_file(&inner_vkey_path)?;
+    let sp1_snark_proof = sp1_snark
+        .proof
+        .clone()
+        .try_as_groth_16()
+        .ok_or(anyhow!("try_as_groth_16 failed"))?;
+    let sp1_inner_proof = sp1_snark_proof_to_ffi_type(sp1_snark_proof.encoded_proof)?;
+    let sp1_inner_vkey_path = get_inner_vkey_path(
+        &config.storage_folder_path,
+        &config.sp1_snark_reduction_data_path,
+    );
+    let sp1_inner_v_key: circuit_builder::GnarkGroth16VKey = read_file(&sp1_inner_vkey_path)?;
 
-    let cs_bytes = read_bytes_from_file(&get_cs_bytes_path(&config.storage_folder_path, &config.snark_reduction_data_path))?;
+    let sp1_agg_program_v_key = read_bytes_from_file(&get_sp1_agg_vk_hash_bytes_path(
+        &config.storage_folder_path,
+        &config.sp1_snark_reduction_data_path,
+    ))?;
 
-    let pk_bytes = read_bytes_from_file(&get_snark_reduction_pk_bytes_path(&config.storage_folder_path, &config.snark_reduction_data_path))?;
-
-    let v_key: GnarkVKey = read_file(&get_snark_reduction_vk_path(&config.storage_folder_path, &config.snark_reduction_data_path))?;
-
-    let mut circuit_verifying_id_bytes = vec![];
-    for i in circuit_verifying_id {
-        circuit_verifying_id_bytes.extend_from_slice(&i.to_le_bytes());
+    let mut risc0_agg_image_id_bytes = vec![];
+    for x in risc0_agg_image_id {
+        risc0_agg_image_id_bytes.extend_from_slice(&x.to_le_bytes());
     }
 
-    println!("circuit_verifying_id_bytes: {:?}", circuit_verifying_id_bytes);
-    let args = Risc0SnarkProveArgs {
+    println!("risc0_snark.journal {:?}", risc0_snark.journal.bytes);
+    println!("risc0_agg_image_id_bytes {:?}", risc0_agg_image_id_bytes.clone());
+    println!("sp1_snark.public_values {:?}", sp1_snark.public_values.to_vec());
+    println!("sp1_agg_program_v_key {:?}", sp1_agg_program_v_key.clone());
+
+    let risc0_data = Risc0Data {
+        inner_proof: risc0_inner_proof,
+        inner_v_key: risc0_inner_v_key,
+        journal: risc0_snark.journal.bytes.clone(),
+        agg_image_id: risc0_agg_image_id_bytes,
+    };
+    let sp1_data = Sp1Data {
+        inner_proof: sp1_inner_proof,
+        inner_v_key: sp1_inner_v_key,
+        public_values: sp1_snark.public_values.to_vec(),
+        agg_program_v_key: sp1_agg_program_v_key,
+    };
+
+
+    let args = GnarkProveArgs {
         cs_bytes,
         pk_bytes,
         v_key,
-        inner_proof,
-        inner_v_key,
-        agg_verifier_id: circuit_verifying_id_bytes,
-        journal: snark_receipt.journal.bytes.clone(),
+        risc0_data,
+        sp1_data,
     };
-    let result = CircuitBuilderImpl::prove_risc0_snark(args);
+    let result = CircuitBuilderImpl::prove_gnark(args);
     Ok(result)
 }
-
 
 fn form_circom_proof_from_snark_receipt(snark_receipt: &Receipt) -> AnyhowResult<CircomProof> {
     let mut ptr = 0;
     let bytes = snark_receipt.inner.groth16()?.seal.clone();
-    let a0 = BigUint::from_bytes_be(&bytes[ptr..ptr+32]).to_string();
-    ptr +=32;
-    let a1 = BigUint::from_bytes_be(&bytes[ptr..ptr+32]).to_string();
-    ptr +=32;
+    let a0 = BigUint::from_bytes_be(&bytes[ptr..ptr + 32]).to_string();
+    ptr += 32;
+    let a1 = BigUint::from_bytes_be(&bytes[ptr..ptr + 32]).to_string();
+    ptr += 32;
 
+    let b01 = BigUint::from_bytes_be(&bytes[ptr..ptr + 32]).to_string();
+    ptr += 32;
+    let b00 = BigUint::from_bytes_be(&bytes[ptr..ptr + 32]).to_string();
+    ptr += 32;
 
-    let b01 = BigUint::from_bytes_be(&bytes[ptr..ptr+32]).to_string();
-    ptr +=32;
-    let b00 = BigUint::from_bytes_be(&bytes[ptr..ptr+32]).to_string();
-    ptr +=32;
-    
+    let b11 = BigUint::from_bytes_be(&bytes[ptr..ptr + 32]).to_string();
+    ptr += 32;
+    let b10 = BigUint::from_bytes_be(&bytes[ptr..ptr + 32]).to_string();
+    ptr += 32;
 
-    let b11 = BigUint::from_bytes_be(&bytes[ptr..ptr+32]).to_string();
-    ptr +=32;
-    let b10 = BigUint::from_bytes_be(&bytes[ptr..ptr+32]).to_string();
-    ptr +=32;
-    
-    
-    let c0 = BigUint::from_bytes_be(&bytes[ptr..ptr+32]).to_string();
-    ptr +=32;
-    let c1 = BigUint::from_bytes_be(&bytes[ptr..ptr+32]).to_string();
-    ptr +=32;
+    let c0 = BigUint::from_bytes_be(&bytes[ptr..ptr + 32]).to_string();
+    ptr += 32;
+    let c1 = BigUint::from_bytes_be(&bytes[ptr..ptr + 32]).to_string();
+    ptr += 32;
 
     let proof = CircomProof {
-        A: vec![a0,a1,"1".to_string()],
-        B: vec![vec![b00, b01], vec![b10, b11], vec!["1".to_string(), "0".to_string()]],
-        C: vec![c0,c1,"1".to_string()],
+        A: vec![a0, a1, "1".to_string()],
+        B: vec![
+            vec![b00, b01],
+            vec![b10, b11],
+            vec!["1".to_string(), "0".to_string()],
+        ],
+        C: vec![c0, c1, "1".to_string()],
         Protocol: "groth16".to_string(),
         Curve: "bn128".to_string(),
     };
@@ -368,6 +527,75 @@ fn form_circom_proof_from_snark_receipt(snark_receipt: &Receipt) -> AnyhowResult
     Ok(proof)
 }
 
+fn sp1_snark_proof_to_ffi_type(
+    encoded_proof: String,
+) -> AnyhowResult<circuit_builder::GnarkGroth16Proof> {
+    let mut proof_bytes = [0u8; 256];
+    hex::decode_to_slice(encoded_proof, &mut proof_bytes)?;
+    let mut offset = 0;
+
+    // a
+    let elm_bytes = &proof_bytes[offset..offset + 32];
+    let a_x = BigUint::from_bytes_be(&elm_bytes);
+    offset += 32;
+    let elm_bytes = &proof_bytes[offset..offset + 32];
+    let a_y = BigUint::from_bytes_be(&elm_bytes);
+    offset += 32;
+
+    // b
+    let elm_bytes = &proof_bytes[offset..offset + 32];
+    let b_x_a1 = BigUint::from_bytes_be(&elm_bytes);
+    offset += 32;
+    let elm_bytes = &proof_bytes[offset..offset + 32];
+    let b_x_a0 = BigUint::from_bytes_be(&elm_bytes);
+    offset += 32;
+    let elm_bytes = &proof_bytes[offset..offset + 32];
+    let b_y_a1 = BigUint::from_bytes_be(&elm_bytes);
+    offset += 32;
+    let elm_bytes = &proof_bytes[offset..offset + 32];
+    let b_y_a0 = BigUint::from_bytes_be(&elm_bytes);
+    offset += 32;
+
+    // b
+    let elm_bytes = &proof_bytes[offset..offset + 32];
+    let c_x = BigUint::from_bytes_be(&elm_bytes);
+    offset += 32;
+    let elm_bytes = &proof_bytes[offset..offset + 32];
+    let c_y = BigUint::from_bytes_be(&elm_bytes);
+    offset += 32;
+
+    let a = G1 {
+        X: a_x.to_string(),
+        Y: a_y.to_string(),
+    };
+
+    let b = G2 {
+        X: G1A {
+            A0: b_x_a0.to_string(),
+            A1: b_x_a1.to_string(),
+        },
+        Y: G1A {
+            A0: b_y_a0.to_string(),
+            A1: b_y_a1.to_string(),
+        },
+    };
+
+    let c = G1 {
+        X: c_x.to_string(),
+        Y: c_y.to_string(),
+    };
+
+    Ok(circuit_builder::GnarkGroth16Proof {
+        Ar: a,
+        Bs: b,
+        Krs: c,
+        CommitmentPok: G1 {
+            X: "0".to_string(),
+            Y: "0".to_string(),
+        },
+        Commitments: vec![],
+    })
+}
 
 fn form_bonsai_input_data<H: Hasher + Serialize>(agg_input: AggInputs<H>) -> AnyhowResult<Vec<u8>> {
     let data = to_vec(&agg_input)?;
@@ -411,7 +639,6 @@ mod tests {
 
     //         },
 
-
     //         post_state_digest:  [163, 172, 194, 113, 23, 65, 137, 150, 52, 11, 132, 229, 169, 15, 62, 244, 196, 157, 34, 199, 158, 68, 170, 216, 34, 236, 156, 49, 62, 30, 184, 226].to_vec(),
     //         journal: [90, 18, 196, 95, 51, 152, 136, 218, 195, 64, 81, 98, 111, 194, 77, 226, 56, 208, 183, 55, 189, 132, 182, 44, 38, 183, 233, 171, 12, 192, 231, 112].to_vec() ,
     //     };
@@ -425,7 +652,7 @@ mod tests {
     pub async fn leaf_deserialize() {
         let path = "/home/ubuntu/aditya-risc0-test/quantum-node/storage/superproofs/45/leaves.bin";
         let bytes = fs::read(path).unwrap();
-        let leaves : Vec<[u8;32]> = bincode::deserialize(&bytes).unwrap();
+        let leaves: Vec<[u8; 32]> = bincode::deserialize(&bytes).unwrap();
 
         println!("leaves: {:?}", leaves);
     }

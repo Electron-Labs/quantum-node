@@ -110,6 +110,10 @@ pub fn get_sp1_agg_pk_bytes_path(storage_folder_path: &str, snark_folder_path: &
     format!("{}{}/sp1_agg_pk.bin", storage_folder_path, snark_folder_path)
 }
 
+pub fn get_sp1_agg_vk_hash_bytes_path(storage_folder_path: &str, snark_folder_path: &str) -> String {
+    format!("{}{}/sp1_agg_vk_hash.bin", storage_folder_path, snark_folder_path)
+}
+
 pub fn get_snark_reduction_vk_path(storage_folder_path: &str, snark_folder_path: &str) -> String {
     format!("{}{}/vKey.json", storage_folder_path, snark_folder_path)
 }

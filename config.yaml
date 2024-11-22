@@ -14,7 +14,8 @@ max_batch_size: 32 # Number of proofs to be included in 1 batch
 worker_sleep_secs: 10
 reduced_proof_receipt_path: /receipt
 aggregation_wait_time: 780
-snark_reduction_data_path: /snark_reduction
+risc0_snark_reduction_data_path: /risc0_snark_reduction
+sp1_snark_reduction_data_path: /sp1_snark_reduction
 parallel_bonsai_session_limit: 5
 pr_batch_max_cycle_count: 3400000000
 # sp1_agg_pkey_path: /

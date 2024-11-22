@@ -7,7 +7,7 @@ use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
 use gnark_bn254_verifier::{load_groth16_verifying_key_from_bytes, verify};
-use quantum_circuits_interface::ffi::circuit_builder::{GnarkProof, G1, G1A, G2};
+use quantum_circuits_interface::ffi::circuit_builder::{self, G1, G1A, G2};
 use quantum_utils::{
     error_line,
     file::{read_bytes_from_file , write_bytes_to_file},
@@ -235,19 +235,19 @@ impl Proof for SuperproofGnarkGroth16Proof {
         let gnark_proof = SuperproofGnarkGroth16Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
-    
+
     fn validate_proof(&self, _vkey_path: &str, _pis_bytes: &[u8]) -> AnyhowResult<()> {
         Ok(())
     }
 }
 
 impl SuperproofGnarkGroth16Proof {
-    pub fn from_gnark_proof_result(gnark_proof: GnarkProof) -> Self {
+    pub fn from_gnark_proof_result(gnark_proof: circuit_builder::GnarkGroth16Proof) -> Self {
         let commitments = gnark_proof.Commitments
             .iter()
             .map(|g1| Fq::from_risc_circuit_G1(&g1))
             .collect();
-        
+
             SuperproofGnarkGroth16Proof {
             Ar: Fq::from_risc_circuit_G1(&gnark_proof.Ar),
             Krs: Fq::from_risc_circuit_G1(&gnark_proof.Krs),
@@ -287,7 +287,7 @@ impl Proof for GnarkGroth16Proof {
         let gnark_proof = GnarkGroth16Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
-    
+
     fn validate_proof(&self, vkey_path: &str, mut pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vk = GnarkGroth16Vkey::read_vk(vkey_path)?;
         let pis = GnarkGroth16Pis::deserialize_pis(&mut pis_bytes)?;
