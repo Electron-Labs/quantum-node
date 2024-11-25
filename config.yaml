@@ -13,7 +13,7 @@ imt_depth: 10
 max_batch_size: 32 # Number of proofs to be included in 1 batch
 worker_sleep_secs: 10
 reduced_proof_receipt_path: /receipt
-aggregation_wait_time: 780
+aggregation_wait_time: 720
 risc0_snark_reduction_data_path: /risc0_snark_reduction
 sp1_snark_reduction_data_path: /sp1_snark_reduction
 parallel_bonsai_session_limit: 5

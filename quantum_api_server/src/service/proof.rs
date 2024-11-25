@@ -33,7 +33,7 @@ use quantum_types::{
 };
 use quantum_utils::{
     error_line,
-    keccak::encode_keccak_hash,
+    keccak::{decode_keccak_hex, encode_keccak_hash},
     paths::{get_user_pis_path, get_user_proof_path},
 };
 use rocket::{time::util::days_in_year, State};
@@ -246,27 +246,35 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(
 ) -> AnyhowResult<ProtocolProofResponse, CustomError> {
     type H = KeccakHasher;
 
-    let user_circuit_hash = proof.user_circuit_hash.clone();
+    let circuit_hash = decode_keccak_hex(&proof.user_circuit_hash.clone())?;
     let user_circuit_data =
-        get_user_circuit_data_by_circuit_hash(get_pool().await, &user_circuit_hash).await?;
-    let bonsai_image =
-        get_bonsai_image_by_image_id(get_pool().await, &user_circuit_data.bonsai_image_id).await?;
-
-    let user_circuit_vk = V::read_vk(&user_circuit_data.vk_path)?;
-
-    let combined_vk_hash = compute_combined_vkey_hash::<KeccakHasher>(
-        &user_circuit_vk.keccak_hash()?,
-        &bonsai_image.circuit_verifying_id,
-    )?;
-
+        get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash).await?;
     let pis: T = T::read_pis(&proof.pis_path)?;
-
     let protocol_pis_hash = pis.keccak_hash()?;
-
     let superproof = get_superproof_by_id(get_pool().await, proof.superproof_id.ok_or(anyhow!("missing superproof_id"))?).await?;
-    let batch_leaves = read_superproof_leaves::<H>(&superproof.superproof_leaves_path.ok_or(anyhow!("missing superproof leaves path"))?)?;
-    let target_leaf = compute_leaf_value::<KeccakHasher>(&combined_vk_hash, &protocol_pis_hash);
-    let mt_proof = get_imt_proof::<H>(batch_leaves, target_leaf)?;
+
+    let leaves: Vec<[u8; 32]>;
+    let last_proof_elm: [u8; 32];
+    let last_proof_elm_position: u8;
+    match user_circuit_data.proving_scheme {
+        ProvingSchemes::Sp1 => {
+            leaves = read_superproof_leaves::<H>(&superproof.sp1_leaves_path.ok_or(anyhow!("missing sp1 leaves path"))?)?;
+            last_proof_elm = decode_keccak_hex(&superproof.r0_root.ok_or(anyhow!("missing r0_root"))?)?;
+            last_proof_elm_position = 0;
+        },
+        _ => {
+            leaves = read_superproof_leaves::<H>(&superproof.r0_leaves_path.ok_or(anyhow!("missing risc0 leaves path"))?)?;
+            last_proof_elm = decode_keccak_hex(&superproof.sp1_root.ok_or(anyhow!("missing r0_root"))?)?;
+            last_proof_elm_position = 1;
+        }
+    }
+
+    let target_leaf = compute_leaf_value::<KeccakHasher>(&circuit_hash, &protocol_pis_hash);
+    let mut mt_proof = get_imt_proof::<H>(leaves, target_leaf)?;
+
+    // append last proof elm
+    mt_proof.0.push(last_proof_elm);
+    mt_proof.1.push(last_proof_elm_position);
 
     let mt_proof_encoded = mt_proof
         .0

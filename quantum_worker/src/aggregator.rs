@@ -484,6 +484,8 @@ fn snark_to_gnark_reduction(
         sp1_data,
     };
     let result = CircuitBuilderImpl::prove_gnark(args);
+    println!("prove_gnark result {:?}", result.proof);
+    println!("prove_gnark pub_inputs {:?}", result.pub_inputs);
     Ok(result)
 }
 

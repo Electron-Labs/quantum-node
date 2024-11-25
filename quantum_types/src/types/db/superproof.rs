@@ -15,9 +15,13 @@ pub struct Superproof {
     pub status: SuperproofStatus,
     pub superproof_root: Option<String>,
     pub superproof_leaves_path: Option<String>,
+    pub r0_leaves_path: Option<String>,
+    pub sp1_leaves_path: Option<String>,
     pub onchain_submission_time: Option<NaiveDateTime>,
     pub eth_price: Option<Decimal>,
     pub previous_superproof_root: Option<String>,
     pub imt_proof_path: Option<String>,
     pub imt_pis_path: Option<String>,
+    pub r0_root: Option<String>,
+    pub sp1_root: Option<String>,
 }
