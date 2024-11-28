@@ -18,7 +18,7 @@ use quantum_types::{
 };
 use quantum_utils::error_line;
 use risc0_zkvm::{serde::to_vec, Receipt};
-use sp1_core::structs::SP1ReductionInput;
+// use sp1_core::structs::SP1ReductionInput;
 // use sp1_core::structs::SP1ReductionInput;
 use tokio::time::Instant;
 use tracing::info;
@@ -87,9 +87,10 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
         (receipt, reduction_time) = generate_plonky2_reduced_proof(user_circuit_data, proof_data).await?;
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Risc0 {
         (receipt, reduction_time) = generate_risc0_reduced_proof(user_circuit_data, proof_data).await?;
-    } else if user_circuit_data.proving_scheme == ProvingSchemes::Sp1 {
-        (receipt, reduction_time) = generate_sp1_reduced_proof(user_circuit_data, proof_data).await?;
     } 
+    //else if user_circuit_data.proving_scheme == ProvingSchemes::Sp1 {
+        // (receipt, reduction_time) = generate_sp1_reduced_proof(user_circuit_data, proof_data).await?;
+    //} 
     else {
         return Err(anyhow!(error_line!("unsupported proving scheme in proof reduction")));
     }
@@ -310,47 +311,47 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
     Ok((receipt, reduction_time))
 }
 
-fn form_sp1_bonsai_inputs(proof: &Sp1Proof, vk: &Sp1Vkey) -> AnyhowResult<Vec<u8>> {
+// fn form_sp1_bonsai_inputs(proof: &Sp1Proof, vk: &Sp1Vkey) -> AnyhowResult<Vec<u8>> {
 
-    // TODO: to check whether this to_vec is needed, vkey is already u32 type
-    // let image_id = to_vec(&vk.vkey_bytes)?;
-    // let pis_bytes = to_vec(&proof.receipt.journal.bytes)?;
+//     // TODO: to check whether this to_vec is needed, vkey is already u32 type
+//     // let image_id = to_vec(&vk.vkey_bytes)?;
+//     // let pis_bytes = to_vec(&proof.receipt.journal.bytes)?;
 
-    let sp1_reduction_input = SP1ReductionInput {
-            vk: vk.get_verifying_key()?.vk.clone(),
-            //TODO: remove unwrap
-            compressed_proof: proof.get_proof_with_public_inputs()?.proof.clone().try_as_compressed().unwrap().deref().clone(),
-            public_values: proof.get_proof_with_public_inputs()?.public_values.clone(),
-            sp1_version: proof.get_proof_with_public_inputs()?.sp1_version.clone(),
-        };
+//     let sp1_reduction_input = SP1ReductionInput {
+//             vk: vk.get_verifying_key()?.vk.clone(),
+//             //TODO: remove unwrap
+//             compressed_proof: proof.get_proof_with_public_inputs()?.proof.clone().try_as_compressed().unwrap().deref().clone(),
+//             public_values: proof.get_proof_with_public_inputs()?.public_values.clone(),
+//             sp1_version: proof.get_proof_with_public_inputs()?.sp1_version.clone(),
+//         };
 
-    let sp1_reduction_input_bytes = to_vec(&sp1_reduction_input)?;
-    let input_data_vec: Vec<u8> = bytemuck::cast_slice(&sp1_reduction_input_bytes).to_vec();
-    Ok(input_data_vec)
-}
+//     let sp1_reduction_input_bytes = to_vec(&sp1_reduction_input)?;
+//     let input_data_vec: Vec<u8> = bytemuck::cast_slice(&sp1_reduction_input_bytes).to_vec();
+//     Ok(input_data_vec)
+// }
 
 
-async fn generate_sp1_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
-    // Get inner_proof
-    let proof_path = &proof_data.proof_path;
-    println!("proof_path :: {:?}", proof_path);
+// async fn generate_sp1_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
+//     // Get inner_proof
+//     let proof_path = &proof_data.proof_path;
+//     println!("proof_path :: {:?}", proof_path);
 
-    // Get inner_vk
-    let vk_path = &user_circuit_data.vk_path;
-    println!("vk_path :: {:?}", vk_path);
+//     // Get inner_vk
+//     let vk_path = &user_circuit_data.vk_path;
+//     println!("vk_path :: {:?}", vk_path);
 
-    let proof = Sp1Proof::read_proof(&proof_path)?;
-    let vk = Sp1Vkey::read_vk(&vk_path)?;
+//     let proof = Sp1Proof::read_proof(&proof_path)?;
+//     let vk = Sp1Vkey::read_vk(&vk_path)?;
     
-    let input_data = form_sp1_bonsai_inputs(&proof, &vk)?;
-    let assumptions = vec![];
+//     let input_data = form_sp1_bonsai_inputs(&proof, &vk)?;
+//     let assumptions = vec![];
 
-    let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
-    let reduction_time = reduction_start_time.elapsed().as_secs();
+//     let reduction_start_time = Instant::now();
+//     let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+//     let reduction_time = reduction_start_time.elapsed().as_secs();
 
-    Ok((receipt, reduction_time))
-}
+//     Ok((receipt, reduction_time))
+// }
 
 fn form_gnark_plonk_bonsai_inputs(proof: &GnarkPlonkSolidityProof, vk: &GnarkPlonkVkey, pis: &GnarkPlonkPis)-> AnyhowResult<Vec<u8>> {
     let proof_bytes = to_vec(&proof.proof_bytes)?;

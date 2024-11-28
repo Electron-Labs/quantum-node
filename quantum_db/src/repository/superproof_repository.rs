@@ -52,12 +52,26 @@ pub async fn update_superproof_status(pool: &Pool<MySql>, superproof_status: Sup
     row_affected
 }
 
-pub async fn update_superproof_leaves_path(pool: &Pool<MySql>, superproof_leaves_path: &str, superproof_id: u64) -> AnyhowResult<()>{
-    let query  = sqlx::query("UPDATE superproof set superproof_leaves_path = ? where id = ?")
-                .bind(superproof_leaves_path).bind(superproof_id);
+pub async fn update_r0_leaves_path(pool: &Pool<MySql>, r0_leaves_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set r0_leaves_path = ? where id = ?")
+                .bind(r0_leaves_path).bind(superproof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}", superproof_leaves_path, superproof_id);
+    info!("arguments: {}, {}", r0_leaves_path, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+pub async fn update_sp1_leaves_path(pool: &Pool<MySql>, sp1_leaves_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set sp1_leaves_path = ? where id = ?")
+                .bind(sp1_leaves_path).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", sp1_leaves_path, superproof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
@@ -107,6 +121,36 @@ pub async fn update_previous_superproof_root(pool: &Pool<MySql>, previous_superp
     };
     row_affected
 }
+
+pub async fn update_r0_root(pool: &Pool<MySql>, r0_root: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set r0_root = ? where id = ?")
+                .bind(r0_root).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", r0_root, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+pub async fn update_sp1_root(pool: &Pool<MySql>, sp1_root: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set sp1_root = ? where id = ?")
+                .bind(sp1_root).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", sp1_root, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+
 
 pub async fn update_superproof_root(pool: &Pool<MySql>, superproof_root: &str, superproof_id: u64) -> AnyhowResult<()>{
     let query  = sqlx::query("UPDATE superproof set superproof_root = ? where id = ?")
@@ -207,12 +251,26 @@ pub async fn update_superproof_pis_path(pool: &Pool<MySql>, superproof_pis_path:
     row_affected
 }
 
-pub async fn update_superproof_receipts_path(pool: &Pool<MySql>, superproof_receipt_path: &str, superproof_snark_receipt_path: &str, superproof_id: u64) -> AnyhowResult<()>{
-    let query  = sqlx::query("UPDATE superproof set receipt_path = ?, snark_receipt_path = ? where id = ?")
-                .bind(superproof_receipt_path).bind(superproof_snark_receipt_path).bind(superproof_id);
+pub async fn update_r0_receipts_path(pool: &Pool<MySql>, r0_receipt_path: &str, r0_snark_receipt_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set r0_receipt_path = ?, r0_snark_receipt_path = ? where id = ?")
+                .bind(r0_receipt_path).bind(r0_snark_receipt_path).bind(superproof_id);
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}, {}", superproof_receipt_path, superproof_snark_receipt_path, superproof_id);
+    info!("arguments: {}, {}, {}", r0_receipt_path, r0_snark_receipt_path, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
+}
+
+pub async fn update_sp1_snark_receipt_path(pool: &Pool<MySql>, sp1_snark_receipt_path: &str, superproof_id: u64) -> AnyhowResult<()>{
+    let query  = sqlx::query("UPDATE superproof set sp1_snark_receipt_path = ? where id = ?")
+                .bind(sp1_snark_receipt_path).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", sp1_snark_receipt_path, superproof_id);
 
     let row_affected = match query.execute(pool).await {
         Ok(_) => Ok(()),
@@ -292,11 +350,15 @@ fn get_superproof_from_row(row: MySqlRow) -> AnyhowResult<Superproof> {
         status: superproof_status,
         superproof_root: row.try_get_unchecked("superproof_root")?,
         superproof_leaves_path: row.try_get_unchecked("superproof_leaves_path")?,
+        r0_leaves_path: row.try_get_unchecked("r0_leaves_path")?,
+        sp1_leaves_path: row.try_get_unchecked("sp1_leaves_path")?,
         onchain_submission_time: row.try_get_unchecked("onchain_submission_time")?,
         eth_price: row.try_get_unchecked("eth_price")?,
         previous_superproof_root: row.try_get_unchecked("previous_superproof_root")?,
         imt_proof_path: row.try_get_unchecked("imt_proof_path")?,
         imt_pis_path: row.try_get_unchecked("imt_pis_path")?,
+        r0_root: row.try_get_unchecked("r0_root")?,
+        sp1_root: row.try_get_unchecked("sp1_root")?,
     };
 
     Ok(superproof)

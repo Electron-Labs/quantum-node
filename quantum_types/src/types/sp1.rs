@@ -3,8 +3,8 @@ use anyhow::{anyhow , Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
 use quantum_utils::{error_line, file::{read_bytes_from_file, write_bytes_to_file}};
 use serde::{Deserialize, Serialize};
-use sp1_prover::types::SP1VerifyingKey;
-use sp1_sdk::{HashableKey, SP1ProofWithPublicValues};
+// use sp1_sdk::types::SP1VerifyingKey;
+use sp1_sdk::{HashableKey, SP1ProofWithPublicValues, SP1VerifyingKey};
 use utils::hash::{Hasher, KeccakHasher};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
@@ -43,13 +43,11 @@ impl Vkey for Sp1Vkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        Ok(self.get_verifying_key()?.hash_bytes())
+        Ok(words_to_bytes_le(&self.get_verifying_key()?.hash_u32()))
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
-        let protocol_hash = self.keccak_hash()?;
-        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&protocol_hash, &circuit_verifying_id)?;
-        Ok(circuit_hash)
+        self.keccak_hash()
     }
 }
 
@@ -89,7 +87,7 @@ impl Proof for Sp1Proof {
         let gnark_proof = Sp1Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
-    
+
     fn validate_proof(&self, vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = Sp1Vkey::read_vk(vkey_path)?;
         let client = sp1_sdk::ProverClient::local();
@@ -143,4 +141,13 @@ impl Pis for Sp1Pis {
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
         Ok(self.0.clone())
     }
+}
+
+pub fn words_to_bytes_le(words: &[u32; 8]) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
+    for i in 0..8 {
+        let word_bytes = words[i].to_le_bytes();
+        bytes[i * 4..(i + 1) * 4].copy_from_slice(&word_bytes);
+    }
+    bytes
 }

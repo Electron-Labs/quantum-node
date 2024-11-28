@@ -1,6 +1,8 @@
 // use agg_core::inputs::get_init_tree_data;
 use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
+use mt_core::tree::get_merkle_tree;
+use mt_core::tree::get_merkle_tree_sp1;
 // use imt_core::types::Leaf;
 use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::traits::pis::Pis;
@@ -8,6 +10,7 @@ use quantum_types::traits::proof::Proof;
 use quantum_types::types::config::ConfigData;
 use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
+use quantum_types::types::sp1::words_to_bytes_le;
 use quantum_utils::error_line;
 use quantum_utils::file::dump_object;
 use quantum_utils::keccak::encode_keccak_hash;
@@ -19,6 +22,7 @@ use risc0_zkvm::Receipt;
 use tracing::info;
 use utils::hash::Hasher;
 use crate::connection::get_pool;
+use sp1_sdk::{HashableKey, SP1Proof, SP1ProofWithPublicValues, SP1Stdin, SP1VerifyingKey};
 
 // Returns circuit_id, pk_path, vk_path
 // pub fn dump_reduction_circuit_data(
@@ -62,10 +66,47 @@ pub fn dump_reduction_proof_data(
         circuit_hash,
         proof_hash,
     );
-    
+
     dump_object(receipt, &receipt_path).map_err(|err| anyhow!(error_line!(err)))?;
     Ok(receipt_path)
 }
+
+pub fn get_agg_inputs_sp1<H: Hasher>(
+    protocol_vkeys: Vec<SP1VerifyingKey>,
+    protocol_proofs: Vec<SP1ProofWithPublicValues>
+) -> AnyhowResult<(SP1Stdin, Vec<H::HashOut>, H::HashOut)> {
+    let vkey_hashes = protocol_vkeys.iter().map(|vkey| vkey.hash_u32()).collect::<Vec<_>>();
+    let pis = protocol_proofs.iter().map(|proof| proof.public_values.to_vec()).collect::<Vec<_>>();
+    let pis_hashes = pis.iter().map(|pis| H::hash_out(pis)).collect::<Vec<_>>();
+
+    let combined_hashes = vkey_hashes.iter().zip(pis_hashes.iter()).map(|(v_hash, pis_hash)| {
+        H::combine_hash(&words_to_bytes_le(v_hash), pis_hash.as_ref())
+    }).collect::<Vec<_>>();
+
+    println!("before sp1 get merkle tree");
+    let tree = get_merkle_tree_sp1::<H>(combined_hashes.clone())?;
+    println!("after sp1 get merkle tree");
+    let mut stdin = SP1Stdin::new();
+
+    // Write the verification keys.
+    stdin.write::<Vec<[u32; 8]>>(&vkey_hashes);
+
+    stdin.write::<Vec<Vec<u8>>>(&pis);
+
+    // Write the proofs.
+    //
+    // Note: this data will not actually be read by the aggregation program, instead it will be
+    // witnessed by the prover during the recursive aggregation process inside SP1 itself.
+    for (proof, vkey) in protocol_proofs.iter().zip(protocol_vkeys) {
+        let SP1Proof::Compressed(proof) = proof.proof.clone() else { panic!() };
+        stdin.write_proof(*proof, vkey.vk);
+    }
+
+    let root = H::value_from_slice(tree.root().as_ref())?;
+
+    Ok((stdin, combined_hashes, root))
+}
+
 
 // Returns imt_proof_path, imt_pis_path
 // pub fn dump_imt_proof_data(
