@@ -86,8 +86,26 @@ pub async fn handle_proof_aggregation_and_updation(
 
     let (r0_receipt, r0_snark_receipt, r0_root_bytes, r0_aggregation_time) =
         handle_proof_aggregation_r0(proofs_r0.clone(), superproof_id, config).await?;
-    let (sp1_snark_proof, sp1_root_bytes, sp1_aggregation_time) =
-        handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
+    let sp1_snark_proof: SP1ProofWithPublicValues;
+    let sp1_root_bytes: [u8; 32];
+    let sp1_aggregation_time: Duration;
+    if proofs_sp1.len() != 0 {
+        (sp1_snark_proof, sp1_root_bytes, sp1_aggregation_time) =
+            handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
+    } else {
+        // use hardocoded aggregated_sp1_snark_receipt_path
+        let aggregated_sp1_snark_receipt_path = get_aggregated_sp1_snark_receipt_path(
+            &config.storage_folder_path,
+            &config.supperproof_path,
+            7615,
+        );
+        sp1_snark_proof = SP1ProofWithPublicValues::load(aggregated_sp1_snark_receipt_path)?;
+        sp1_aggregation_time = Duration::ZERO;
+        sp1_root_bytes  = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    }
+
+
+    // sp1_snark_proof.save(&aggregated_sp1_snark_receipt_path)?;
     info!(
         "individual aggregations done in time : {:?}",
         r0_aggregation_time + sp1_aggregation_time
