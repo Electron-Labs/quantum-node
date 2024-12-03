@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    bonsai::{execute_aggregation, run_stark2snark},
+    bonsai::{execute_aggregation_with_retry, run_stark2snark},
     connection::get_pool,
 };
 use agg_core::{inputs::get_agg_inputs, types::AggInputs};
@@ -384,7 +384,7 @@ async fn handle_proof_aggregation_r0(
     //TODO: move it to DB;
     let agg_image = get_aggregate_circuit_bonsai_image(get_pool().await).await?;
     let (receipt, agg_session_id, agg_cycle_used) =
-        execute_aggregation(input_data, &agg_image.image_id, assumptions, superproof_id).await?;
+    execute_aggregation_with_retry(&input_data, &agg_image.image_id, &assumptions, superproof_id).await?;
 
     let total_cycle_used = calc_total_cycle_used(agg_cycle_used, &proofs);
     update_cycles_in_superproof(
