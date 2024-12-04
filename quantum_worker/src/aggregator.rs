@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    bonsai::{execute_aggregation_with_retry, run_stark2snark},
+    bonsai::{execute_aggregation_with_retry, run_stark2snark, run_stark2snark_with_retry},
     connection::get_pool,
 };
 use agg_core::{inputs::get_agg_inputs, types::AggInputs};
@@ -395,7 +395,7 @@ async fn handle_proof_aggregation_r0(
     )
     .await?;
 
-    let snark_receipt = run_stark2snark(agg_session_id, superproof_id)
+    let snark_receipt = run_stark2snark_with_retry(&agg_session_id, superproof_id)
         .await?
         .unwrap();
     println!("snark receipt: {:?}", snark_receipt);

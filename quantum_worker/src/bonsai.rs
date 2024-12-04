@@ -1,9 +1,9 @@
-use std::{fs, time::Duration};
+use std::time::Duration;
 
 use bonsai_sdk::non_blocking::{Client, SessionId};
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::{update_cycle_used_in_proof, update_session_id_in_proof}, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};
 use quantum_utils::error_line;
-use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
+use risc0_zkvm::Receipt;
 use tracing::{info, error};
 
 use crate::{connection::get_pool, worker::increment_cycle};
@@ -56,7 +56,7 @@ pub async fn execute_proof_reduction_with_retry(input_data: &Vec<u8>, image_id: 
             Err(e) => {
                 retries += 1;
                 if retries >= 3 {
-                    error!("proof reduction failed in bonsai... with max retry count: {}", retries);
+                    error!("proof reduction failed in bonsai with max retry count: {}", retries);
                     return Err(e);
                 }
                 error!("proof reduction failed in bonsai... retrying with count: {}", retries);
@@ -103,10 +103,10 @@ pub async fn execute_aggregation_with_retry(input_data: &Vec<u8>, image_id: &str
             Err(e) => {
                 retries += 1;
                 if retries >= 3 {
-                    error!("proof reduction failed in bonsai... with max retry count: {}", retries);
+                    error!("aggregation failed in bonsai with max retry count: {}", retries);
                     return Err(e);
                 }
-                error!("proof reduction failed in bonsai... retrying with count: {}", retries);
+                error!("aggregation failed in bonsai... retrying with count: {}", retries);
             },
         };
         std::thread::sleep(Duration::from_secs(120));
@@ -167,11 +167,33 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
     // Ok(receipt)
 }
 
+pub async fn run_stark2snark_with_retry(agg_session_id: &str, superproof_id: u64) -> AnyhowResult<Option<Receipt>> {
+    let mut retries = 0;
+    let receipt;
+    loop {
+        match run_stark2snark(agg_session_id, superproof_id).await {
+            Ok(r) => {
+                receipt = r;
+                break;
+            },
+            Err(e) => {
+                retries += 1;
+                if retries >= 3 {
+                    error!("stark2snark failed in bonsai with max retry count: {}", retries);
+                    return Err(e);
+                }
+                error!("stark2snark failed in bonsai... retrying with count: {}", retries);
+            },
+        };
+        std::thread::sleep(Duration::from_secs(120));
+    }
+    Ok(receipt)
+}
 
-pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> AnyhowResult<Option<Receipt>> {
+pub async fn run_stark2snark(agg_session_id: &str, superproof_id: u64) -> AnyhowResult<Option<Receipt>> {
     let client = get_bonsai_client()?;
     let mut receipt: Option<Receipt> = None;
-    let snark_session = client.create_snark(agg_session_id).await?;
+    let snark_session = client.create_snark(agg_session_id.to_string()).await?;
     println!("Created snark session: {}", snark_session.uuid);
     update_snark_session_id_superproof(get_pool().await, &snark_session.uuid, superproof_id).await?;
     loop {
