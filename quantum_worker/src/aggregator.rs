@@ -1,12 +1,8 @@
-use std::{
-    fs::{self, File},
-    io::{BufWriter, Read},
-    path::PathBuf,
-    time::{Duration, Instant},
-};
+use std::
+    time::{Duration, Instant};
 
 use crate::{
-    bonsai::{execute_aggregation_with_retry, run_stark2snark, run_stark2snark_with_retry},
+    bonsai::{execute_aggregation_with_retry, run_stark2snark_with_retry},
     connection::get_pool,
 };
 use agg_core::{inputs::get_agg_inputs, types::AggInputs};
@@ -19,7 +15,7 @@ use quantum_circuits_interface::ffi::circuit_builder::{
 use quantum_db::repository::{
     bonsai_image::get_aggregate_circuit_bonsai_image,
     superproof_repository::{
-        get_last_verified_superproof, update_cycles_in_superproof, update_r0_leaves_path,
+        update_cycles_in_superproof, update_r0_leaves_path,
         update_r0_receipts_path, update_r0_root, update_sp1_leaves_path, update_sp1_root,
         update_sp1_snark_receipt_path, update_superproof_agg_time, update_superproof_pis_path,
         update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time,
@@ -39,21 +35,19 @@ use quantum_types::{
         plonk2::{Plonky2Pis, Plonky2Vkey},
         riscs0::{Risc0Pis, Risc0Vkey},
         snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
-        sp1::{Sp1Pis, Sp1Proof, Sp1Vkey},
+        sp1::{Sp1Proof, Sp1Vkey},
     },
 };
 use quantum_utils::{
     error_line,
     file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file},
     keccak::encode_keccak_hash,
-    logger,
     paths::{
         get_aggregated_r0_proof_receipt_path, get_aggregated_r0_snark_receipt_path,
         get_aggregated_sp1_snark_receipt_path, get_cs_bytes_path, get_inner_vkey_path,
         get_r0_aggregate_leaves_path, get_snark_reduction_pk_bytes_path,
         get_snark_reduction_vk_path, get_sp1_agg_pk_bytes_path, get_sp1_agg_vk_hash_bytes_path,
         get_sp1_aggregate_leaves_path, get_superproof_pis_path, get_superproof_proof_path,
-        get_user_vk_path,
     },
 };
 use risc0_zkvm::{serde::to_vec, Receipt};
@@ -93,6 +87,7 @@ pub async fn handle_proof_aggregation_and_updation(
         (sp1_snark_proof, sp1_root_bytes, sp1_aggregation_time) =
             handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
     } else {
+        info!("No new sp1 proofs, using old aggregated_sp1_snark_receipt");
         // use hardocoded aggregated_sp1_snark_receipt_path
         let aggregated_sp1_snark_receipt_path = get_aggregated_sp1_snark_receipt_path(
             &config.storage_folder_path,
@@ -232,7 +227,6 @@ async fn handle_proof_aggregation_sp1(
     // TODO: Parth Bhaiya
 
     println!("inside the sp1 aggregation");
-    let mut protocol_ids: Vec<u8> = vec![];
     let mut protocol_vkeys: Vec<SP1VerifyingKey> = vec![];
     let mut deserialised_proofs: Vec<SP1ProofWithPublicValues> = vec![];
     for proof in &proofs {
@@ -240,7 +234,6 @@ async fn handle_proof_aggregation_sp1(
             get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash)
                 .await?;
         let protocol_circuit_vkey_path = user_circuit_data.vk_path;
-        let protocol_pis_path = proof.pis_path.clone();
         let protocol_proof_path = proof.proof_path.clone();
         // Proving Scheme for these will always be sp1
         let protocol_vkey = Sp1Vkey::read_vk(&protocol_circuit_vkey_path)?.get_verifying_key()?;
@@ -625,6 +618,8 @@ fn form_bonsai_input_data<H: Hasher + Serialize>(agg_input: AggInputs<H>) -> Any
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
     use dotenv::dotenv;
     use quantum_db::repository::proof_repository::get_proofs_in_superproof_id;
