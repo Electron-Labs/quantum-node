@@ -1,9 +1,9 @@
-use std::{fs, time::Duration};
+use std::time::Duration;
 
 use bonsai_sdk::non_blocking::{Client, SessionId};
 use quantum_db::repository::{bonsai_image::get_bonsai_image_by_image_id, proof_repository::{update_cycle_used_in_proof, update_session_id_in_proof}, superproof_repository::{update_session_id_superproof, update_snark_session_id_superproof}};
 use quantum_utils::error_line;
-use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
+use risc0_zkvm::Receipt;
 use tracing::{info, error};
 
 use crate::{connection::get_pool, worker::increment_cycle};
@@ -15,12 +15,12 @@ pub fn get_bonsai_client() -> AnyhowResult<Client> {
     Ok(client)
 }
 
-pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_id: u64, assumptions: Vec<String>) -> AnyhowResult<(Option<Receipt>, String)> {
+pub async fn execute_proof_reduction(input_data: &Vec<u8>, image_id: &str, proof_id: u64, assumptions: &Vec<String>) -> AnyhowResult<(Option<Receipt>, String)> {
     
     let client = get_bonsai_client()?;
 
     // TODO: store it in DB
-    let input_id = client.upload_input(input_data).await?;
+    let input_id = client.upload_input((*input_data).clone()).await?;
     println!("input_id: {:?}", input_id);
 
     let bonsai_image = get_bonsai_image_by_image_id(get_pool().await, image_id).await?;
@@ -29,7 +29,7 @@ pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_
     let execute_only = false;
 
     //TODO: store in DB
-    let session = client.create_session(image_id.to_string(), input_id, assumptions, execute_only).await?;
+    let session = client.create_session(image_id.to_string(), input_id, (*assumptions).clone(), execute_only).await?;
     let session_uuid_id = session.uuid.clone();
     println!("sessionId: {:?}", session.uuid);
 
@@ -42,22 +42,76 @@ pub async fn execute_proof_reduction(input_data: Vec<u8>, image_id: &str, proof_
     Ok((receipt, session_uuid_id))
 }
 
-pub async fn execute_aggregation(input_data: Vec<u8>, image_id: &str, assumptions: Vec<String>, superproof_id: u64, ) -> AnyhowResult<(Option<Receipt>, String, u64)> {
+pub async fn execute_proof_reduction_with_retry(input_data: &Vec<u8>, image_id: &str, proof_id: u64, assumptions: &Vec<String>) -> AnyhowResult<(Option<Receipt>, String)> {
+    let mut retries = 0;
+    let receipt;
+    let session_uuid_id;
+    loop {
+        match execute_proof_reduction(input_data, image_id, proof_id, assumptions).await {
+            Ok(r) => {
+                receipt = r.0;
+                session_uuid_id = r.1;
+                break;
+            },
+            Err(e) => {
+                retries += 1;
+                if retries >= 3 {
+                    error!("proof reduction failed in bonsai with max retry count: {}", retries);
+                    return Err(e);
+                }
+                error!("proof reduction failed in bonsai... retrying with count: {}", retries);
+            },
+        };
+        std::thread::sleep(Duration::from_secs(120));
+    }
+    
+    Ok((receipt, session_uuid_id))
+}
+
+pub async fn execute_aggregation(input_data: &Vec<u8>, image_id: &str, assumptions: &Vec<String>, superproof_id: u64, ) -> AnyhowResult<(Option<Receipt>, String, u64)> {
     
     let client = get_bonsai_client()?;
     let bonsai_image = get_bonsai_image_by_image_id(get_pool().await, image_id).await?;
     // TODO: store it in DB
-    let input_id = client.upload_input(input_data).await?;
+    let input_id = client.upload_input(input_data.clone()).await?;
     println!("input_id: {:?}", input_id);
 
     let execute_only = false;
     
-    let session = client.create_session(image_id.to_string(), input_id, assumptions, execute_only).await?;
+    let session = client.create_session(image_id.to_string(), input_id, assumptions.clone(), execute_only).await?;
     let session_uuid_id = session.uuid.clone();
     println!("sessionId: {:?}", session.uuid);
     update_session_id_superproof(get_pool().await,  &session.uuid, superproof_id).await?;
 
     let (receipt, cycle_used )= check_session_status(session, client, &bonsai_image.circuit_verifying_id).await?;    
+    Ok((receipt, session_uuid_id, cycle_used))
+}
+
+pub async fn execute_aggregation_with_retry(input_data: &Vec<u8>, image_id: &str, assumptions: &Vec<String>, superproof_id: u64) -> AnyhowResult<(Option<Receipt>, String, u64)> {
+    let mut retries = 0;
+    let receipt;
+    let session_uuid_id;
+    let cycle_used;
+    loop {
+        match execute_aggregation(input_data, image_id, assumptions, superproof_id).await {
+            Ok(r) => {
+                receipt = r.0;
+                session_uuid_id = r.1;
+                cycle_used = r.2;
+                break;
+            },
+            Err(e) => {
+                retries += 1;
+                if retries >= 3 {
+                    error!("aggregation failed in bonsai with max retry count: {}", retries);
+                    return Err(e);
+                }
+                error!("aggregation failed in bonsai... retrying with count: {}", retries);
+            },
+        };
+        std::thread::sleep(Duration::from_secs(120));
+    }
+    
     Ok((receipt, session_uuid_id, cycle_used))
 }
 
@@ -113,11 +167,33 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
     // Ok(receipt)
 }
 
+pub async fn run_stark2snark_with_retry(agg_session_id: &str, superproof_id: u64) -> AnyhowResult<Option<Receipt>> {
+    let mut retries = 0;
+    let receipt;
+    loop {
+        match run_stark2snark(agg_session_id, superproof_id).await {
+            Ok(r) => {
+                receipt = r;
+                break;
+            },
+            Err(e) => {
+                retries += 1;
+                if retries >= 3 {
+                    error!("stark2snark failed in bonsai with max retry count: {}", retries);
+                    return Err(e);
+                }
+                error!("stark2snark failed in bonsai... retrying with count: {}", retries);
+            },
+        };
+        std::thread::sleep(Duration::from_secs(120));
+    }
+    Ok(receipt)
+}
 
-pub async fn run_stark2snark(agg_session_id: String, superproof_id: u64) -> AnyhowResult<Option<Receipt>> {
+pub async fn run_stark2snark(agg_session_id: &str, superproof_id: u64) -> AnyhowResult<Option<Receipt>> {
     let client = get_bonsai_client()?;
     let mut receipt: Option<Receipt> = None;
-    let snark_session = client.create_snark(agg_session_id).await?;
+    let snark_session = client.create_snark(agg_session_id.to_string()).await?;
     println!("Created snark session: {}", snark_session.uuid);
     update_snark_session_id_superproof(get_pool().await, &snark_session.uuid, superproof_id).await?;
     loop {

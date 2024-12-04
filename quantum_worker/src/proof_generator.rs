@@ -23,7 +23,7 @@ use risc0_zkvm::{serde::to_vec, Receipt};
 use tokio::time::Instant;
 use tracing::info;
 use quantum_db::repository::proof_repository::get_proof_by_proof_id;
-use crate::{bonsai::upload_receipt, connection::get_pool};
+use crate::{bonsai::{execute_proof_reduction_with_retry, upload_receipt}, connection::get_pool};
 use crate::bonsai::execute_proof_reduction;
 use crate::utils::dump_reduction_proof_data;
 use std::ops::Deref;
@@ -140,7 +140,7 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
     
     let reduction_start_time = Instant::now();
     let assumptions = vec![];
-    let (receipt, _) = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let (receipt, _) = execute_proof_reduction_with_retry(&input_data_vec, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), &assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
     Ok((receipt,reduction_time))
 }
@@ -185,7 +185,7 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let (receipt, _) = execute_proof_reduction_with_retry(&input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), &assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
@@ -232,7 +232,7 @@ async fn generate_halo2_poseidon_reduced_proof(user_circuit_data: &UserCircuitDa
     let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let (receipt, _) = execute_proof_reduction_with_retry(&input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), &assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
@@ -268,7 +268,7 @@ async fn generate_plonky2_reduced_proof(user_circuit_data: &UserCircuitData, pro
     let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let (receipt, _) = execute_proof_reduction_with_retry(&input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), &assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
@@ -305,7 +305,7 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
     println!("uploaded recepit_id: {:?}", receipt_id);
     let assumptions = vec![receipt_id];
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let (receipt, _) = execute_proof_reduction_with_retry(&input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), &assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
@@ -390,7 +390,7 @@ async fn generate_gnark_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let (receipt, _) = execute_proof_reduction_with_retry(&input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), &assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
@@ -433,7 +433,7 @@ async fn generate_gnark_groth16_reduced_proof(user_circuit_data: &UserCircuitDat
     let assumptions = vec![];
 
     let reduction_start_time = Instant::now();
-    let (receipt, _) = execute_proof_reduction(input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
+    let (receipt, _) = execute_proof_reduction_with_retry(&input_data, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), &assumptions).await?;
     let reduction_time = reduction_start_time.elapsed().as_secs();
 
     Ok((receipt, reduction_time))
