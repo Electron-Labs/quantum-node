@@ -8,9 +8,11 @@ use tracing::{error, info};
 use crate::{connection::get_pool, error::error::CustomError, service::proof::{get_proof_data_exec, submit_proof_exec}, types::{auth::AuthToken, proof_data::ProofDataResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 
 #[post("/proof", data = "<data>")]
-pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
-    let protocol = get_protocol_by_auth_token(get_pool().await, &_auth_token.0).await?;
+pub async fn submit_proof(auth_token: AuthToken, mut data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
+    // Retrieve protocol data corresponding to the auth token
+    let protocol = get_protocol_by_auth_token(get_pool().await, &auth_token.0).await?;
     
+    // Check if any such protocol exists
     let protocol = match protocol {
         Some(p) => p,
         None => {
@@ -19,13 +21,16 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
         },
     };
 
+    // Retrieve the circuit data corresponding to circuit_hash in the request
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
     
+    // Check if this auth key is allowed to submit proof for this circuit
     if user_circuit_data.protocol_name.to_uppercase() != protocol.protocol_name.to_uppercase() {
-        info!("circuit reduction not completed");
-        return Err(CustomError::BadRequest(error_line!("circuit reduction not completed".to_string())));
+        info!("Not authorised to submit proof for this circuit");
+        return Err(CustomError::BadRequest(error_line!("Not authorised to submit proof for this circuit".to_string())));
     }
 
+    // Match the proof_type and start executing the submit proof request
     let response: AnyhowResult<SubmitProofResponse> = match data.proof_type {
         ProvingSchemes::GnarkGroth16 => submit_proof_exec::<GnarkGroth16Proof, GnarkGroth16Pis, GnarkGroth16Vkey>(data, config_data).await,
         ProvingSchemes::Groth16 => submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis, SnarkJSGroth16Vkey>(data, config_data).await,
@@ -33,12 +38,10 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
         ProvingSchemes::Halo2Poseidon => submit_proof_exec::<Halo2PoseidonProof, Halo2PoseidonPis, Halo2PoseidonVkey>(data, config_data).await,
         ProvingSchemes::Halo2Plonk => submit_proof_exec::<Halo2PlonkProof, Halo2PlonkPis, Halo2PlonkVkey>(data, config_data).await,
         ProvingSchemes::Plonky2 => {
-            let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
             let proof = Plonky2Proof::deserialize_proof(&mut data.proof.as_slice())?;
-            let pis: Vec<String> = proof.get_pis_strings(&user_circuit.vk_path)?;
+            let pis: Vec<String> = proof.get_pis_strings(&user_circuit_data.vk_path)?;
             let plonk2_pis = Plonky2Pis(pis);
-            let pis_bytes = plonk2_pis.serialize_pis()?;
-            data.pis = pis_bytes;
+            data.pis = plonk2_pis.serialize_pis()?;
             submit_proof_exec::<Plonky2Proof, Plonky2Pis, Plonky2Vkey>(data, config_data).await
         },
         ProvingSchemes::Sp1 => {
@@ -46,17 +49,15 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
             let pis_bytes = proof.get_proof_with_public_inputs()?.public_values.to_vec();
             let pis = hex::encode(pis_bytes);
             let sp1_pis = Sp1Pis(vec![pis]);
-            let pis_bytes = sp1_pis.serialize_pis()?;
-            data.pis = pis_bytes;
+            data.pis = sp1_pis.serialize_pis()?;
             submit_proof_exec::<Sp1Proof, Sp1Pis, Sp1Vkey>(data, config_data).await
         },
         ProvingSchemes::Risc0 => {
             let proof = Risc0Proof::deserialize_proof(&mut data.proof.as_slice())?;
             let pis_bytes = proof.get_receipt()?.journal.bytes;
             let pis = hex::encode(pis_bytes);
-            let risco_pis = Risc0Pis(vec![pis]);
-            let pis_bytes = risco_pis.serialize_pis()?;
-            data.pis = pis_bytes;
+            let risc0_pis = Risc0Pis(vec![pis]);
+            data.pis = risc0_pis.serialize_pis()?;
             submit_proof_exec::<Risc0Proof, Risc0Pis, Risc0Vkey>(data, config_data).await
         },
     };

@@ -22,20 +22,11 @@ async fn rocket() -> _ {
         ..Default::default()
     }.to_cors().unwrap();
 
-    // let limits = Limits::default()
-    // .limit("data", 100.gigabytes())
-    // .limit("json", 100.gigabytes())
-    // .limit("bytes", 100.gigabytes())
-    // .limit("string", 100.gigabytes())
-    // .limit("msgpack", 100.gigabytes())
-    // .limit("application/json", 100.gigabytes());
-
     let _guard = initialize_logger("qunatum_node_api.log");
     let config_data = ConfigData::new("./config.yaml");
     let _db_initialize = get_pool().await;
 
     let t = rocket::Config::figment();
-    // .merge(("limits", limits));
     rocket::custom(t).manage(config_data).manage(_guard)
     .mount("/", routes![index, ping, register_circuit, get_circuit_reduction_status, submit_proof, get_proof_status, generate_auth_token, get_protocol_proof]).attach(cors)
     .register("/", catchers![unsupported_media_type, internal_server_error])
