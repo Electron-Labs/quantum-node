@@ -11,41 +11,40 @@ use crate::{connection::get_pool, error::error::CustomError, types::{circuit_reg
 
 pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: Protocol) -> AnyhowResult<RegisterCircuitResponse> {
     // Retreive verification key bytes
-    let vkey_bytes: Vec<u8> = data.vkey.clone();
+    let mut vkey_bytes = data.vkey.as_slice();
 
     // Borsh deserialise to corresponding vkey struct
-    let vkey: T = T::deserialize_vkey(&mut vkey_bytes.as_slice())?;
-    let _ = match vkey.validate() {
-        Ok(_) => Ok(()),
-        Err(e) => {
+    // REFACT_Q: why is this a mutable here?
+    let vkey: T = T::deserialize_vkey(&mut vkey_bytes)
+        .map_err(|e| anyhow!(CustomError::Internal(format!("Failed to deserialize vk: {}", e))))?;
+    
+    // Validate the vkey
+    vkey.validate()
+        .map_err(|e| {
             info!("vk is not valid");
-            Err(anyhow!(CustomError::Internal(format!("vk is invalid. {}",e))))
-        },
-    }?;
-    println!("validated");
+            anyhow!(CustomError::Internal(format!("vk is invalid: {}", e)))
+        })?;
+
     // Circuit Hash(str(Hash(vkey_bytes))) used to identify circuit
-
     let bonsai_image = get_bonsai_image_by_proving_scheme(get_pool().await, data.proof_type).await?;
-
-    let circuit_hash = vkey.compute_circuit_hash(bonsai_image.circuit_verifying_id)?;
-    let circuit_hash_string = encode_keccak_hash(&circuit_hash)?;
+    let circuit_hash = vkey.compute_circuit_hash(bonsai_image.circuit_verifying_id)
+        .map_err(|e| anyhow!(CustomError::Internal(format!("Failed to compute circuit hash: {}", e))))?;
+    let circuit_hash_string = encode_keccak_hash(&circuit_hash)
+        .map_err(|e| anyhow!(CustomError::Internal(format!("Failed to encode circuit hash: {}", e))))?;
     println!("circuit_hash_string {:?}", circuit_hash_string);
 
     // Check if circuit is already registered
-    let is_circuit_already_registered = check_if_circuit_has_already_registered(circuit_hash_string.as_str()).await;
-    if is_circuit_already_registered  {
+    if check_if_circuit_has_already_registered(circuit_hash_string.as_str()).await {
         info!("circuit has already been registered");
-        return Ok(
-            RegisterCircuitResponse{circuit_hash: circuit_hash_string}
-        );
+        return Ok(RegisterCircuitResponse { circuit_hash: circuit_hash_string });
     }
-    println!("already registered {:?}", is_circuit_already_registered);
+    println!("already registered check done");
 
 
     // dump vkey
     let vkey_path = get_user_vk_path(&config_data.storage_folder_path, &config_data.user_data_path, &circuit_hash_string);
     println!("User vkey path {:?}", vkey_path);
-    vkey.dump_vk(&vkey_path)?;
+    vkey.dump_vk(&vkey_path).map_err(|e| anyhow!(CustomError::Internal(format!("Failed to dump vkey: {}", e))))?;
     println!("User vkey path dumped");
 
     // Add user circuit data to DB
@@ -62,26 +61,28 @@ pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResu
     let status = user_circuit.circuit_reduction_status;
     let bonsai_image = get_bonsai_image_by_proving_scheme(get_pool().await, user_circuit.proving_scheme).await?;
     
-    let mut circuit_verifying_id_bytes = vec![];
-    for i in bonsai_image.circuit_verifying_id {
-        circuit_verifying_id_bytes.extend_from_slice(&i.to_le_bytes());
+    let circuit_verifying_id_bytes: Vec<u8> = bonsai_image.circuit_verifying_id.iter().flat_map(|b| b.to_le_bytes()).collect();
+
+     // Ensure the byte slice is exactly 32 bytes
+     if circuit_verifying_id_bytes.len() != 32 {
+        return Err(anyhow!(CustomError::Internal(format!("Invalid circuit verifying ID length"))));
     }
 
-    let mut circuit_verifying_id_bytes_array = [0u8;32];
-    circuit_verifying_id_bytes_array.copy_from_slice(&circuit_verifying_id_bytes);
+    // Convert the vector into a fixed-size array
+    let circuit_verifying_id_bytes_array: [u8; 32] = circuit_verifying_id_bytes
+        .try_into()
+        .map_err(|_| anyhow!(CustomError::Internal(format!("Failed to convert to fixed-size array"))))?;
+
+    // Compute the reduction circuit hash
     let reduction_circuit_hash = encode_keccak_hash(&circuit_verifying_id_bytes_array)?;
-    return Ok(CircuitRegistrationStatusResponse {
+
+    Ok(CircuitRegistrationStatusResponse {
         circuit_registration_status: status.to_string(),
         reduction_circuit_hash,
     })
 }
 
 async fn check_if_circuit_has_already_registered(circuit_hash_string: &str) -> bool {
-    let circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash_string).await;
-    let is_circuit_already_registered = match circuit_data {
-        Ok(_) => true,
-        Err(_) => false
-    };
-    is_circuit_already_registered
+    get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash_string).await.is_ok()
 }
 
