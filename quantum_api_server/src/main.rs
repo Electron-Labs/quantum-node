@@ -6,7 +6,6 @@ use quantum_api_server::{catcher, connection, routes::{self, protocol_proof::get
 use quantum_types::types::config::ConfigData;
 use quantum_utils::logger::initialize_logger;
 use quantum_types;
-use rocket::data::{Limits, ToByteUnit};
 use routes::{ping::ping, register_circuit::register_circuit, circuit_reduction::get_circuit_reduction_status, proof::{submit_proof, get_proof_status}, auth_protocol::generate_auth_token, index::index};
 use catcher::{unsupported_media_type, internal_server_error};
 

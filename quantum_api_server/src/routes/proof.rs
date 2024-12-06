@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::Result as AnyhowResult;
 use quantum_db::repository::{protocol::get_protocol_by_auth_token, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::user_circuit_data, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey} }};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey} }};
 use quantum_utils::error_line;
 use rocket::{get, post, serde::json::Json, State};
 use tracing::{error, info};

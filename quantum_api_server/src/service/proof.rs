@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
     connection::get_pool,
     error::error::CustomError,
@@ -9,16 +7,12 @@ use crate::{
         submit_proof::{SubmitProofRequest, SubmitProofResponse},
     },
 };
-use agg_core::inputs::{compute_combined_vkey_hash, compute_leaf_value};
+use agg_core::inputs::compute_leaf_value;
 use anyhow::{anyhow, Result as AnyhowResult};
 use mt_core::tree::get_merkle_tree;
-use num_bigint::BigUint;
-use quantum_db::repository::proof_repository::get_proof_by_proof_hash;
-use quantum_db::repository::protocol::get_protocol_by_protocol_name;
+use quantum_db::repository::{proof_repository::get_proof_by_proof_hash, protocol::get_protocol_by_protocol_name, superproof_repository::get_superproof_by_id};
 use quantum_db::repository::{
-    bonsai_image::get_bonsai_image_by_image_id,
     proof_repository::{get_latest_proof_by_circuit_hash, insert_proof},
-    superproof_repository::get_superproof_by_id,
     task_repository::create_proof_task,
     user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
 };
@@ -36,10 +30,9 @@ use quantum_utils::{
     keccak::{decode_keccak_hex, encode_keccak_hash},
     paths::{get_user_pis_path, get_user_proof_path},
 };
-use rocket::{time::util::days_in_year, State};
+use rocket::State;
 use tracing::{error, info};
 use utils::hash::{Hasher, KeccakHasher};
-// use imt_core::types::Leaf;
 use tiny_merkle::proof::Position;
 
 pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(

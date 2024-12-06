@@ -17,12 +17,7 @@ use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::Fr;
 use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G1Affine;
 use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G2Affine;
 use snark_verifier::halo2_base::utils::ScalarField;
-use snark_verifier::loader::native::NativeLoader;
-use snark_verifier::system::halo2::transcript::evm::EvmTranscript;
 use snark_verifier::verifier::plonk::PlonkProtocol;
-use snark_verifier_sdk::PlonkVerifier;
-use snark_verifier::verifier::SnarkVerifier;
-use snark_verifier_sdk::SHPLONK;
 use utils::hash::KeccakHasher;
 // use utils::halo2_kzg_vkey_hash;
 // use utils::halo2_public_inputs_hash;
@@ -120,7 +115,7 @@ impl Proof for Halo2PoseidonProof {
         Ok(gnark_proof)
     }
     
-    fn validate_proof(&self, vkey_path: &str,mut pis_bytes: &[u8]) -> AnyhowResult<()> {
+    fn validate_proof(&self, _vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         // let vkey = Halo2PoseidonVkey::read_vk(vkey_path)?;
         // let pis = Halo2PoseidonPis::deserialize_pis(&mut pis_bytes)?;
 
