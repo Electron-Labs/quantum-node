@@ -48,7 +48,7 @@ groth16-core = {path = "../../quantum-risc0-circuits/reduction/groth16/core"}
 plonky2-core = {path = "../../quantum-risc0-circuits/reduction/plonky2/core"}
 halo2-kzg-evm-core = {path = "../../quantum-risc0-circuits/reduction/halo2_kzg_evm/core"}
 
-risc0-zkvm = { version = "=1.1.1" }
+risc0-zkvm = { git = "https://github.com/risc0/risc0.git", tag = "v1.1.1" }
 sp1-sdk =  "3.0.0"
 # sp1-prover = { git = "https://github.com/succinctlabs/sp1.git", default-features = false, tag="release/v3.0.0-rc1" }
 # sp1-core =  {path = "../../quantum-risc0-circuits/reduction/sp1/core"}
