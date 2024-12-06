@@ -14,7 +14,6 @@ pub async fn register_circuit_exec<T: Vkey>(data: &RegisterCircuitRequest, confi
     let mut vkey_bytes = data.vkey.as_slice();
 
     // Borsh deserialise to corresponding vkey struct
-    // REFACT_Q: why is this a mutable here?
     let vkey: T = T::deserialize_vkey(&mut vkey_bytes)
         .map_err(|e| anyhow!(CustomError::Internal(format!("Failed to deserialize vk: {}", e))))?;
     
