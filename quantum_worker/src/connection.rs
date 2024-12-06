@@ -11,8 +11,10 @@ pub async fn get_pool() -> &'static Pool<MySql> {
         let username = std::env::var("DB_USER").expect("DB_USER must be set.");
         let password = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set.");
         let database = std::env::var("DB_NAME").expect("DB_NAME must be set.");
+        let host = std::env::var("DB_HOST").expect("DB_HOST must be set.");
 
         let connection_options = MySqlConnectOptions::new()
+            .host(&host)
             .username(&username)
             .password(&password)
             .database(&database)

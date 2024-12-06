@@ -43,7 +43,7 @@ pub async fn get_unpicked_tasks(pool: &Pool<MySql>, limit: u64) -> Result<Vec<Ta
     reduction_circuit
 }
 
-fn get_task_from_mysql_row(r: MySqlRow) -> AnyhowResult<Task> {
+pub fn get_task_from_mysql_row(r: MySqlRow) -> AnyhowResult<Task> {
     let task_type: u8 = r.try_get_unchecked("task_type")?;
     let task_status: u8 = r.try_get_unchecked("task_status")?;
     let task = Task{

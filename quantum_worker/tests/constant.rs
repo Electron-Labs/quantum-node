@@ -1,0 +1,20 @@
+pub const GROTH16_PROOF_ID: u64 = 131938;
+pub const GROTH16_TASK_ID: u64 = 1;
+
+pub const GNARK_GROTH16_PROOF_ID: u64 = 113976;
+pub const GNARK_GROTH16_TASK_ID: u64 = 7;
+
+pub const GNARK_PLONK_PROOF_ID: u64 = 131934;
+pub const GNARK_PLONK_TASK_ID: u64 = 2;
+
+pub const PLONKY2_PROOF_ID: u64 = 113253;
+pub const PLONKY2_TASK_ID: u64 = 6;
+
+pub const RISC0_PROOF_ID: u64 = 131935;
+pub const RISC0_TASK_ID: u64 = 3;
+
+pub const HALO2_PLONK_PROOF_ID: u64 = 131933;
+pub const HALO2_PLONK_TASK_ID: u64 = 4;
+
+pub const HALO2_POSEIDON_PROOF_ID: u64 = 113886;
+pub const HALO2_POSEIDON_TASK_ID: u64 = 5;
