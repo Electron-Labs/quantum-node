@@ -4,12 +4,12 @@ use quantum_utils::{keccak::encode_keccak_hash, paths::get_user_vk_path};
 use rocket::State;
 
 use anyhow::{anyhow, Result as AnyhowResult};
-use tracing::info;
+use tracing::error;
 use quantum_db::repository::bonsai_image::get_bonsai_image_by_proving_scheme;
 use crate::{connection::get_pool, error::error::CustomError, types::{circuit_registration_status::CircuitRegistrationStatusResponse, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
 
-pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: Protocol) -> AnyhowResult<RegisterCircuitResponse> {
+pub async fn register_circuit_exec<T: Vkey>(data: &RegisterCircuitRequest, config_data: &State<ConfigData>, protocol: &Protocol) -> AnyhowResult<RegisterCircuitResponse> {
     // Retreive verification key bytes
     let mut vkey_bytes = data.vkey.as_slice();
 
@@ -21,7 +21,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     // Validate the vkey
     vkey.validate()
         .map_err(|e| {
-            info!("vk is not valid");
+            error!("vk is not valid");
             anyhow!(CustomError::Internal(format!("vk is invalid: {}", e)))
         })?;
 
@@ -35,7 +35,7 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
 
     // Check if circuit is already registered
     if check_if_circuit_has_already_registered(circuit_hash_string.as_str()).await {
-        info!("circuit has already been registered");
+        error!("circuit has already been registered");
         return Ok(RegisterCircuitResponse { circuit_hash: circuit_hash_string });
     }
     println!("already registered check done");
@@ -56,8 +56,8 @@ pub async fn register_circuit_exec<T: Vkey>(data: RegisterCircuitRequest, config
     )
 }
 
-pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResult<CircuitRegistrationStatusResponse> {
-    let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash.as_str()).await?;
+pub async fn get_circuit_registration_status(circuit_hash: &str) -> AnyhowResult<CircuitRegistrationStatusResponse> {
+    let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, circuit_hash).await?;
     let status = user_circuit.circuit_reduction_status;
     let bonsai_image = get_bonsai_image_by_proving_scheme(get_pool().await, user_circuit.proving_scheme).await?;
     
@@ -74,7 +74,8 @@ pub async fn get_circuit_registration_status(circuit_hash: String) -> AnyhowResu
         .map_err(|_| anyhow!(CustomError::Internal(format!("Failed to convert to fixed-size array"))))?;
 
     // Compute the reduction circuit hash
-    let reduction_circuit_hash = encode_keccak_hash(&circuit_verifying_id_bytes_array)?;
+    let reduction_circuit_hash = encode_keccak_hash(&circuit_verifying_id_bytes_array)
+        .map_err(|_| anyhow!(CustomError::Internal(format!("Failed to encode circuit hash"))))?;
 
     Ok(CircuitRegistrationStatusResponse {
         circuit_registration_status: status.to_string(),

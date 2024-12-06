@@ -51,7 +51,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
     let proof_id_hash = KeccakHasher::combine_hash(&user_vk.keccak_hash()?, &pis.keccak_hash()?);
     let proof_hash = encode_keccak_hash(&proof_id_hash)?;
 
-    proof.validate_proof(&user_circuit_data.vk_path, &data.pis.clone())?;
+    proof.validate_proof(&user_circuit_data.vk_path, data.pis.as_slice())?;
     info!("proof validated");
     check_if_proof_already_exist(&proof_hash, &data.circuit_hash).await?;
 
@@ -100,41 +100,43 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
 }
 
 pub async fn get_proof_data_exec(
-    proof_hash: String,
+    proof_hash: &str,
     config_data: &ConfigData,
 ) -> AnyhowResult<ProofDataResponse> {
-    let mut response = ProofDataResponse {
-        status: ProofStatus::NotFound.to_string(),
-        superproof_id: -1,
-        transaction_hash: None,
-        verification_contract: config_data.verification_contract_address.clone(),
+    // Get verification contract address
+    let verification_contract = &config_data.verification_contract_address;
+
+    // Try to fetch proof, return early if not found
+    let proof = match get_proof_by_proof_hash(get_pool().await, &proof_hash).await {
+        Ok(p) => p,
+        Err(_) => return Ok(ProofDataResponse{
+            status: ProofStatus::NotFound.to_string(),
+            superproof_id: -1,
+            transaction_hash: None,
+            verification_contract: verification_contract.clone()
+        })
     };
-    let proof = get_proof_by_proof_hash(get_pool().await, &proof_hash).await;
-    if proof.is_err() {
-        return Ok(response);
-    }
 
-    let proof = proof?;
-    response.status = proof.proof_status.to_string();
-    if proof.superproof_id.is_some() {
-        let superproof_id = proof.superproof_id.unwrap_or(0);
-        let superproof = get_superproof_by_id(get_pool().await, superproof_id).await;
-        let superproof = match superproof {
-            Ok(sp) => Ok(sp),
-            Err(e) => {
-                info!("err in superproof fetch");
-                let error_msg =
-                    format!("superproof not found in db: {}", e.root_cause().to_string());
-                Err(anyhow!(CustomError::Internal(error_msg)))
-            }
-        };
-        let superproof = superproof?;
+    // Early return if no superproof
+    let superproof_id = match proof.superproof_id {
+        Some(id) => id,
+        None => return Ok(ProofDataResponse {
+            status: proof.proof_status.to_string(),
+            superproof_id: -1,
+            transaction_hash: None,
+            verification_contract: verification_contract.clone(),
+        }),
+    };
 
-        response.superproof_id = superproof_id as i64;
-        response.transaction_hash = superproof.transaction_hash;
-    }
+    // Fetch superproof with minimal error handling
+    let superproof = get_superproof_by_id(get_pool().await, superproof_id).await?;
 
-    return Ok(response);
+    return Ok(ProofDataResponse { 
+        status: superproof.status.to_string(), 
+        superproof_id: superproof_id.try_into()?, 
+        transaction_hash: superproof.transaction_hash, 
+        verification_contract: verification_contract.clone() 
+    });
 }
 
 async fn validate_circuit_data_in_submit_proof_request(
