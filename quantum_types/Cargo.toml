@@ -17,10 +17,6 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
 tracing-appender = "0.2.3"
 num-bigint = "0.4.4"
-ark-bn254 = "0.4.0"
-ark-ec = "0.4.2"
-ark-ff = "0.4.2"
-ark-groth16 = "0.4.0"
 keccak-hash = "0.10.0"
 hex = "0.4.3"
 chrono = { version = "0.4.38", features = ["serde"] }
@@ -44,11 +40,10 @@ gnark-bn254-verifier = {path = "../../gnark-bn254-verifier"}
 
 plonky2 = { git = "https://github.com/0xPolygonZero/plonky2.git", default-features = false }
 
-groth16-core = {path = "../../quantum-risc0-circuits/reduction/groth16/core"}
 plonky2-core = {path = "../../quantum-risc0-circuits/reduction/plonky2/core"}
 halo2-kzg-evm-core = {path = "../../quantum-risc0-circuits/reduction/halo2_kzg_evm/core"}
 
 risc0-zkvm = { version = "=1.1.1" }
-sp1-sdk =  "3.0.0" 
+sp1-sdk =  "3.0.0"
 # sp1-prover = { git = "https://github.com/succinctlabs/sp1.git", default-features = false, tag="release/v3.0.0-rc1" }
 # sp1-core =  {path = "../../quantum-risc0-circuits/reduction/sp1/core"}

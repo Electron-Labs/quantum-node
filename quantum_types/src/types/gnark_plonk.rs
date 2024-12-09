@@ -4,16 +4,16 @@
 use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
-use gnark_bn254_verifier::{load_plonk_verifying_key_from_bytes, verify};
+use gnark_bn254_verifier::{converter::load_plonk_verifying_key_from_bytes, verify};
+use halo2curves_axiom::bn256::Fr;
 use quantum_utils::{
     error_line,
-    file::{read_bytes_from_file, write_bytes_to_file},
+    file::{read_bytes_from_file, write_bytes_to_file}, keccak::pub_inputs_str_to_fr,
 };
 use serde::{Deserialize, Serialize};
-use utils::{hash::{Hasher, KeccakHasher}, public_inputs_hash};
+use utils::{hash::{Hasher, KeccakHasher}, public_inputs_hash, public_inputs_hash_fr};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
-use ark_bn254::Fr as ArkFr;
 use std::str::FromStr;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
@@ -94,12 +94,12 @@ impl Proof for GnarkPlonkSolidityProof {
         let gnark_proof = GnarkPlonkSolidityProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
-    
+
     fn validate_proof(&self, vkey_path: &str,mut pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vk = GnarkPlonkVkey::read_vk(vkey_path)?;
         let pis = GnarkPlonkPis::deserialize_pis(&mut pis_bytes)?;
 
-        let is_vreified = verify(&self.proof_bytes, &vk.vkey_bytes, &pis.get_ark_pis_for_gnark_plonk_pis()?, gnark_bn254_verifier::ProvingSystem::Plonk);
+        let is_vreified = verify(&self.proof_bytes, &vk.vkey_bytes, &pis.to_fr().as_slice(), gnark_bn254_verifier::ProvingSystem::Plonk);
         if !is_vreified {
             return Err(anyhow!(error_line!("gnark-plonk proof validation failed")))
         }
@@ -136,9 +136,7 @@ impl Pis for GnarkPlonkPis {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let ark_pis = self.get_ark_pis_for_gnark_plonk_pis()?;
-        let hash = public_inputs_hash::<KeccakHasher>(&ark_pis);
-        Ok(hash)
+        Ok(public_inputs_hash_fr::<KeccakHasher>(&self.to_fr()))
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
@@ -147,12 +145,8 @@ impl Pis for GnarkPlonkPis {
 }
 
 impl GnarkPlonkPis {
-    pub fn get_ark_pis_for_gnark_plonk_pis(&self) ->  AnyhowResult<Vec<ArkFr>> {
-        let mut ark_pis = vec![];
-    for p in &self.0 {
-        ark_pis.push(ArkFr::from_str(&p).map_err(|_| anyhow!(error_line!("failed to form ark pis from snark groth16 pis")))?)
-    }
-    Ok(ark_pis)
+    pub fn to_fr(&self) -> Vec<Fr> {
+        pub_inputs_str_to_fr(&self.0)
     }
 }
 

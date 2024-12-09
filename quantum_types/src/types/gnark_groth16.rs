@@ -6,17 +6,17 @@ use std::str::FromStr;
 use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
-use gnark_bn254_verifier::{load_groth16_verifying_key_from_bytes, verify};
+use gnark_bn254_verifier::{converter::load_groth16_verifying_key_from_bytes, verify};
+use num_bigint::BigUint;
 use quantum_circuits_interface::ffi::circuit_builder::{self, G1, G1A, G2};
 use quantum_utils::{
     error_line,
-    file::{read_bytes_from_file , write_bytes_to_file},
+    file::{read_bytes_from_file , write_bytes_to_file}, keccak::pub_inputs_str_to_fr,
 };
 use serde::{Deserialize, Serialize};
-use utils::{hash::{Hasher, KeccakHasher}, public_inputs_hash};
+use utils::{hash::{Hasher, KeccakHasher}, public_inputs_hash, public_inputs_hash_fr};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
-use ark_bn254::Fr as ArkFr;
 pub const MAX_PUB_INPUTS: usize = 20;
 /*
 type VerifyingKey struct {
@@ -292,8 +292,8 @@ impl Proof for GnarkGroth16Proof {
         let vk = GnarkGroth16Vkey::read_vk(vkey_path)?;
         let pis = GnarkGroth16Pis::deserialize_pis(&mut pis_bytes)?;
 
-        let is_vreified = verify(&self.proof_bytes, &vk.vkey_bytes, &pis.get_ark_pis_for_gnark_groth16_pis()?, gnark_bn254_verifier::ProvingSystem::Groth16);
-        if !is_vreified {
+        let is_verified = verify(&self.proof_bytes, &vk.vkey_bytes, &pis.to_fr().as_slice(), gnark_bn254_verifier::ProvingSystem::Groth16);
+        if !is_verified {
             return Err(anyhow!(error_line!("gnark-groth16 proof validation failed")))
         }
         Ok(())
@@ -329,9 +329,7 @@ impl Pis for GnarkGroth16Pis {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let ark_pis = self.get_ark_pis_for_gnark_groth16_pis()?;
-        let hash = public_inputs_hash::<KeccakHasher>(&ark_pis);
-        Ok(hash)
+        Ok(public_inputs_hash_fr::<KeccakHasher>(&self.to_fr()))
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
@@ -340,12 +338,8 @@ impl Pis for GnarkGroth16Pis {
 }
 
 impl GnarkGroth16Pis {
-    pub fn get_ark_pis_for_gnark_groth16_pis(&self) ->  AnyhowResult<Vec<ArkFr>> {
-        let mut ark_pis = vec![];
-    for p in &self.0 {
-        ark_pis.push(ArkFr::from_str(&p).map_err(|_| anyhow!(error_line!("failed to form ark pis from snark groth16 pis")))?)
-    }
-    Ok(ark_pis)
+    pub fn to_fr(&self) -> Vec<Fr> {
+        pub_inputs_str_to_fr(&self.0)
     }
 }
 

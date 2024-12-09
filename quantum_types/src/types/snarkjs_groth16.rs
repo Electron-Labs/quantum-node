@@ -1,22 +1,29 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use std::str::FromStr;
+use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 use agg_core::inputs::compute_combined_vkey_hash;
-use ark_bn254::{Bn254, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
-use ark_groth16::{verifier, Groth16, Proof as ArkProof, VerifyingKey};
+use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
-use groth16_core::utils::groth16_vkey_hash;
+use gnark_bn254_verifier::{
+    converter::fr_from_be_bytes_mod_order,
+    structs::{CircomProof, CircomVK, Groth16Proof},
+    verify::Groth16VerifyingKey,
+};
 use num_bigint::BigUint;
 use quantum_utils::{
     error_line,
     file::{read_bytes_from_file, write_bytes_to_file},
+    keccak::pub_inputs_str_to_fr,
 };
 use serde::{Deserialize, Serialize};
-use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
-use anyhow::{anyhow, Result as AnyhowResult};
+use std::str::FromStr;
 use tracing::info;
-use utils::{hash::KeccakHasher, public_inputs_hash};
+use utils::{
+    hash::{Hasher, KeccakHasher},
+    public_inputs_hash, public_inputs_hash_fr,
+};
+use halo2curves_axiom::bn256::Fr;
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
@@ -32,128 +39,15 @@ pub struct SnarkJSGroth16Vkey {
 }
 
 impl SnarkJSGroth16Vkey {
-    pub fn validate_fq_point(fq: &Vec<String>) -> AnyhowResult<()> {
-        if fq.len() != 3 || fq[2] != "1" {
-            return Err(anyhow!(error_line!("fq point is not valid")));
-        }
-        let x = ark_bn254::Fq::from(BigUint::from_str(&fq[0]).unwrap());
-        let y = ark_bn254::Fq::from(BigUint::from_str(&fq[1]).unwrap());
-        let p = ark_bn254::G1Affine::new_unchecked(x, y);
-        let is_valid = p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve();
-        if !is_valid {
-            return Err(anyhow!(error_line!("fq point is not valid")));
-        }
-        Ok(())
-    }
-
-    pub fn validate_fq2_point(fq2: &Vec<Vec<String>>) -> AnyhowResult<()> {
-        if fq2.len() != 3 || fq2[2].len() != 2 || fq2[2][0] != "1" || fq2[2][1] != "0" {
-            return Err(anyhow!(error_line!("fq2 point is not valid")));
-        }
-        let x1 = ark_bn254::Fq::from(BigUint::from_str(&fq2[0][0])?);
-        let x2 = ark_bn254::Fq::from(BigUint::from_str(&fq2[0][1])?);
-
-        let x = ark_bn254::Fq2::new(x1, x2);
-
-        let y1 = ark_bn254::Fq::from(BigUint::from_str(&fq2[1][0])?);
-        let y2 = ark_bn254::Fq::from(BigUint::from_str(&fq2[1][1])?);
-        let y = ark_bn254::Fq2::new(y1, y2);
-        let p = ark_bn254::G2Affine::new_unchecked(x, y);
-        let is_valid = p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve();
-        if !is_valid {
-            return Err(anyhow!(error_line!("fq2 point is not valid")));
-        }
-        Ok(())
-    }
-}
-
-impl SnarkJSGroth16Vkey {
-    pub fn get_ark_vk_for_snarkjs_groth16(&self) -> AnyhowResult<VerifyingKey<Bn254>> {
-        let alpha_g1 = G1Affine::new(
-            ArkFq::from_str(
-                &self.vk_alpha_1[0]
-            ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-            ArkFq::from_str(
-                &self.vk_alpha_1[1],
-            ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-        );
-        let beta_g2 = G2Affine::new(
-            ArkFq2::new(
-                ArkFq::from_str(
-                    &self.vk_beta_2[0][0],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-                ArkFq::from_str(
-                    &self.vk_beta_2[0][1],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-            ),
-            ArkFq2::new(
-                ArkFq::from_str(
-                    &self.vk_beta_2[1][0],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-                ArkFq::from_str(
-                    &self.vk_beta_2[1][1],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-            ),
-        );
-        let gamma_g2 = G2Affine::new(
-            ArkFq2::new(
-                ArkFq::from_str(
-                    &self.vk_gamma_2[0][0],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-                ArkFq::from_str(
-                    &self.vk_gamma_2[0][1],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-            ),
-            ArkFq2::new(
-                ArkFq::from_str(
-                    &self.vk_gamma_2[1][0],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-                ArkFq::from_str(
-                    &self.vk_gamma_2[1][1],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-
-            ),
-        );
-        let delta_g2 = G2Affine::new(
-            ArkFq2::new(
-                ArkFq::from_str(
-                    &self.vk_delta_2[0][0],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-                ArkFq::from_str(
-                    &self.vk_delta_2[0][1],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-            ),
-            ArkFq2::new(
-                ArkFq::from_str(
-                    &self.vk_delta_2[1][0],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-                ArkFq::from_str(
-                    &self.vk_delta_2[1][1],
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-            ),
-        );
-    
-        let mut gamma_abc_g1 = vec![];
-        for ic in &self.IC {
-            let g1 = G1Affine::new(
-                ArkFq::from_str(
-                    &ic[0]
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-                ArkFq::from_str(
-                    &ic[1]
-                ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
-            );
-            gamma_abc_g1.push(g1);
-        }
-    
-        let ark_vk = VerifyingKey::<Bn254>{
-            alpha_g1,
-            beta_g2,
-            gamma_g2,
-            delta_g2,
-            gamma_abc_g1
-        };
-        Ok(ark_vk)
+    pub fn curve_vk(&self) -> AnyhowResult<Groth16VerifyingKey> {
+        Groth16VerifyingKey::from_circom_vk(CircomVK {
+            vk_alpha_1: self.vk_alpha_1.clone(),
+            vk_beta_2: self.vk_beta_2.clone(),
+            vk_gamma_2: self.vk_gamma_2.clone(),
+            vk_delta_2: self.vk_delta_2.clone(),
+            vk_alphabeta_12: self.vk_alphabeta_12.clone(),
+            IC: self.IC.clone(),
+        })
     }
 }
 
@@ -183,28 +77,15 @@ impl Vkey for SnarkJSGroth16Vkey {
     }
 
     fn validate(&self) -> AnyhowResult<()> {
-        SnarkJSGroth16Vkey::validate_fq_point(&self.vk_alpha_1)?;
-        for ic in &self.IC {
-            SnarkJSGroth16Vkey::validate_fq_point(ic)?;
-        }
-
-        SnarkJSGroth16Vkey::validate_fq2_point(&self.vk_beta_2)?;
-        SnarkJSGroth16Vkey::validate_fq2_point(&self.vk_gamma_2)?;
-        SnarkJSGroth16Vkey::validate_fq2_point(&self.vk_delta_2)?;
-        info!("vkey validated");
+        self.curve_vk()?;
+        info!("Snarkjs vkey validated");
         Ok(())
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        // let gnark_converted_vkey = self.convert_to_gnark_vkey();
-
-        // Ok(gnark_converted_vkey.keccak_hash()?)
-        let ark_vk = self.get_ark_vk_for_snarkjs_groth16()?;
-        println!("ark_vk done");
-        let pvk = verifier::prepare_verifying_key(&ark_vk);
-        println!("pvk done");
-        let pvk_hash = groth16_vkey_hash::<KeccakHasher>(&pvk);
-        Ok(pvk_hash)
+        let curve_vk = self.curve_vk()?;
+        let vk_bytes = bincode::serialize(&curve_vk).unwrap();
+        Ok(KeccakHasher::hash_out(&vk_bytes))
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
@@ -212,7 +93,8 @@ impl Vkey for SnarkJSGroth16Vkey {
         // gnark_converted_vkey.compute_circuit_hash(circuit_verifying_id)
         let pvk_hash = self.keccak_hash()?;
 
-        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&pvk_hash, &circuit_verifying_id)?;
+        let circuit_hash =
+            compute_combined_vkey_hash::<KeccakHasher>(&pvk_hash, &circuit_verifying_id)?;
         Ok(circuit_hash)
     }
 }
@@ -250,62 +132,38 @@ impl Proof for SnarkJSGroth16Proof {
         let snarkjs_proof = SnarkJSGroth16Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(snarkjs_proof)
     }
-    
+
     fn validate_proof(&self, vkey_path: &str, mut pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = SnarkJSGroth16Vkey::read_vk(vkey_path)?;
         let pis = SnarkJSGroth16Pis::deserialize_pis(&mut pis_bytes)?;
-        let ark_vk = vkey.get_ark_vk_for_snarkjs_groth16()?;
-        let pvk = verifier::prepare_verifying_key(&ark_vk);
+        let mut curve_vk = vkey.curve_vk()?;
+        let curve_proof = self.curve_proof()?;
+        let public_inputs = pis.to_fr();
 
-        let ark_proof = self.get_ark_proof_for_snarkjs_groth16_proof()?;
-        let ark_pis = pis.get_ark_pis_for_snarkjs_groth16_pis()?;
-
-        let res = Groth16::<Bn254>::verify_proof(&pvk, &ark_proof, &ark_pis).map_err(|e| {anyhow!(error_line!(format!("error while validating proof: {}", e)))})?;
-        if !res {
-            return Err(anyhow!(error_line!("snarkJS-groth16 proof validation failed")))
+        let is_verified = gnark_bn254_verifier::verify::verify_groth16(
+            &mut curve_vk,
+            &curve_proof,
+            &public_inputs.as_slice(),
+        )?;
+        if !is_verified {
+            return Err(anyhow!(error_line!(
+                "snarkjs-groth16 proof validation failed"
+            )));
         }
-        Ok(()) 
+
+        Ok(())
     }
 }
 
 impl SnarkJSGroth16Proof {
-    pub fn get_ark_proof_for_snarkjs_groth16_proof(&self) -> AnyhowResult<ArkProof<Bn254>> {
-        let a = G1Affine::new(
-            ArkFq::from_str(
-                &self.pi_a[0]
-            ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
-            ArkFq::from_str(
-                &self.pi_a[1]
-            ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
-        );
-        let b = G2Affine::new(
-            ArkFq2::new(
-                ArkFq::from_str(
-                    &self.pi_b[0][0]
-                ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
-                ArkFq::from_str(
-                    &self.pi_b[0][1]
-                ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
-            ),
-            ArkFq2::new(
-                ArkFq::from_str(
-                    &self.pi_b[1][0]
-                ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
-                ArkFq::from_str(
-                    &self.pi_b[1][1]
-                ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
-            ),
-        );
-        let c = G1Affine::new(
-            ArkFq::from_str(
-                &self.pi_c[0]
-            ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
-            ArkFq::from_str(
-                &self.pi_c[1]
-            ).map_err(|_| anyhow!(error_line!("failed to form ark proof from snark groth16 proof")))?,
-        );
-        let ark_proof = ArkProof::<Bn254> { a, b, c };
-        Ok(ark_proof)
+    pub fn curve_proof(&self) -> AnyhowResult<Groth16Proof> {
+        Groth16Proof::from_circom_proof(CircomProof {
+            pi_a: self.pi_a.clone(),
+            pi_b: self.pi_b.clone(),
+            pi_c: self.pi_c.clone(),
+            protocol: self.protocol.clone(),
+            curve: self.curve.clone(),
+        })
     }
 }
 
@@ -339,9 +197,7 @@ impl Pis for SnarkJSGroth16Pis {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let ark_pis = self.get_ark_pis_for_snarkjs_groth16_pis()?;
-        let hash = public_inputs_hash::<KeccakHasher>(&ark_pis);
-        Ok(hash)
+        Ok(public_inputs_hash_fr::<KeccakHasher>(&self.to_fr()))
     }
 
     fn get_data(&self) -> AnyhowResult<Vec<String>> {
@@ -350,12 +206,8 @@ impl Pis for SnarkJSGroth16Pis {
 }
 
 impl SnarkJSGroth16Pis {
-    pub fn get_ark_pis_for_snarkjs_groth16_pis(&self) ->  AnyhowResult<Vec<ArkFr>> {
-        let mut ark_pis = vec![];
-    for p in &self.0 {
-        ark_pis.push(ArkFr::from_str(&p).map_err(|_| anyhow!(error_line!("failed to form ark pis from snark groth16 pis")))?)
-    }
-    Ok(ark_pis)
+    pub fn to_fr(&self) -> Vec<Fr> {
+        pub_inputs_str_to_fr(&self.0)
     }
 }
 

@@ -1,6 +1,4 @@
 use anyhow::{anyhow, Ok, Result as AnyhowResult};
-use ark_groth16::verifier;
-use ark_serialize::CanonicalSerialize;
 use quantum_db::repository::{
     proof_repository::update_reduction_data,
     user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
@@ -87,10 +85,10 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
         (receipt, reduction_time) = generate_plonky2_reduced_proof(user_circuit_data, proof_data).await?;
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Risc0 {
         (receipt, reduction_time) = generate_risc0_reduced_proof(user_circuit_data, proof_data).await?;
-    } 
+    }
     //else if user_circuit_data.proving_scheme == ProvingSchemes::Sp1 {
         // (receipt, reduction_time) = generate_sp1_reduced_proof(user_circuit_data, proof_data).await?;
-    //} 
+    //}
     else {
         return Err(anyhow!(error_line!("unsupported proving scheme in proof reduction")));
     }
@@ -101,32 +99,13 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
 }
 
 fn form_snarkjs_groth16_bonsai_inputs(vk: SnarkJSGroth16Vkey, proof: SnarkJSGroth16Proof, pis: SnarkJSGroth16Pis) ->  AnyhowResult<Vec<u8>>{
-    let ark_vk = vk.get_ark_vk_for_snarkjs_groth16()?;
-    let pvk = verifier::prepare_verifying_key(&ark_vk);
+    let vk_bytes = to_vec(&vk.curve_vk()?)?;
+    let proof_bytes = to_vec(&proof.curve_proof()?)?;
+    let public_inputs = to_vec(&pis.to_fr())?;
 
-    let ark_proof = proof.get_ark_proof_for_snarkjs_groth16_proof()?;
-    let ark_public_inputs = pis.get_ark_pis_for_snarkjs_groth16_pis()?;
-
-
-    let mut pvk_bytes = vec![];
-    pvk.serialize_uncompressed(&mut pvk_bytes)?;
-
-    let mut proof_bytes = vec![];
-    ark_proof.serialize_uncompressed(&mut proof_bytes)?;
-
-    let mut public_inputs_bytes = vec![];
-    ark_public_inputs.serialize_uncompressed(&mut public_inputs_bytes)?;
-
-
-    let input_data = to_vec(&pvk_bytes)?;
-    let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&input_data).to_vec();
-
-    let input_data = to_vec(&proof_bytes)?;
-    input_data_vec.extend_from_slice( bytemuck::cast_slice(&input_data));
-
-
-    let input_data = to_vec(&public_inputs_bytes)?;
-    input_data_vec.extend_from_slice( bytemuck::cast_slice(&input_data));
+    let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&vk_bytes).to_vec();
+    input_data_vec.extend_from_slice( bytemuck::cast_slice(&proof_bytes));
+    input_data_vec.extend_from_slice( bytemuck::cast_slice(&public_inputs));
 
     Ok(input_data_vec)
 }
@@ -137,7 +116,7 @@ async fn  generate_snarkjs_groth16_reduced_proof(user_circuit_data: &UserCircuit
     let public_inputs = SnarkJSGroth16Pis::read_pis(&proof_data.pis_path)?;
 
     let input_data_vec = form_snarkjs_groth16_bonsai_inputs(vk, proof, public_inputs)?;
-    
+
     let reduction_start_time = Instant::now();
     let assumptions = vec![];
     let (receipt, _) = execute_proof_reduction(input_data_vec, &user_circuit_data.bonsai_image_id, proof_data.id.unwrap(), assumptions).await?;
@@ -180,7 +159,7 @@ async fn generate_halo2_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
     let proof = Halo2PlonkProof::read_proof(&proof_path)?;
     let vk = Halo2PlonkVkey::read_vk(&vk_path)?;
     let pis = Halo2PlonkPis::read_pis(&pis_path)?;
-    
+
     let input_data = form_halo2_plonk_bonsai_inputs(&proof, &vk, &pis)?;
     let assumptions = vec![];
 
@@ -227,7 +206,7 @@ async fn generate_halo2_poseidon_reduced_proof(user_circuit_data: &UserCircuitDa
     let proof = Halo2PoseidonProof::read_proof(&proof_path)?;
     let vk = Halo2PoseidonVkey::read_vk(&vk_path)?;
     let pis = Halo2PoseidonPis::read_pis(&pis_path)?;
-    
+
     let input_data = form_halo2_poseidon_bonsai_inputs(&proof, &vk, &pis)?;
     let assumptions = vec![];
 
@@ -263,7 +242,7 @@ async fn generate_plonky2_reduced_proof(user_circuit_data: &UserCircuitData, pro
 
     let proof = Plonky2Proof::read_proof(&proof_path)?;
     let vk = Plonky2Vkey::read_vk(&vk_path)?;
-    
+
     let input_data = form_plonk2_bonsai_inputs(&proof, &vk)?;
     let assumptions = vec![];
 
@@ -298,7 +277,7 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
 
     let proof = Risc0Proof::read_proof(&proof_path)?;
     let vk = Risc0Vkey::read_vk(&vk_path)?;
-    
+
     let input_data = form_risc0_bonsai_inputs(&proof, &vk)?;
 
     let receipt_id = upload_receipt(proof.get_receipt()?).await?;
@@ -342,7 +321,7 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
 
 //     let proof = Sp1Proof::read_proof(&proof_path)?;
 //     let vk = Sp1Vkey::read_vk(&vk_path)?;
-    
+
 //     let input_data = form_sp1_bonsai_inputs(&proof, &vk)?;
 //     let assumptions = vec![];
 
@@ -356,15 +335,11 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
 fn form_gnark_plonk_bonsai_inputs(proof: &GnarkPlonkSolidityProof, vk: &GnarkPlonkVkey, pis: &GnarkPlonkPis)-> AnyhowResult<Vec<u8>> {
     let proof_bytes = to_vec(&proof.proof_bytes)?;
     let vk_bytes = to_vec(&vk.vkey_bytes)?;
-
-    let ark_public_inputs = pis.get_ark_pis_for_gnark_plonk_pis()?;
-    let mut public_inputs_bytes = vec![];
-    ark_public_inputs.serialize_uncompressed(&mut public_inputs_bytes)?;
-    let public_inputs_bytes = to_vec(&public_inputs_bytes)?;
+    let public_inputs = to_vec(&pis.to_fr())?;
 
     let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&vk_bytes).to_vec();
     input_data_vec.extend_from_slice(bytemuck::cast_slice(&proof_bytes));
-    input_data_vec.extend_from_slice(bytemuck::cast_slice(&public_inputs_bytes));
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&public_inputs));
 
     Ok(input_data_vec)
 }
@@ -399,15 +374,11 @@ async fn generate_gnark_plonk_reduced_proof(user_circuit_data: &UserCircuitData,
 fn form_gnark_groth16_bonsai_inputs(proof: &GnarkGroth16Proof, vk: &GnarkGroth16Vkey, pis: &GnarkGroth16Pis)-> AnyhowResult<Vec<u8>> {
     let proof_bytes = to_vec(&proof.proof_bytes)?;
     let vk_bytes = to_vec(&vk.vkey_bytes)?;
-
-    let ark_public_inputs = pis.get_ark_pis_for_gnark_groth16_pis()?;
-    let mut public_inputs_bytes = vec![];
-    ark_public_inputs.serialize_uncompressed(&mut public_inputs_bytes)?;
-    let public_inputs_bytes = to_vec(&public_inputs_bytes)?;
+    let public_inputs = to_vec(&pis.to_fr())?;
 
     let mut input_data_vec: Vec<u8> = bytemuck::cast_slice(&vk_bytes).to_vec();
     input_data_vec.extend_from_slice(bytemuck::cast_slice(&proof_bytes));
-    input_data_vec.extend_from_slice(bytemuck::cast_slice(&public_inputs_bytes));
+    input_data_vec.extend_from_slice(bytemuck::cast_slice(&public_inputs));
 
     Ok(input_data_vec)
 }
