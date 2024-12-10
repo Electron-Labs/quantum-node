@@ -1,5 +1,5 @@
 use constant::{GNARK_GROTH16_PROOF_ID, GNARK_GROTH16_TASK_ID, GNARK_PLONK_PROOF_ID, GNARK_PLONK_TASK_ID, GROTH16_PROOF_ID, GROTH16_TASK_ID, HALO2_PLONK_PROOF_ID, HALO2_PLONK_TASK_ID, HALO2_POSEIDON_PROOF_ID, HALO2_POSEIDON_TASK_ID, PLONKY2_PROOF_ID, PLONKY2_TASK_ID, RISC0_PROOF_ID, RISC0_TASK_ID};
-use quantum_db::repository::{proof_repository::update_proof_status, task_repository::update_task_status};
+use quantum_db::repository::{cost_saved_repository::udpate_cost_saved_data, proof_repository::update_proof_status, task_repository::update_task_status};
 use quantum_types::{enums::{proof_status::ProofStatus, task_status::TaskStatus}, types::config::ConfigData};
 use quantum_worker::{connection::get_pool, worker::handle_proof_generation_task};
 use repository::get_task_by_task_id;
@@ -18,6 +18,7 @@ async fn before_test(proof_id: u64, task_id: u64) -> ConfigData{
 
     update_proof_status(get_pool().await, proof_id, ProofStatus::Registered).await.unwrap();
     update_task_status(get_pool().await, task_id, TaskStatus::NotPicked).await.unwrap();
+    // udpate_cost_saved_data(get_pool().await, 234.5674365 as u64, 74685.878 as f64).await.unwrap();
     config_data
 }
 

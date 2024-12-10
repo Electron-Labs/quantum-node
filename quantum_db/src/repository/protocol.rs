@@ -1,11 +1,11 @@
 use quantum_types::types::db::protocol::Protocol;
 use quantum_utils::error_line;
-use sqlx::{mysql::MySqlRow, Execute, MySql, Pool, Row};
+use sqlx::{any::AnyRow, Any, Execute, Pool, Row};
 use tracing::info;
 use anyhow::{anyhow, Result as AnyhowResult};
 use crate::error::error::CustomError;
 
-pub async fn get_protocol_by_auth_token(pool: &Pool<MySql>, auth_token: &str) -> AnyhowResult<Option<Protocol>> {
+pub async fn get_protocol_by_auth_token(pool: &Pool<Any>, auth_token: &str) -> AnyhowResult<Option<Protocol>> {
      // oldest_entry(task_status: TaskStatus::NotPicked)
      let query  = sqlx::query("SELECT * from protocol where auth_token = ?")
      .bind(auth_token);
@@ -20,7 +20,7 @@ pub async fn get_protocol_by_auth_token(pool: &Pool<MySql>, auth_token: &str) ->
     Ok(protocol)
 }
 
-pub async fn get_protocol_by_protocol_name(pool: &Pool<MySql>, protocol_name: &str) -> AnyhowResult<Protocol> {
+pub async fn get_protocol_by_protocol_name(pool: &Pool<Any>, protocol_name: &str) -> AnyhowResult<Protocol> {
     // oldest_entry(task_status: TaskStatus::NotPicked)
     let query  = sqlx::query("SELECT * from protocol where protocol_name = ?")
         .bind(protocol_name);
@@ -35,19 +35,20 @@ pub async fn get_protocol_by_protocol_name(pool: &Pool<MySql>, protocol_name: &s
     protocol
 }
 
-pub fn get_protocol_from_row(row: MySqlRow) -> AnyhowResult<Protocol>{
-    println!("{:?}", row);
+pub fn get_protocol_from_row(row: AnyRow) -> AnyhowResult<Protocol>{
+    // println!("{}", row);
+    let r: i64 = row.try_get_unchecked("is_proof_repeat_allowed").map_err(|err| anyhow!(error_line!(err)))?;
     Ok( 
         Protocol {
             protocol_name: row.try_get_unchecked("protocol_name").map_err(|err| anyhow!(error_line!(err)))?,
             auth_token: row.try_get_unchecked("auth_token").map_err(|err| anyhow!(error_line!(err)))?,
-            is_proof_repeat_allowed: row.try_get_unchecked("is_proof_repeat_allowed").map_err(|err| anyhow!(error_line!(err)))?,
+            is_proof_repeat_allowed: r.try_into()?,
         }
     )
 }
 
 
-pub async fn check_if_protocol_already_registered(pool: &Pool<MySql>, protocol_name: &str) -> AnyhowResult<bool> {
+pub async fn check_if_protocol_already_registered(pool: &Pool<Any>, protocol_name: &str) -> AnyhowResult<bool> {
     let query  = sqlx::query("SELECT * from protocol where protocol_name = ?")
         .bind(protocol_name);
 
@@ -56,7 +57,7 @@ pub async fn check_if_protocol_already_registered(pool: &Pool<MySql>, protocol_n
 
    let is_present = match query.fetch_optional(pool).await.map_err(|err| anyhow!(error_line!(err)))?{
        Some(t) => {
-           println!("{:?}", t);
+        //    println!("{:?}", t);
            true
        }
        None => false,
@@ -64,7 +65,7 @@ pub async fn check_if_protocol_already_registered(pool: &Pool<MySql>, protocol_n
    Ok(is_present)
 }
 
-pub async fn insert_protocol_auth_token(pool: &Pool<MySql>, protocol_name: &str, auth_token: &str) -> AnyhowResult<u64, anyhow::Error>{
+pub async fn insert_protocol_auth_token(pool: &Pool<Any>, protocol_name: &str, auth_token: &str) -> AnyhowResult<u64, anyhow::Error>{
     let query  = sqlx::query("INSERT into protocol(protocol_name, auth_token) VALUES(?,?)")
         .bind(protocol_name).bind(auth_token);
 
