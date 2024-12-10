@@ -32,3 +32,4 @@ mt-core = {path = "../../quantum-risc0-circuits/mt/core"}
 utils = {path = "../../quantum-risc0-circuits/utils"}
 bincode = "1.3.3"
 tiny-merkle = "0.3.0"
+once_cell = "1.17"

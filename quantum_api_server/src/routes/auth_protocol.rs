@@ -3,6 +3,7 @@ use rocket::post;
 use rocket::serde::json::Json;
 use tracing::error;
 use crate::{error::error::CustomError, service::protocol::generate_auth_token_for_protocol, types::{auth::AuthToken, generate_auth_token::{GenerateAuthTokenRequest, GenerateAuthTokenResponse}}};
+use cra
 
 #[post["/auth/protocol", data = "<data>"]]
 pub async fn generate_auth_token(_auth_token: AuthToken, data: GenerateAuthTokenRequest) -> AnyhowResult<Json<GenerateAuthTokenResponse>, CustomError> {
