@@ -1,6 +1,6 @@
 use anyhow::Result as AnyhowResult;
 use quantum_db::repository::protocol::get_protocol_by_auth_token;
-use quantum_types::{enums::proving_schemes::ProvingSchemes, types::{config::ConfigData, gnark_groth16::GnarkGroth16Vkey, gnark_plonk::GnarkPlonkVkey, halo2_plonk::Halo2PlonkVkey, halo2_poseidon::Halo2PoseidonVkey, plonk2::Plonky2Vkey, riscs0::Risc0Vkey, snarkjs_groth16::SnarkJSGroth16Vkey, sp1::Sp1Vkey}};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::db::DB, types::{config::ConfigData, gnark_groth16::GnarkGroth16Vkey, gnark_plonk::GnarkPlonkVkey, halo2_plonk::Halo2PlonkVkey, halo2_poseidon::Halo2PoseidonVkey, plonk2::Plonky2Vkey, riscs0::Risc0Vkey, snarkjs_groth16::SnarkJSGroth16Vkey, sp1::Sp1Vkey}};
 use quantum_utils::error_line;
 use rocket::post;
 use rocket::serde::json::Json;
@@ -10,7 +10,7 @@ use tracing::{error, info};
 use crate::{connection::get_pool, error::error::CustomError, service::register_circuit::register_circuit_exec, types::{auth::AuthToken, register_circuit::{RegisterCircuitRequest, RegisterCircuitResponse}}};
 
 #[post("/register_circuit", data = "<data>")]
-pub async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
+pub async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, config_data: &State<ConfigData>, db: &impl DB) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
     let response: AnyhowResult<RegisterCircuitResponse>;
     let protocol = match get_protocol_by_auth_token(get_pool().await, &auth_token.0).await {
         Ok(p) => Ok(p),

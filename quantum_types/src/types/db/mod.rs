@@ -6,3 +6,4 @@ pub mod task;
 pub mod protocol;
 
 pub mod bonsai_image;
+pub mod mysql;
