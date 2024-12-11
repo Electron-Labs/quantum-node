@@ -35,7 +35,7 @@ snark-verifier-sdk = { path = "../../snark-verifier/snark-verifier-sdk", default
     "loader_evm",
     "halo2-pse",
 ] }
-sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono", "macros", "decimal" ] }
+sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono", "macros", "decimal", "sqlite", "any" ] }
 dotenv = "0.15.0"
 utils = {path = "../../quantum-risc0-circuits/utils"}
 agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}
