@@ -47,7 +47,7 @@ pub async fn get_user_circuits_by_circuit_status(pool: &Pool<Any>, status: Circu
 }
 
 pub async fn insert_user_circuit_data(pool: &Pool<Any>, circuit_hash: &str, vk_path: &str, proving_scheme: ProvingSchemes, protocol_name: &str, bonsai_image_id: &str, circuit_reduction_status: CircuitReductionStatus) -> AnyhowResult<u64, AnyhowError>{
-    let query  = sqlx::query("INSERT into user_circuit_daquery.ta(circuit_hash, vk_path, proving_scheme, protocol_name, bonsai_image_id, circuit_reduction_status) VALUES(?,?,?,?,?,?)")
+    let query  = sqlx::query("INSERT into user_circuit_data(circuit_hash, vk_path, proving_scheme, protocol_name, bonsai_image_id, circuit_reduction_status) VALUES(?,?,?,?,?,?)")
                 .bind(circuit_hash).bind(vk_path).bind(proving_scheme.to_string()).bind(protocol_name).bind(bonsai_image_id).bind(circuit_reduction_status.as_u8() as i64);
 
     info!("{}", query.sql());
