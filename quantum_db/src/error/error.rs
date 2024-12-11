@@ -10,7 +10,6 @@ impl std::fmt::Display for CustomError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
            CustomError::DB(err_msg) => write!(fmt, "Error {}.", err_msg),
-           _ => write!(fmt, "An unknown error occurred"), 
         }
     }
 }

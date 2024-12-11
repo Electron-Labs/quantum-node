@@ -11,7 +11,6 @@ use crate::{connection::get_pool, error::error::CustomError, service::register_c
 
 #[post("/register_circuit", data = "<data>")]
 pub async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<RegisterCircuitResponse>, CustomError> {
-    let response: AnyhowResult<RegisterCircuitResponse>;
     let protocol = match get_protocol_by_auth_token(get_pool().await, &auth_token.0).await {
         Ok(p) => Ok(p),
         Err(e) => {
@@ -32,25 +31,17 @@ pub async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitReques
 
     info!("{:?}", protocol);
 
-    if data.proof_type == ProvingSchemes::GnarkGroth16 {
-        response = register_circuit_exec::<GnarkGroth16Vkey>(data, config_data, protocol).await;
-    } else if data.proof_type == ProvingSchemes::Groth16 {
-        response = register_circuit_exec::<SnarkJSGroth16Vkey>(data, config_data, protocol).await;
-    } else if data.proof_type == ProvingSchemes::Halo2Plonk {
-        response = register_circuit_exec::<Halo2PlonkVkey>(data, config_data, protocol).await;
-    } else if data.proof_type == ProvingSchemes::GnarkPlonk {
-        response = register_circuit_exec::<GnarkPlonkVkey>(data, config_data, protocol).await;
-    }else if data.proof_type == ProvingSchemes::Plonky2 {
-        response = register_circuit_exec::<Plonky2Vkey>(data, config_data, protocol).await;
-    } else if data.proof_type == ProvingSchemes::Halo2Poseidon {
-        response = register_circuit_exec::<Halo2PoseidonVkey>(data, config_data, protocol).await;
-    }else if data.proof_type == ProvingSchemes::Sp1 {
-        response = register_circuit_exec::<Sp1Vkey>(data, config_data, protocol).await;
-    }else if data.proof_type == ProvingSchemes::Risc0 {
-        response = register_circuit_exec::<Risc0Vkey>(data, config_data, protocol).await;
-    } else {
-        return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
-    }
+    let response: AnyhowResult<RegisterCircuitResponse> = match data.proof_type {
+        ProvingSchemes::GnarkGroth16 => register_circuit_exec::<GnarkGroth16Vkey>(&data, config_data, &protocol).await,
+        ProvingSchemes::Groth16 => register_circuit_exec::<SnarkJSGroth16Vkey>(&data, config_data, &protocol).await,
+        ProvingSchemes::Halo2Plonk => register_circuit_exec::<Halo2PlonkVkey>(&data, config_data, &protocol).await,
+        ProvingSchemes::GnarkPlonk => register_circuit_exec::<GnarkPlonkVkey>(&data, config_data, &protocol).await,
+        ProvingSchemes::Plonky2 => register_circuit_exec::<Plonky2Vkey>(&data, config_data, &protocol).await,
+        ProvingSchemes::Halo2Poseidon => register_circuit_exec::<Halo2PoseidonVkey>(&data, config_data, &protocol).await,
+        ProvingSchemes::Sp1 => register_circuit_exec::<Sp1Vkey>(&data, config_data, &protocol).await,
+        ProvingSchemes::Risc0 => register_circuit_exec::<Risc0Vkey>(&data, config_data, &protocol).await,
+    };
+
     match response {
         Ok(resp)  => Ok(Json(resp)),
         Err(e) => {

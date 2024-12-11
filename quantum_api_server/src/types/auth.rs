@@ -3,10 +3,7 @@ use quantum_db::repository::protocol::get_protocol_by_auth_token;
 use rocket::http::Status;
 use rocket::request::{Request, FromRequest, Outcome};
 use tracing::error;
-
 use crate::connection::get_pool;
-
-
 pub struct AuthToken(pub String);
 
 #[rocket::async_trait]
@@ -19,7 +16,7 @@ impl<'r> FromRequest<'r> for AuthToken {
             let mut itr = auth_token.split_whitespace();
             itr.next();
             let token = itr.next();
-            let mut is_present = Ok(false);
+            let is_present: Result<bool, anyhow::Error>;
             if token.is_some() {
                 auth_token = token.unwrap();
             }

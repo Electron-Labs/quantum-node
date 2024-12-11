@@ -5,7 +5,7 @@ use tracing::error;
 
 #[get("/circuit/<circuit_id>/status")]
 pub async fn get_circuit_reduction_status(_auth_token: AuthToken, circuit_id: String) -> AnyhowResult<Json<CircuitRegistrationStatusResponse>, CustomError>{
-    let status = get_circuit_registration_status(circuit_id).await;
+    let status = get_circuit_registration_status(circuit_id.as_str()).await;
     match status {
         Ok(s) => Ok(Json(s)),
         Err(e) => {

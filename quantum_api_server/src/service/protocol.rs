@@ -7,31 +7,32 @@ use crate::{connection::get_pool, error::error::CustomError, types::generate_aut
 
 use anyhow::{anyhow, Result as AnyhowResult};
 
-pub async fn generate_auth_token_for_protocol(data: GenerateAuthTokenRequest) -> AnyhowResult<GenerateAuthTokenResponse> {
+pub async fn generate_auth_token_for_protocol(data: &GenerateAuthTokenRequest) -> AnyhowResult<GenerateAuthTokenResponse> {
+    // All protocol names are processed in upper case 
     let protocol_name = data.protocol_name.to_uppercase();
-    let is_present = check_if_protocol_already_registered(get_pool().await, &protocol_name).await;
-    let is_present = match is_present {
-        Ok(t) => Ok(t) ,
-        Err(e) => Err(anyhow!(CustomError::Internal(e.root_cause().to_string()))),
+
+    // Check if protocol is already registered
+    if check_if_protocol_already_registered(get_pool().await, &protocol_name).await? {
+        error!("protocol has already been registered");
+        return Err(anyhow!(CustomError::Internal(
+            error_line!("protocol has already been registered")
+        )));
     };
 
-    let is_present = is_present?;
-    if is_present {
-        error!("protocol has already been registered");
-        return Err(anyhow!(CustomError::Internal(error_line!("protocol has already been registered".to_string()))));
-    }
-
+    // Generate protocol name hash and token
     let protocol_name_hash = get_keccak_hash_of_string(&protocol_name);
     let token = get_token_from_hash(protocol_name_hash);
 
+    // Insert the token into the database
     insert_protocol_auth_token(get_pool().await, &protocol_name, &token).await?;
+    
+    // Return the generated token
     Ok(GenerateAuthTokenResponse {
         auth_token: token,
     })
 }
 
+// Gets hex auth token from HashOut
 fn get_token_from_hash(hash: [u8; 32]) -> String {
-    let bytes = &hash[..24];
-    let hex_string = hex::encode(&bytes);
-    hex_string
+    hex::encode(&hash[..24])
 }

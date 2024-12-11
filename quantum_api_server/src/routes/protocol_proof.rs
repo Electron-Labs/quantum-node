@@ -29,8 +29,7 @@ pub async fn get_protocol_proof(_auth_token: AuthToken, proof_hash: String) -> A
         ProvingSchemes::Plonky2 => response = get_protocol_proof_exec::<Plonky2Pis, Plonky2Vkey>(&proof).await,
         ProvingSchemes::Halo2Poseidon => response = get_protocol_proof_exec::<Halo2PoseidonPis, Halo2PoseidonVkey>(&proof).await,
         ProvingSchemes::Sp1 => response = get_protocol_proof_exec::<Sp1Pis, Sp1Vkey>(&proof).await,
-        ProvingSchemes::Risc0 => response = get_protocol_proof_exec::<Risc0Pis, Risc0Vkey>(&proof).await,
-        _ => return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
+        ProvingSchemes::Risc0 => response = get_protocol_proof_exec::<Risc0Pis, Risc0Vkey>(&proof).await
     }
 
     match response {
