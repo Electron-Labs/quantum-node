@@ -58,7 +58,7 @@ pub async fn handle_proof_generation_and_updation(
     Ok(())
 }
 
-async fn handle_proof_generation(proof_id: u64) ->AnyhowResult<(Receipt, u64)>{
+pub async fn handle_proof_generation(proof_id: u64) ->AnyhowResult<(Receipt, u64)>{
     let proof_data = get_proof_by_proof_id(get_pool().await, proof_id).await?;
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &proof_data.user_circuit_hash).await?;
 

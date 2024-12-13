@@ -1,25 +1,17 @@
 use lazy_static::lazy_static;
-use sqlx::{ConnectOptions, mysql::{MySqlConnectOptions, MySqlPoolOptions}, MySql, Pool};
+use sqlx::{any::AnyPoolOptions, mysql::{MySqlConnectOptions, MySqlPoolOptions}, Any, ConnectOptions, MySql, Pool};
 use tokio::sync::OnceCell;
 
 lazy_static! {
-    static ref POOL: OnceCell<Pool<MySql>> = OnceCell::const_new();
+    static ref POOL: OnceCell<Pool<Any>> = OnceCell::const_new();
 }
 
-pub async fn get_pool() -> &'static Pool<MySql> {
+pub async fn get_pool() -> &'static Pool<Any> {
     POOL.get_or_init(|| async {
-        let username = std::env::var("DB_USER").expect("DB_USER must be set.");
-        let password = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set.");
-        let database = std::env::var("DB_NAME").expect("DB_NAME must be set.");
-
-        let connection_options = MySqlConnectOptions::new()
-            .username(&username)
-            .password(&password)
-            .database(&database)
-            .disable_statement_logging().clone();
-
-        let pool_options = MySqlPoolOptions::new().min_connections(6);
-        pool_options.connect_with(connection_options).await.unwrap()
+        let db_url = std::env::var("DB_URL").expect("DB_URL must be set.");
+        println!("{db_url}");
+        let pool_options = AnyPoolOptions::new().min_connections(5);
+        pool_options.connect(&db_url) .await.unwrap()
     })
     .await
 }

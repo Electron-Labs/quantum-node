@@ -1,4 +1,3 @@
-use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow , Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
 use quantum_utils::{error_line, file::{read_bytes_from_file, write_bytes_to_file}};
@@ -46,7 +45,7 @@ impl Vkey for Sp1Vkey {
         Ok(words_to_bytes_le(&self.get_verifying_key()?.hash_u32()))
     }
 
-    fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
+    fn compute_circuit_hash(&self, _circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         self.keccak_hash()
     }
 }

@@ -1,14 +1,14 @@
 use quantum_utils::error_line;
-use sqlx::{MySql, Pool, Row, Execute};
+use sqlx::any::AnyRow;
+use sqlx::{Any, Execute, Pool, Row};
 use anyhow::{anyhow, Result as AnyhowResult, Error as AnyhowError};
-use sqlx::mysql::MySqlRow;
 use tracing::info;
 use quantum_types::enums::proving_schemes::ProvingSchemes;
 use quantum_types::types::db::bonsai_image::BonsaiImage;
 use crate::error::error::CustomError;
 use std::str::FromStr;
 
-pub async fn get_bonsai_image_by_proving_scheme(pool: &Pool<MySql>, proving_scheme: ProvingSchemes) -> AnyhowResult<BonsaiImage>{
+pub async fn get_bonsai_image_by_proving_scheme(pool: &Pool<Any>, proving_scheme: ProvingSchemes) -> AnyhowResult<BonsaiImage>{
     let query  = sqlx::query("SELECT * from bonsai_image where proving_scheme = ?")
         .bind(proving_scheme.to_string());
 
@@ -22,7 +22,7 @@ pub async fn get_bonsai_image_by_proving_scheme(pool: &Pool<MySql>, proving_sche
     bonsai_image
 }
 
-pub async fn get_bonsai_image_by_image_id(pool: &Pool<MySql>, image_id: &str) -> AnyhowResult<BonsaiImage>{
+pub async fn get_bonsai_image_by_image_id(pool: &Pool<Any>, image_id: &str) -> AnyhowResult<BonsaiImage>{
     let query  = sqlx::query("SELECT * from bonsai_image where image_id = ?")
         .bind(image_id.to_string());
 
@@ -36,7 +36,7 @@ pub async fn get_bonsai_image_by_image_id(pool: &Pool<MySql>, image_id: &str) ->
     bonsai_image
 }
 
-pub async fn get_aggregate_circuit_bonsai_image(pool: &Pool<MySql>) -> AnyhowResult<BonsaiImage> {
+pub async fn get_aggregate_circuit_bonsai_image(pool: &Pool<Any>) -> AnyhowResult<BonsaiImage> {
     let query  = sqlx::query("SELECT * from bonsai_image where is_aggregation_image_id = 1");
 
     info!("{}", query.sql());
@@ -48,8 +48,9 @@ pub async fn get_aggregate_circuit_bonsai_image(pool: &Pool<MySql>) -> AnyhowRes
     bonsai_image
 }
 
-fn get_bonsai_image_from_mysql_row(row: &MySqlRow) -> AnyhowResult<BonsaiImage, AnyhowError>{
+fn get_bonsai_image_from_mysql_row(row: &AnyRow) -> AnyhowResult<BonsaiImage, AnyhowError>{
     let proving_scheme_string: Option<String> = row.try_get_unchecked("proving_scheme")?;
+    info!(" proving_scheme : {:?}", proving_scheme_string);
     let mut proving_scheme: Option<ProvingSchemes> = None;
     if proving_scheme_string.is_some() {
         proving_scheme = Some(match ProvingSchemes::from_str(&proving_scheme_string.unwrap()) {
@@ -65,7 +66,7 @@ fn get_bonsai_image_from_mysql_row(row: &MySqlRow) -> AnyhowResult<BonsaiImage, 
         elf_file_path: row.try_get_unchecked("elf_file_path")?,
         circuit_verifying_id,
         proving_scheme: proving_scheme,
-        is_aggregation_image_id: row.try_get_unchecked("is_aggregation_image_id")?
+        is_aggregation_image_id: row.try_get_unchecked::<i64,&str>("is_aggregation_image_id")?.try_into()?
     };
     Ok(bonsai_image)
 }

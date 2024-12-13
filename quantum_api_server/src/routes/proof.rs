@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::Result as AnyhowResult;
 use quantum_db::repository::{protocol::get_protocol_by_auth_token, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::user_circuit_data, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey} }};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey} }};
 use quantum_utils::error_line;
 use rocket::{get, post, serde::json::Json, State};
 use tracing::{error, info};
@@ -8,67 +8,59 @@ use tracing::{error, info};
 use crate::{connection::get_pool, error::error::CustomError, service::proof::{get_proof_data_exec, submit_proof_exec}, types::{auth::AuthToken, proof_data::ProofDataResponse, submit_proof::{SubmitProofRequest, SubmitProofResponse}}};
 
 #[post("/proof", data = "<data>")]
-pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
-    let protocol = get_protocol_by_auth_token(get_pool().await, &_auth_token.0).await?;
+pub async fn submit_proof(auth_token: AuthToken, mut data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
+    // Retrieve protocol data corresponding to the auth token
+    let protocol = get_protocol_by_auth_token(get_pool().await, &auth_token.0).await?;
     
+    // Check if any such protocol exists
     let protocol = match protocol {
-        Some(p) => Ok(p),
+        Some(p) => p,
         None => {
             error!("No protocol against this auth token");
-            Err(CustomError::Internal(error_line!("/register_circuit No protocol against this auth token".to_string())))
+            return Err(CustomError::Internal(error_line!("/register_circuit No protocol against this auth token".to_string())));
         },
     };
-    let protocol = protocol?;
 
+    // Retrieve the circuit data corresponding to circuit_hash in the request
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
     
+    // Check if this auth key is allowed to submit proof for this circuit
     if user_circuit_data.protocol_name.to_uppercase() != protocol.protocol_name.to_uppercase() {
-        info!("circuit reduction not completed");
-        return Err(CustomError::BadRequest(error_line!("circuit reduction not completed".to_string())));
+        info!("Not authorised to submit proof for this circuit");
+        return Err(CustomError::BadRequest(error_line!("Not authorised to submit proof for this circuit".to_string())));
     }
 
-    let response: AnyhowResult<SubmitProofResponse>;
-    if data.proof_type == ProvingSchemes::GnarkGroth16 {
-        response = submit_proof_exec::<GnarkGroth16Proof, GnarkGroth16Pis, GnarkGroth16Vkey>(data, config_data).await;
-    } else if data.proof_type == ProvingSchemes::Groth16 {
-        response = submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis, SnarkJSGroth16Vkey>(data, config_data).await;
-    } else if data.proof_type == ProvingSchemes::Halo2Plonk {
-        response = submit_proof_exec::<Halo2PlonkProof, Halo2PlonkPis, Halo2PlonkVkey>(data, config_data).await;
-    } else if data.proof_type == ProvingSchemes::GnarkPlonk {
-        response = submit_proof_exec::<GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey>(data, config_data).await;
-    } else if data.proof_type == ProvingSchemes::Halo2Poseidon {
-        response = submit_proof_exec::<Halo2PoseidonProof, Halo2PoseidonPis, Halo2PoseidonVkey>(data, config_data).await;
-    } else if data.proof_type == ProvingSchemes::Plonky2 {
-        let user_circuit = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
-        let proof_bytes = data.proof.clone();
-        let proof = Plonky2Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
-        let pis: Vec<String> = proof.get_pis_strings(&user_circuit.vk_path)?;
-        let plonk2_pis = Plonky2Pis(pis);
-        let pis_bytes = plonk2_pis.serialize_pis()?;
-        data.pis = pis_bytes;
-        response = submit_proof_exec::<Plonky2Proof, Plonky2Pis, Plonky2Vkey>(data, config_data).await;
-    }  else if data.proof_type == ProvingSchemes::Sp1 {
-        let proof_bytes = data.proof.clone();
-        let proof = Sp1Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
-        let pis_bytes = proof.get_proof_with_public_inputs()?.public_values.to_vec();
-        let pis = hex::encode(pis_bytes);
-        let sp1_pis = Sp1Pis(vec![pis]);
-        let pis_bytes = sp1_pis.serialize_pis()?;
-        data.pis = pis_bytes;
-        response = submit_proof_exec::<Sp1Proof, Sp1Pis, Sp1Vkey>(data, config_data).await;
-    }  else if data.proof_type == ProvingSchemes::Risc0 {
-        let proof_bytes = data.proof.clone();
-        let proof = Risc0Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
-        let pis_bytes = proof.get_receipt()?.journal.bytes;
-        let pis = hex::encode(pis_bytes);
-        let risco_pis = Risc0Pis(vec![pis]);
-        let pis_bytes = risco_pis.serialize_pis()?;
-        data.pis = pis_bytes;
-        response = submit_proof_exec::<Risc0Proof, Risc0Pis, Risc0Vkey>(data, config_data).await;
-    } else {
-        error!("unsupported proving scheme");
-        return Err(CustomError::Internal(error_line!(String::from("/proof Unsupported Proving Scheme"))))
-    }
+    // Match the proof_type and start executing the submit proof request
+    let response: AnyhowResult<SubmitProofResponse> = match data.proof_type {
+        ProvingSchemes::GnarkGroth16 => submit_proof_exec::<GnarkGroth16Proof, GnarkGroth16Pis, GnarkGroth16Vkey>(data, config_data).await,
+        ProvingSchemes::Groth16 => submit_proof_exec::<SnarkJSGroth16Proof, SnarkJSGroth16Pis, SnarkJSGroth16Vkey>(data, config_data).await,
+        ProvingSchemes::GnarkPlonk => submit_proof_exec::<GnarkPlonkSolidityProof, GnarkPlonkPis, GnarkPlonkVkey>(data, config_data).await,
+        ProvingSchemes::Halo2Poseidon => submit_proof_exec::<Halo2PoseidonProof, Halo2PoseidonPis, Halo2PoseidonVkey>(data, config_data).await,
+        ProvingSchemes::Halo2Plonk => submit_proof_exec::<Halo2PlonkProof, Halo2PlonkPis, Halo2PlonkVkey>(data, config_data).await,
+        ProvingSchemes::Plonky2 => {
+            let proof = Plonky2Proof::deserialize_proof(&mut data.proof.as_slice())?;
+            let pis: Vec<String> = proof.get_pis_strings(&user_circuit_data.vk_path)?;
+            let plonk2_pis = Plonky2Pis(pis);
+            data.pis = plonk2_pis.serialize_pis()?;
+            submit_proof_exec::<Plonky2Proof, Plonky2Pis, Plonky2Vkey>(data, config_data).await
+        },
+        ProvingSchemes::Sp1 => {
+            let proof = Sp1Proof::deserialize_proof(&mut data.proof.as_slice())?;
+            let pis_bytes = proof.get_proof_with_public_inputs()?.public_values.to_vec();
+            let pis = hex::encode(pis_bytes);
+            let sp1_pis = Sp1Pis(vec![pis]);
+            data.pis = sp1_pis.serialize_pis()?;
+            submit_proof_exec::<Sp1Proof, Sp1Pis, Sp1Vkey>(data, config_data).await
+        },
+        ProvingSchemes::Risc0 => {
+            let proof = Risc0Proof::deserialize_proof(&mut data.proof.as_slice())?;
+            let pis_bytes = proof.get_receipt()?.journal.bytes;
+            let pis = hex::encode(pis_bytes);
+            let risc0_pis = Risc0Pis(vec![pis]);
+            data.pis = risc0_pis.serialize_pis()?;
+            submit_proof_exec::<Risc0Proof, Risc0Pis, Risc0Vkey>(data, config_data).await
+        },
+    };
     match response {
         Ok(resp)  => Ok(Json(resp)),
         Err(e) => {
@@ -79,9 +71,8 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
 }
 
 #[get("/proof/<proof_hash>")]
-pub async fn get_proof_status(_auth_token: AuthToken, proof_hash: String, config_data: &State<ConfigData>) -> AnyhowResult<Json<ProofDataResponse>, CustomError> {
-    let response = get_proof_data_exec(proof_hash, config_data).await;
-    match response{
+pub async fn get_proof_status(_auth_token: AuthToken, proof_hash: &str, config_data: &State<ConfigData>) -> AnyhowResult<Json<ProofDataResponse>, CustomError> {
+    match get_proof_data_exec(proof_hash, config_data).await {
         Ok(r) => Ok(Json(r)),
         Err(e) => {
             error!("Error in /proof/<proof_id>: {:?}",e);
