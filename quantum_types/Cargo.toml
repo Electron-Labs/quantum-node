@@ -40,12 +40,12 @@ dotenv = "0.15.0"
 
 plonky2 = { git = "https://github.com/0xPolygonZero/plonky2.git", default-features = false }
 
-gnark-bn254-verifier = { git = "https://github.com/Electron-Labs/gnark-bn254-verifier" }
-groth16-verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
-plonky2-verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
-halo2_kzg_evm_verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
-utils = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
-aggregation = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
+gnark-bn254-verifier = { git = "https://github.com/Electron-Labs/gnark-bn254-verifier", rev = "36664f3dd58ce52b3eb486ac92e5e3f7055d52f4" }
+groth16-verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git", rev = "0f8e209d10fc1e93d83a603248a6f542d613861d" }
+plonky2-verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git", rev = "0f8e209d10fc1e93d83a603248a6f542d613861d" }
+halo2_kzg_evm_verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git", rev = "0f8e209d10fc1e93d83a603248a6f542d613861d" }
+utils = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git", rev = "0f8e209d10fc1e93d83a603248a6f542d613861d" }
+aggregation = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git", rev = "0f8e209d10fc1e93d83a603248a6f542d613861d" }
 
 risc0-zkvm = { git = "https://github.com/risc0/risc0.git", tag = "v1.1.1", default-features = false, features = ['std'] }
 sp1-sdk =  { git = "https://github.com/succinctlabs/sp1.git", default-features = false, tag="release/v3.0.0-rc1" }
