@@ -4,7 +4,7 @@ use quantum_utils::{error_line, file::{read_bytes_from_file, write_bytes_to_file
 use serde::{Deserialize, Serialize};
 // use sp1_sdk::types::SP1VerifyingKey;
 use sp1_sdk::{HashableKey, SP1ProofWithPublicValues, SP1VerifyingKey};
-use utils::hash::{Hasher, KeccakHasher};
+use utils::hash::{QuantumHasher, Keccak256Hasher};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -133,7 +133,7 @@ impl Pis for Sp1Pis {
     // TODO: ask
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
         let pis_bytes = hex::decode(self.0[0].clone())?;
-        let hash = KeccakHasher::hash_out(&pis_bytes);
+        let hash = Keccak256Hasher::hash_out(&pis_bytes);
         Ok(hash)
     }
 

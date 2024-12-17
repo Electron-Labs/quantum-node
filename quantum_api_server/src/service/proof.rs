@@ -7,9 +7,8 @@ use crate::{
         submit_proof::{SubmitProofRequest, SubmitProofResponse},
     },
 };
-use agg_core::inputs::compute_leaf_value;
+use aggregation::inputs::compute_leaf_value;
 use anyhow::{anyhow, Result as AnyhowResult};
-use mt_core::tree::get_merkle_tree;
 use quantum_db::repository::{proof_repository::get_proof_by_proof_hash, superproof_repository::get_superproof_by_id};
 use quantum_db::repository::{
     proof_repository::{get_latest_proof_by_circuit_hash, insert_proof},
@@ -32,8 +31,8 @@ use quantum_utils::{
 };
 use rocket::State;
 use tracing::info;
-use utils::hash::{Hasher, KeccakHasher};
-use tiny_merkle::proof::Position;
+use utils::hash::{HashOut, Keccak256Hasher, QuantumHasher};
+use tiny_merkle::{proof::Position, MerkleTree};
 
 pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
     data: SubmitProofRequest,
@@ -52,7 +51,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
 
     let user_vk = V::read_vk(&user_circuit_data.vk_path)?;
 
-    let proof_id_hash = KeccakHasher::combine_hash(&user_vk.keccak_hash()?, &pis.keccak_hash()?);
+    let proof_id_hash = Keccak256Hasher::combine_hash(&user_vk.keccak_hash()?, &pis.keccak_hash()?);
     let proof_hash = encode_keccak_hash(&proof_id_hash)?;
 
     // Ensure same proof wasnt submitted before
@@ -62,7 +61,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
                 return Err(anyhow!(CustomError::Internal(format!(
                     "Proof {:?} already exists", proof_hash
                 ))));
-            } 
+            }
         }
         Err(_) => {
             return Err(anyhow!(CustomError::Internal(error_line!(
@@ -147,11 +146,11 @@ pub async fn get_proof_data_exec(
     // Fetch superproof with minimal error handling
     let superproof = get_superproof_by_id(get_pool().await, superproof_id).await?;
 
-    return Ok(ProofDataResponse { 
-        status: superproof.status.to_string(), 
-        superproof_id: superproof_id.try_into()?, 
-        transaction_hash: superproof.transaction_hash, 
-        verification_contract: verification_contract.clone() 
+    return Ok(ProofDataResponse {
+        status: superproof.status.to_string(),
+        superproof_id: superproof_id.try_into()?,
+        transaction_hash: superproof.transaction_hash,
+        verification_contract: verification_contract.clone()
     });
 }
 
@@ -181,7 +180,7 @@ pub async fn validate_on_ongoing_proof_with_same_circuit_hash(
             return Ok(())
         }
     };
-    
+
     // If any proof is in progress return Err
     if proof.proof_status == ProofStatus::Registered
         || proof.proof_status == ProofStatus::Reducing
@@ -203,7 +202,7 @@ pub async fn check_if_proof_already_exist(proof_hash: &str) -> AnyhowResult<bool
 pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(
     proof: &DbProof,
 ) -> AnyhowResult<ProtocolProofResponse, CustomError> {
-    type H = KeccakHasher;
+    type H = Keccak256Hasher;
 
     // Extract superproof to which proof belongs
     let superproof = get_superproof_by_id(get_pool().await, proof.superproof_id.ok_or(anyhow!("missing superproof_id"))?).await?;
@@ -212,13 +211,13 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(
     let circuit_hash = decode_keccak_hex(&proof.user_circuit_hash.clone())?;
     let pis: T = T::read_pis(&proof.pis_path)?;
     let protocol_pis_hash = pis.keccak_hash()?;
-    let target_leaf = compute_leaf_value::<KeccakHasher>(&circuit_hash, &protocol_pis_hash);
+    let target_leaf = compute_leaf_value::<Keccak256Hasher>(&circuit_hash, &protocol_pis_hash);
 
     // Extract all the leaves for this superproof
-    let leaves: Vec<[u8; 32]> = read_superproof_leaves(&superproof.r0_leaves_path.ok_or(anyhow!("missing risc0 leaves path"))?)?;
-    
+    let leaves: Vec<HashOut> = read_superproof_leaves(&superproof.r0_leaves_path.ok_or(anyhow!("missing risc0 leaves path"))?)?;
+
     // Get merkle tree proof
-    let mt_proof = get_mt_proof::<H>(leaves, target_leaf)?;
+    let mt_proof = get_mt_proof::<H>(&leaves, &target_leaf)?;
 
     // Merkle proof encoded as hex string
     let mt_proof_encoded = mt_proof
@@ -246,29 +245,35 @@ pub fn read_superproof_leaves(
     Ok(bincode::deserialize(&std::fs::read(&superproof_leaves_path)?)?)
 }
 
-pub fn get_mt_proof<H: Hasher>(
-    leaves: Vec<H::HashOut>,
-    target_leaf: H::HashOut,
-) -> AnyhowResult<(Vec<H::Hash>, Vec<u8>)> {
+pub fn get_mt_proof<H: QuantumHasher>(
+    leaves: &Vec<HashOut>,
+    target_leaf: &HashOut,
+) -> AnyhowResult<(Vec<HashOut>, Vec<u8>)> {
     // Check if `target_leaf` exists in the `leaves` set
-    if !leaves.iter().any(|leaf| leaf == &target_leaf) {
+    if !leaves.iter().any(|leaf| leaf == target_leaf) {
         return Err(anyhow!(error_line!(
             "Target leaf is absent in provided leaves"
         )));
     }
 
     // Build the merkle tree
-    let mtree = get_merkle_tree::<H>(leaves)?;
+    let merkle_leaves: Vec<_> = leaves
+    .iter()
+    .map(|leaf| H::to_internal_hash(leaf))
+    .collect::<Result<_, _>>()?;
+    let mtree = MerkleTree::<H>::from_leaves(merkle_leaves, None);
     let mt_proof = mtree.proof(H::to_internal_hash(target_leaf)?).ok_or_else(|| anyhow!("Couldn't find a valid Merkle proof"))?;
-    
+
     // Extract proof values and directions
-    let (proof, proof_helper) = mt_proof.proofs.iter().map(|elm| {
+    let proof_and_positions = mt_proof.proofs.iter().map(|elm| {
         let position_bit = match elm.position {
             Position::Left => 0,
             Position::Right => 1
         };
-        (elm.data.clone(), position_bit)
-    }).unzip();
+        Ok((H::value_from_slice(elm.data.as_ref())?, position_bit))
+    }).collect::<Result<Vec<_>, anyhow::Error>>()?;
 
-    Ok((proof, proof_helper))
+    let (proof, positions) = proof_and_positions.into_iter().unzip();
+
+    Ok((proof, positions))
 }

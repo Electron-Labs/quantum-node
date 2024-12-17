@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use ethers::contract::Abigen;
-use quantum_types::types::gnark_groth16::SuperproofGnarkGroth16Proof;
+use risc0_zkvm::{Groth16Receipt, Receipt, ReceiptClaim};
 use tracing::info;
 
 use ethers::types::U256;
@@ -43,12 +43,13 @@ pub fn get_quantum_contract(
 pub async fn update_quantum_contract_state(
     contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
     batch_root: [u8;32],
-    gnark_proof: &SuperproofGnarkGroth16Proof,
+    groth16_proof: &Groth16Receipt<ReceiptClaim>
 ) -> AnyhowResult<TransactionReceipt> {
-    let proof = get_proof_from_gnark_groth16_proof(&gnark_proof)?;
+    let proof = get_proof_from_groth16_proof(&groth16_proof)?;
 
     println!("--------------------------------------------------------------------------------");
-    println!("final proof: {:?}", proof);
+    println!("calldata");
+    println!("proof: {:?}", proof);
     println!("batch root: {:?}", batch_root);
     println!("--------------------------------------------------------------------------------");
     info!("calling verify_superproof");
@@ -60,58 +61,30 @@ pub async fn update_quantum_contract_state(
     return receipt;
 }
 
-pub fn get_proof_from_gnark_groth16_proof(gnark_proof: &SuperproofGnarkGroth16Proof) -> AnyhowResult<Proof> {
-    info!("gmarl+[ {:?}", gnark_proof);
+pub fn get_proof_from_groth16_proof(groth16_proof: &Groth16Receipt<ReceiptClaim>) -> AnyhowResult<Proof> {
+    let mut offset = 0;
+    let a0 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
+    offset += 32;
+    let a1 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
+    offset += 32;
 
-    let arx = U256::from_dec_str(&gnark_proof.Ar.X).expect("arx");
-    let arx1 = U256::from_dec_str(&gnark_proof.Ar.X).expect("arx1");
-    info!("arx from using form _dec_string: {:?}", arx);
-    info!("arx from using from_string: {:?}", arx1);
+    let b00 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
+    offset += 32;
+    let b01 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
+    offset += 32;
 
-    let ary = U256::from_dec_str(&gnark_proof.Ar.Y)?;
-    let bsx1 = U256::from_dec_str(&gnark_proof.Bs.X.A0)?;
-    let bsx2 = U256::from_dec_str(&gnark_proof.Bs.X.A1)?;
-    let bsy1 = U256::from_dec_str(&gnark_proof.Bs.Y.A0)?;
-    let bsy2 = U256::from_dec_str(&gnark_proof.Bs.Y.A1)?;
-    let krsx = U256::from_dec_str(&gnark_proof.Krs.X)?;
-    let krsy = U256::from_dec_str(&gnark_proof.Krs.Y)?;
+    let b10 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
+    offset += 32;
+    let b11 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
+    offset += 32;
 
-    // println!(
-    //     "inputs {:?}",
-    //     [
-    //         &gnark_proof.Ar.X,
-    //         &gnark_proof.Ar.Y,
-    //         &gnark_proof.Bs.X.A1,
-    //         &gnark_proof.Bs.X.A0,
-    //         &gnark_proof.Bs.Y.A1,
-    //         &gnark_proof.Bs.Y.A0,
-    //         &gnark_proof.Krs.X,
-    //         &gnark_proof.Krs.Y
-    //     ]
-    // );
+    let c0 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
+    offset += 32;
+    let c1 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
 
-    let commitments_x = U256::from_dec_str(&gnark_proof.Commitments[0].X)?;
-    let commitments_y = U256::from_dec_str(&gnark_proof.Commitments[0].Y)?;
-
-    let commitment_pok_x = U256::from_dec_str(&gnark_proof.CommitmentPok.X)?;
-    let commitment_pok_y = U256::from_dec_str(&gnark_proof.CommitmentPok.Y)?;
-
-    let proof = [arx, ary, bsx2, bsx1, bsy2, bsy1, krsx, krsy];
-    let commitments = [commitments_x, commitments_y];
-    let commitment_pok = [commitment_pok_x, commitment_pok_y];
-
-    println!(
-        "proof ->  {:?}",
-        Proof {
-            proof,
-            commitments,
-            commitment_pok
-        }
-    );
+    let proof = [a0, a1, b00, b01, b10, b11, c0, c1];
 
     Ok(Proof {
         proof,
-        commitments,
-        commitment_pok,
     })
 }

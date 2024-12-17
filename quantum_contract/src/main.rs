@@ -16,14 +16,14 @@ use quantum_db::repository::{
         get_first_non_submitted_superproof, get_last_verified_superproof, update_superproof_fields_after_onchain_submission, update_superproof_gas_data, update_superproof_onchain_submission_time
     },
 };
-use quantum_types::types::gnark_groth16::SuperproofGnarkGroth16Proof;
 use quantum_types::{
     enums::{proof_status::ProofStatus, superproof_status::SuperproofStatus},
     traits::proof::Proof,
 };
-use quantum_utils::{error_line, logger::initialize_logger};
+use quantum_utils::{error_line, file::read_file, logger::initialize_logger};
 
 use anyhow::{anyhow, Result as AnyhowResult};
+use risc0_zkvm::{Groth16Receipt, Receipt, ReceiptClaim};
 use sqlx::types::chrono::NaiveDateTime;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info};
@@ -97,8 +97,9 @@ async fn initialize_superproof_submission_loop(
             }
         };
 
-        let superproof_proof_path = first_superproof_not_verfied.superproof_proof_path.unwrap();
-        let gnark_proof = SuperproofGnarkGroth16Proof::read_proof(&superproof_proof_path)?;
+        let r0_snark_receipt_path = first_superproof_not_verfied.r0_snark_receipt_path.ok_or(anyhow!("missing r0_snark_receipt_path"))?;
+        let r0_snark_receipt: Receipt = read_file(&r0_snark_receipt_path)?;
+        let groth_16_proof = r0_snark_receipt.inner.groth16()?;
 
         let new_superproof_id = match first_superproof_not_verfied.id {
             Some(id) => Ok(id),
@@ -113,6 +114,8 @@ async fn initialize_superproof_submission_loop(
                     "missing first_superproof_not_verfied.superproof_root"
                 )),
             )?)?;
+        assert_eq!(batch_root.as_slice(), r0_snark_receipt.journal.bytes.as_slice(), "batch_root != r0 journal");
+
 
         let current_time = get_current_time();
         update_superproof_onchain_submission_time(
@@ -123,9 +126,9 @@ async fn initialize_superproof_submission_loop(
         .await?;
 
         println!("batch root {:?}", batch_root);
-        println!("gnark proof {:?}", gnark_proof);
+        println!("groth_16_proof {:?}", groth_16_proof);
 
-        let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(batch_root, &gnark_proof).await?;
+        let (transaction_hash, gas_used) = make_smart_contract_call_with_retry(batch_root, &groth_16_proof).await?;
 
         // update tx data in DB for superproof
         update_superproof_fields_after_onchain_submission(
@@ -164,14 +167,14 @@ async fn initialize_superproof_submission_loop(
     }
 }
 
-async fn make_smart_contract_call_with_retry(batch_root: [u8; 32], gnark_proof: &SuperproofGnarkGroth16Proof) -> AnyhowResult<(String, u64)> {
+async fn make_smart_contract_call_with_retry(batch_root: [u8; 32], groth16_proof: &Groth16Receipt<ReceiptClaim>) -> AnyhowResult<(String, u64)> {
     let mut retry_count = 0;
     let transaction_hash;
     let quantum_contract = get_quantum_contract()?;
     let gas_used;
     let mut error = Err(anyhow!(error_line!("Error initialized")));
     while retry_count <= RETRY_COUNT {
-        match update_quantum_contract_state(&quantum_contract, batch_root, &gnark_proof).await {
+        match update_quantum_contract_state(&quantum_contract, batch_root, &groth16_proof).await {
             Ok(receipt) =>{
                 let transaction_hash_string = receipt.transaction_hash.encode_hex();
                 let transaction_hash_string = String::from("0x") + &transaction_hash_string;

@@ -357,6 +357,7 @@ fn get_superproof_from_row(row: AnyRow) -> AnyhowResult<Superproof> {
         imt_pis_path: row.try_get_unchecked("imt_pis_path")?,
         r0_root: row.try_get_unchecked("r0_root")?,
         sp1_root: row.try_get_unchecked("sp1_root")?,
+        r0_snark_receipt_path: row.try_get_unchecked("r0_snark_receipt_path")?,
     };
 
     Ok(superproof)

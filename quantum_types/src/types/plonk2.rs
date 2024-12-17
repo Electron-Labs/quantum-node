@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
-use agg_core::inputs::compute_combined_vkey_hash;
+use aggregation::inputs::compute_combined_vkey_hash;
 use borsh::{BorshDeserialize, BorshSerialize};
 use num_bigint::BigUint;
 use plonky2::{field::{goldilocks_field::GoldilocksField, types::{Field, PrimeField}}, plonk::{circuit_data::{CommonCircuitData, VerifierCircuitData, VerifierOnlyCircuitData}, config::PoseidonGoldilocksConfig, proof::ProofWithPublicInputs}, util::serialization::DefaultGateSerializer};
-use plonky2_core::utils::{plonky2_public_inputs_hash, plonky2_vkey_hash};
+use plonky2_verifier::{plonky2_public_inputs_hash, plonky2_vkey_hash};
 use quantum_utils::{error_line, file::{read_bytes_from_file, write_bytes_to_file}};
 use serde::{Deserialize, Serialize};
-use utils::hash::KeccakHasher;
+use utils::hash::Keccak256Hasher;
 use anyhow::{anyhow, Result as AnyhowResult};
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -53,14 +53,15 @@ impl Vkey for Plonky2Vkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let verifier_only = self.get_verifier_only()?;
-        let hash = plonky2_vkey_hash(&verifier_only);
+        let common_bytes = &self.common_bytes;
+        let verifier_only_bytes = &self.verifier_only_bytes;
+        let hash = plonky2_vkey_hash::<Keccak256Hasher>(common_bytes, verifier_only_bytes);
         Ok(hash)
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         let protocol_hash = self.keccak_hash()?;
-        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&protocol_hash, &circuit_verifying_id)?;
+        let circuit_hash = compute_combined_vkey_hash::<Keccak256Hasher>(&protocol_hash, &circuit_verifying_id)?;
         Ok(circuit_hash)
     }
 }
@@ -79,14 +80,14 @@ impl Plonky2Vkey {
     pub fn get_verifier(&self) ->AnyhowResult<VerifierCircuitData<GoldilocksField, PoseidonGoldilocksConfig, 2>> {
         let verifier_only = self.get_verifier_only()?;
         let common_circuit_data = self.get_common_circuit_data()?;
-        
+
         let verifier = VerifierCircuitData {
             common: common_circuit_data,
             verifier_only,
         };
 
         Ok(verifier)
-        
+
     }
 }
 
@@ -120,12 +121,12 @@ impl Proof for Plonky2Proof {
         let gnark_proof = Plonky2Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
-    
+
     fn validate_proof(&self, vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = Plonky2Vkey::read_vk(vkey_path)?;
         let common_circuit_data = vkey.get_common_circuit_data()?;
         let proof_with_pis = self.get_proof_with_pis(&common_circuit_data)?;
-        
+
         // let pis = proof_with_pis.public_inputs;
         let verifier = vkey.get_verifier()?;
         verifier.verify(proof_with_pis)?;
@@ -187,7 +188,7 @@ impl Pis for Plonky2Pis {
             pis.push(GoldilocksField::from_noncanonical_biguint(BigUint::from_str(p)?));
         }
 
-        let hash = plonky2_public_inputs_hash::<KeccakHasher>(&pis);
+        let hash = plonky2_public_inputs_hash::<Keccak256Hasher>(&pis);
         Ok(hash)
     }
 
@@ -202,7 +203,7 @@ impl Pis for Plonky2Pis {
 //             proof_bytes
 //         };
 
-//         let prof_with_pis = 
+//         let prof_with_pis =
 
 //     }
 // }

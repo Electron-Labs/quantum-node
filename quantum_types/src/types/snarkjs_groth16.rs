@@ -2,11 +2,11 @@
 #![allow(non_camel_case_types)]
 
 use std::str::FromStr;
-use agg_core::inputs::compute_combined_vkey_hash;
+use aggregation::inputs::compute_combined_vkey_hash;
 use ark_bn254::{Bn254, Fq as ArkFq, Fq2 as ArkFq2, Fr as ArkFr, G1Affine, G2Affine};
 use ark_groth16::{verifier, Groth16, Proof as ArkProof, VerifyingKey};
 use borsh::{BorshDeserialize, BorshSerialize};
-use groth16_core::utils::groth16_vkey_hash;
+use groth16_verifier::groth16_vkey_hash;
 use num_bigint::BigUint;
 use quantum_utils::{
     error_line,
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 use anyhow::{anyhow, Result as AnyhowResult};
 use tracing::info;
-use utils::{hash::KeccakHasher, public_inputs_hash};
+use utils::{hash::Keccak256Hasher, public_inputs_hash};
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SnarkJSGroth16Vkey {
@@ -132,7 +132,7 @@ impl SnarkJSGroth16Vkey {
                 ).map_err(|_| anyhow!(error_line!("failed to form ark vk from snark groth16 vk")))?,
             ),
         );
-    
+
         let mut gamma_abc_g1 = vec![];
         for ic in &self.IC {
             let g1 = G1Affine::new(
@@ -145,7 +145,7 @@ impl SnarkJSGroth16Vkey {
             );
             gamma_abc_g1.push(g1);
         }
-    
+
         let ark_vk = VerifyingKey::<Bn254>{
             alpha_g1,
             beta_g2,
@@ -201,9 +201,7 @@ impl Vkey for SnarkJSGroth16Vkey {
         // Ok(gnark_converted_vkey.keccak_hash()?)
         let ark_vk = self.get_ark_vk_for_snarkjs_groth16()?;
         println!("ark_vk done");
-        let pvk = verifier::prepare_verifying_key(&ark_vk);
-        println!("pvk done");
-        let pvk_hash = groth16_vkey_hash::<KeccakHasher>(&pvk);
+        let pvk_hash = groth16_vkey_hash::<Keccak256Hasher>(&ark_vk);
         Ok(pvk_hash)
     }
 
@@ -212,7 +210,7 @@ impl Vkey for SnarkJSGroth16Vkey {
         // gnark_converted_vkey.compute_circuit_hash(circuit_verifying_id)
         let pvk_hash = self.keccak_hash()?;
 
-        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&pvk_hash, &circuit_verifying_id)?;
+        let circuit_hash = compute_combined_vkey_hash::<Keccak256Hasher>(&pvk_hash, &circuit_verifying_id)?;
         Ok(circuit_hash)
     }
 }
@@ -250,7 +248,7 @@ impl Proof for SnarkJSGroth16Proof {
         let snarkjs_proof = SnarkJSGroth16Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(snarkjs_proof)
     }
-    
+
     fn validate_proof(&self, vkey_path: &str, mut pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = SnarkJSGroth16Vkey::read_vk(vkey_path)?;
         let pis = SnarkJSGroth16Pis::deserialize_pis(&mut pis_bytes)?;
@@ -264,7 +262,7 @@ impl Proof for SnarkJSGroth16Proof {
         if !res {
             return Err(anyhow!(error_line!("snarkJS-groth16 proof validation failed")))
         }
-        Ok(()) 
+        Ok(())
     }
 }
 
@@ -340,7 +338,7 @@ impl Pis for SnarkJSGroth16Pis {
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
         let ark_pis = self.get_ark_pis_for_snarkjs_groth16_pis()?;
-        let hash = public_inputs_hash::<KeccakHasher>(&ark_pis);
+        let hash = public_inputs_hash::<Keccak256Hasher>(&ark_pis);
         Ok(hash)
     }
 

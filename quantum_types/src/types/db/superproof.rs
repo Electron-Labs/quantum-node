@@ -21,4 +21,5 @@ pub struct Superproof {
     pub imt_pis_path: Option<String>,
     pub r0_root: Option<String>,
     pub sp1_root: Option<String>,
+    pub r0_snark_receipt_path: Option<String>
 }

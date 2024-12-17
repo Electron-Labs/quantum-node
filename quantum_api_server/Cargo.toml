@@ -27,8 +27,7 @@ tracing-appender = "0.2.3"
 hex = "0.4.3"
 rocket_cors = "0.6.0"
 chrono = { version = "0.4.38", features = ["serde"] }
-agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}
-mt-core = {path = "../../quantum-risc0-circuits/mt/core"}
+aggregation = {path = "../../quantum-risc0-circuits/aggregation/guest"}
 utils = {path = "../../quantum-risc0-circuits/utils"}
 bincode = "1.3.3"
 tiny-merkle = "0.3.0"

@@ -8,7 +8,7 @@ use quantum_utils::{
 use serde::{Deserialize, Serialize};
 use tiny_merkle::{proof::Position, MerkleTree};
 
-use super::hash::{KeccakHashOut, KeccakHasher};
+use super::hash::{KeccakHashOut, Keccak256Hasher};
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq)]
 pub struct QuantumLeaf {
@@ -57,13 +57,13 @@ impl ImtTree {
         Ok(imt_tree)
     }
 
-    pub fn get_mtree(&self) -> MerkleTree<KeccakHasher> {
+    pub fn get_mtree(&self) -> MerkleTree<Keccak256Hasher> {
         let leaves_structs = self.leaves.clone();
         let leaves = leaves_structs
             .iter()
             .map(|leaf_struct| keccak(&leaf_struct.serialize()).0)
             .collect::<Vec<[u8; 32]>>();
-        MerkleTree::<KeccakHasher>::from_leaves(leaves, None)
+        MerkleTree::<Keccak256Hasher>::from_leaves(leaves, None)
     }
 
     pub fn get_imt_proof(

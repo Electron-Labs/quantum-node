@@ -25,3 +25,4 @@ ethers = "2.0.14"
 hex = "0.4.3"
 rust_decimal = "1.25.0"
 keccak-hash = "0.10.0"
+risc0-zkvm = { git = "https://github.com/risc0/risc0.git", tag = "v1.1.1", default-features = false, features = ['std'] }

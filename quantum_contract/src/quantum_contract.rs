@@ -1738,7 +1738,5 @@ pub mod quantum {
     )]
     pub struct Proof {
         pub proof: [::ethers::core::types::U256; 8],
-        pub commitments: [::ethers::core::types::U256; 2],
-        pub commitment_pok: [::ethers::core::types::U256; 2],
     }
 }

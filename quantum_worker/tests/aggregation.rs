@@ -11,7 +11,7 @@ async fn before_test(proof_ids: &[u64] ) -> ConfigData {
 
     let stdout_log = tracing_subscriber::fmt::layer().compact();
     tracing_subscriber::registry().with(filter::LevelFilter::INFO).with(stdout_log).init();
-    
+
     let config_data = ConfigData::new("../test_config.yaml");
 
     for proof_id in proof_ids {
@@ -22,11 +22,11 @@ async fn before_test(proof_ids: &[u64] ) -> ConfigData {
 
 
 #[tokio::test]
-async fn test_proof_aggregation_generation(){ 
+async fn test_proof_aggregation_generation(){
     let config_data = before_test(&AGGREGATION_PROOF_IDS).await;
 
     let aggregation_awaiting_proofs_r0 = get_reduced_proofs_r0(get_pool().await).await.unwrap();
 
-    aggregate_and_generate_new_superproof(aggregation_awaiting_proofs_r0, vec![], &config_data).await.unwrap();
+    aggregate_and_generate_new_superproof(aggregation_awaiting_proofs_r0, &config_data).await.unwrap();
 
 }

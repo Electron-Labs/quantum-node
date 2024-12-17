@@ -1,10 +1,10 @@
-use agg_core::inputs::compute_combined_vkey_hash;
+use aggregation::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow , Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
 use quantum_utils::{error_line, file::{read_bytes_from_file, write_bytes_to_file}};
 use risc0_zkvm::Receipt;
 use serde::{Deserialize, Serialize};
-use utils::hash::{Hasher, KeccakHasher};
+use utils::hash::{QuantumHasher, Keccak256Hasher};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -52,7 +52,7 @@ impl Vkey for Risc0Vkey {
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         let protocol_hash = self.keccak_hash()?;
-        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&protocol_hash, &circuit_verifying_id)?;
+        let circuit_hash = compute_combined_vkey_hash::<Keccak256Hasher>(&protocol_hash, &circuit_verifying_id)?;
         Ok(circuit_hash)
     }
 }
@@ -86,7 +86,7 @@ impl Proof for Risc0Proof {
         let gnark_proof = Risc0Proof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
-    
+
     fn validate_proof(&self, vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = Risc0Vkey::read_vk(vkey_path)?;
         self.get_receipt()?.verify(vkey.vkey_bytes)?;
@@ -131,7 +131,7 @@ impl Pis for Risc0Pis {
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
         let pis_bytes = hex::decode(self.0[0].clone())?;
-        let hash = KeccakHasher::hash_out(&pis_bytes);
+        let hash = Keccak256Hasher::hash_out(&pis_bytes);
         Ok(hash)
     }
 

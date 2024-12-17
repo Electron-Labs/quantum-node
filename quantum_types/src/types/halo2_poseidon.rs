@@ -1,12 +1,12 @@
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
-use agg_core::inputs::compute_combined_vkey_hash;
+use aggregation::inputs::compute_combined_vkey_hash;
 use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use halo2_kzg_evm_core::utils::halo2_kzg_vkey_hash;
-use halo2_kzg_evm_core::utils::halo2_public_inputs_hash;
+use halo2_kzg_evm_verifier::halo2_kzg_vkey_hash;
+use halo2_kzg_evm_verifier::halo2_public_inputs_hash;
 use num_bigint::BigUint;
 use quantum_utils::error_line;
 use quantum_utils::file::read_bytes_from_file;
@@ -18,7 +18,7 @@ use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G1Affine;
 use snark_verifier::halo2_base::halo2_proofs::halo2curves::bn256::G2Affine;
 use snark_verifier::halo2_base::utils::ScalarField;
 use snark_verifier::verifier::plonk::PlonkProtocol;
-use utils::hash::KeccakHasher;
+use utils::hash::Keccak256Hasher;
 // use utils::halo2_kzg_vkey_hash;
 // use utils::halo2_public_inputs_hash;
 
@@ -60,14 +60,15 @@ impl Vkey for Halo2PoseidonVkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let protocol: PlonkProtocol<G1Affine> = self.get_protocol()?;
-        let protocol_hash = halo2_kzg_vkey_hash(&protocol);
+        let protocol = self.get_protocol()?;
+        let sg2 = self.get_sg2()?;
+        let protocol_hash = halo2_kzg_vkey_hash::<Keccak256Hasher>(&protocol, &sg2);
         Ok(protocol_hash)
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {
         let protocol_hash = self.keccak_hash()?;
-        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&protocol_hash, &circuit_verifying_id)?;
+        let circuit_hash = compute_combined_vkey_hash::<Keccak256Hasher>(&protocol_hash, &circuit_verifying_id)?;
         Ok(circuit_hash)
     }
 }
@@ -114,7 +115,7 @@ impl Proof for Halo2PoseidonProof {
         let gnark_proof = Halo2PoseidonProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
-    
+
     fn validate_proof(&self, _vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         // let vkey = Halo2PoseidonVkey::read_vk(vkey_path)?;
         // let pis = Halo2PoseidonPis::deserialize_pis(&mut pis_bytes)?;
@@ -127,7 +128,7 @@ impl Proof for Halo2PoseidonProof {
         // let loader = NativeLoader;
         // let protocol = protocol.loaded(&loader);
         // let mut transcript = EvmTranscript::<_, NativeLoader, _, _>::new(self.proof_bytes.as_slice());
-        
+
         // let proof_ = PlonkVerifier::<SHPLONK>::read_proof(&dk, &protocol, &instances, &mut transcript).map_err(|e| {anyhow!(error_line!(format!("error in halo2-plonk proof validation {:?}", e)))})?;
         // PlonkVerifier::<SHPLONK>::verify(&dk, &protocol, &instances, &proof_).map_err(|e| {anyhow!(error_line!(format!("Halo2Plonk proof validation failed: {:?}", e)))})?;
         Ok(())
@@ -161,7 +162,7 @@ impl Pis for Halo2PoseidonPis {
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
         let instances = self.get_instance()?;
-        let hash = halo2_public_inputs_hash::<KeccakHasher>(&instances);
+        let hash = halo2_public_inputs_hash::<Keccak256Hasher>(&instances);
         Ok(hash)
     }
 

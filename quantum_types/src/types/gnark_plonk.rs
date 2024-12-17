@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use agg_core::inputs::compute_combined_vkey_hash;
+use aggregation::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
 use borsh::{BorshDeserialize, BorshSerialize};
 use gnark_bn254_verifier::{load_plonk_verifying_key_from_bytes, verify};
@@ -10,7 +10,7 @@ use quantum_utils::{
     file::{read_bytes_from_file, write_bytes_to_file},
 };
 use serde::{Deserialize, Serialize};
-use utils::{hash::{Hasher, KeccakHasher}, public_inputs_hash};
+use utils::{hash::{QuantumHasher, Keccak256Hasher}, public_inputs_hash};
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 use ark_bn254::Fr as ArkFr;
@@ -54,13 +54,13 @@ impl Vkey for GnarkPlonkVkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        let hash = KeccakHasher::hash_out(&self.vkey_bytes);
+        let hash = Keccak256Hasher::hash_out(&self.vkey_bytes);
         Ok(hash)
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32;8]) -> AnyhowResult<[u8;32]> {
         let protocol_hash = self.keccak_hash()?;
-        let circuit_hash = compute_combined_vkey_hash::<KeccakHasher>(&protocol_hash, &circuit_verifying_id)?;
+        let circuit_hash = compute_combined_vkey_hash::<Keccak256Hasher>(&protocol_hash, &circuit_verifying_id)?;
         Ok(circuit_hash)
     }
 }
@@ -94,7 +94,7 @@ impl Proof for GnarkPlonkSolidityProof {
         let gnark_proof = GnarkPlonkSolidityProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(gnark_proof)
     }
-    
+
     fn validate_proof(&self, vkey_path: &str,mut pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vk = GnarkPlonkVkey::read_vk(vkey_path)?;
         let pis = GnarkPlonkPis::deserialize_pis(&mut pis_bytes)?;
@@ -137,7 +137,7 @@ impl Pis for GnarkPlonkPis {
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
         let ark_pis = self.get_ark_pis_for_gnark_plonk_pis()?;
-        let hash = public_inputs_hash::<KeccakHasher>(&ark_pis);
+        let hash = public_inputs_hash::<Keccak256Hasher>(&ark_pis);
         Ok(hash)
     }
 
