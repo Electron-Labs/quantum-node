@@ -37,20 +37,17 @@ snark-verifier = { git = "https://github.com/axiom-crypto/snark-verifier.git", t
 ] }
 sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono", "macros", "decimal", "sqlite", "any" ] }
 dotenv = "0.15.0"
-utils = {path = "../../quantum-risc0-circuits/utils"}
-aggregation = {path = "../../quantum-risc0-circuits/aggregation/guest"}
-gnark-bn254-verifier = {path = "../../gnark-bn254-verifier"}
 
 plonky2 = { git = "https://github.com/0xPolygonZero/plonky2.git", default-features = false }
 
-groth16-verifier = {path = "../../quantum-risc0-circuits/reduction/groth16"}
-plonky2-verifier = {path = "../../quantum-risc0-circuits/reduction/plonky2"}
-halo2_kzg_evm_verifier = {path = "../../quantum-risc0-circuits/reduction/halo2_kzg_evm"}
+gnark-bn254-verifier = { git = "https://github.com/Electron-Labs/gnark-bn254-verifier" }
+groth16-verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
+plonky2-verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
+halo2_kzg_evm_verifier = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
+utils = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
+aggregation = { git = "https://github.com/Electron-Labs/quantum-risc0-circuits.git" }
 
 risc0-zkvm = { git = "https://github.com/risc0/risc0.git", tag = "v1.1.1", default-features = false, features = ['std'] }
 sp1-sdk =  { git = "https://github.com/succinctlabs/sp1.git", default-features = false, tag="release/v3.0.0-rc1" }
 # sp1-prover = { git = "https://github.com/succinctlabs/sp1.git", default-features = false, tag="release/v3.0.0-rc1" }
 # sp1-core =  {path = "../../quantum-risc0-circuits/reduction/sp1/core"}
-
-[patch.crates-io]
-ruint = "1.12.3"
