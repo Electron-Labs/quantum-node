@@ -15,6 +15,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::quantum_contract::{Proof, Quantum};
+use crate::{BN254_CONTROL_ID, CONTROL_ROOT};
 
 pub fn gen_quantum_structs() -> Result<(), Box<dyn std::error::Error>> {
     Abigen::new("Quantum", "quantum_contract/src/abi/Quantum.json")?
@@ -42,10 +43,11 @@ pub fn get_quantum_contract(
 
 pub async fn update_quantum_contract_state(
     contract: &Quantum<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    batch_root: [u8;32],
-    groth16_proof: &Groth16Receipt<ReceiptClaim>
+    batch_root: [u8; 32],
+    groth16_proof: &Groth16Receipt<ReceiptClaim>,
 ) -> AnyhowResult<TransactionReceipt> {
     let proof = get_proof_from_groth16_proof(&groth16_proof)?;
+    let public_inputs = get_public_inputs()?;
 
     println!("--------------------------------------------------------------------------------");
     println!("calldata");
@@ -53,7 +55,8 @@ pub async fn update_quantum_contract_state(
     println!("batch root: {:?}", batch_root);
     println!("--------------------------------------------------------------------------------");
     info!("calling verify_superproof");
-    let receipt = contract.verify_superproof(proof, batch_root)
+    let receipt = contract
+        .verify_superproof(proof, batch_root, public_inputs)
         .send()
         .await?
         .await?
@@ -61,7 +64,9 @@ pub async fn update_quantum_contract_state(
     return receipt;
 }
 
-pub fn get_proof_from_groth16_proof(groth16_proof: &Groth16Receipt<ReceiptClaim>) -> AnyhowResult<Proof> {
+pub fn get_proof_from_groth16_proof(
+    groth16_proof: &Groth16Receipt<ReceiptClaim>,
+) -> AnyhowResult<Proof> {
     let mut offset = 0;
     let a0 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
     offset += 32;
@@ -82,9 +87,19 @@ pub fn get_proof_from_groth16_proof(groth16_proof: &Groth16Receipt<ReceiptClaim>
     offset += 32;
     let c1 = U256::from_big_endian(&groth16_proof.seal[offset..offset + 32]);
 
-    let proof = [a0, a1, b00, b01, b10, b11, c0, c1];
+    let a = [a0, a1];
+    let b = [b00, b01, b10, b11];
+    let c = [c0, c1];
 
-    Ok(Proof {
-        proof,
-    })
+    Ok(Proof { a, b, c })
+}
+
+pub fn get_public_inputs() -> AnyhowResult<[U256; 3]> {
+    let mut control_root_bytes_be = [0u8; 32];
+    U256::from_dec_str(CONTROL_ROOT)?.to_big_endian(&mut control_root_bytes_be);
+    let pub0 = U256::from_big_endian(&control_root_bytes_be[..16]);
+    let pub1 = U256::from_big_endian(&control_root_bytes_be[16..]);
+    let pub2 = U256::from_dec_str(BN254_CONTROL_ID)?;
+
+    Ok([pub0, pub1, pub2])
 }

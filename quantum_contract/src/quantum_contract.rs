@@ -12,7 +12,7 @@ pub use quantum::*;
 pub mod quantum {
     const _: () = {
         ::core::include_bytes!(
-            "./abi/Quantum.json",
+            "/home/ubuntu/quantum/quantum-node/quantum_contract/src/abi/Quantum.json",
         );
     };
     #[allow(deprecated)]
@@ -172,6 +172,50 @@ pub mod quantum {
                     ],
                 ),
                 (
+                    ::std::borrow::ToOwned::to_owned("setBn254ControlId"),
+                    ::std::vec![
+                        ::ethers::core::abi::ethabi::Function {
+                            name: ::std::borrow::ToOwned::to_owned("setBn254ControlId"),
+                            inputs: ::std::vec![
+                                ::ethers::core::abi::ethabi::Param {
+                                    name: ::std::borrow::ToOwned::to_owned("bn254ControlId_"),
+                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
+                                        256usize,
+                                    ),
+                                    internal_type: ::core::option::Option::Some(
+                                        ::std::borrow::ToOwned::to_owned("uint256"),
+                                    ),
+                                },
+                            ],
+                            outputs: ::std::vec![],
+                            constant: ::core::option::Option::None,
+                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
+                        },
+                    ],
+                ),
+                (
+                    ::std::borrow::ToOwned::to_owned("setControlRoot"),
+                    ::std::vec![
+                        ::ethers::core::abi::ethabi::Function {
+                            name: ::std::borrow::ToOwned::to_owned("setControlRoot"),
+                            inputs: ::std::vec![
+                                ::ethers::core::abi::ethabi::Param {
+                                    name: ::std::borrow::ToOwned::to_owned("controlRoot_"),
+                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
+                                        256usize,
+                                    ),
+                                    internal_type: ::core::option::Option::Some(
+                                        ::std::borrow::ToOwned::to_owned("uint256"),
+                                    ),
+                                },
+                            ],
+                            outputs: ::std::vec![],
+                            constant: ::core::option::Option::None,
+                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
+                        },
+                    ],
+                ),
+                (
                     ::std::borrow::ToOwned::to_owned("setVerifier"),
                     ::std::vec![
                         ::ethers::core::abi::ethabi::Function {
@@ -302,13 +346,13 @@ pub mod quantum {
                                                 ::std::boxed::Box::new(
                                                     ::ethers::core::abi::ethabi::ParamType::Uint(256usize),
                                                 ),
-                                                8usize,
+                                                2usize,
                                             ),
                                             ::ethers::core::abi::ethabi::ParamType::FixedArray(
                                                 ::std::boxed::Box::new(
                                                     ::ethers::core::abi::ethabi::ParamType::Uint(256usize),
                                                 ),
-                                                2usize,
+                                                4usize,
                                             ),
                                             ::ethers::core::abi::ethabi::ParamType::FixedArray(
                                                 ::std::boxed::Box::new(
@@ -329,6 +373,18 @@ pub mod quantum {
                                     ),
                                     internal_type: ::core::option::Option::Some(
                                         ::std::borrow::ToOwned::to_owned("bytes32"),
+                                    ),
+                                },
+                                ::ethers::core::abi::ethabi::Param {
+                                    name: ::std::borrow::ToOwned::to_owned("pubInputs"),
+                                    kind: ::ethers::core::abi::ethabi::ParamType::FixedArray(
+                                        ::std::boxed::Box::new(
+                                            ::ethers::core::abi::ethabi::ParamType::Uint(256usize),
+                                        ),
+                                        3usize,
+                                    ),
+                                    internal_type: ::core::option::Option::Some(
+                                        ::std::borrow::ToOwned::to_owned("uint256[3]"),
                                     ),
                                 },
                             ],
@@ -443,10 +499,10 @@ pub mod quantum {
                     ],
                 ),
                 (
-                    ::std::borrow::ToOwned::to_owned("FailedInnerCall"),
+                    ::std::borrow::ToOwned::to_owned("FailedCall"),
                     ::std::vec![
                         ::ethers::core::abi::ethabi::AbiError {
-                            name: ::std::borrow::ToOwned::to_owned("FailedInnerCall"),
+                            name: ::std::borrow::ToOwned::to_owned("FailedCall"),
                             inputs: ::std::vec![],
                         },
                     ],
@@ -649,6 +705,24 @@ pub mod quantum {
                 .method_hash([15, 87, 151, 160], agg_v_key)
                 .expect("method not found (this should never happen)")
         }
+        ///Calls the contract's `setBn254ControlId` (0x31f3c06b) function
+        pub fn set_bn_254_control_id(
+            &self,
+            bn_254_control_id: ::ethers::core::types::U256,
+        ) -> ::ethers::contract::builders::ContractCall<M, ()> {
+            self.0
+                .method_hash([49, 243, 192, 107], bn_254_control_id)
+                .expect("method not found (this should never happen)")
+        }
+        ///Calls the contract's `setControlRoot` (0x2319206f) function
+        pub fn set_control_root(
+            &self,
+            control_root: ::ethers::core::types::U256,
+        ) -> ::ethers::contract::builders::ContractCall<M, ()> {
+            self.0
+                .method_hash([35, 25, 32, 111], control_root)
+                .expect("method not found (this should never happen)")
+        }
         ///Calls the contract's `setVerifier` (0x5437988d) function
         pub fn set_verifier(
             &self,
@@ -697,14 +771,15 @@ pub mod quantum {
                 .method_hash([43, 122, 195, 243], ())
                 .expect("method not found (this should never happen)")
         }
-        ///Calls the contract's `verifySuperproof` (0x8aa1f82c) function
+        ///Calls the contract's `verifySuperproof` (0x5d433683) function
         pub fn verify_superproof(
             &self,
             proof: Proof,
             super_root: [u8; 32],
+            pub_inputs: [::ethers::core::types::U256; 3],
         ) -> ::ethers::contract::builders::ContractCall<M, ()> {
             self.0
-                .method_hash([138, 161, 248, 44], (proof, super_root))
+                .method_hash([93, 67, 54, 131], (proof, super_root, pub_inputs))
                 .expect("method not found (this should never happen)")
         }
         ///Gets the contract's `Initialized` event
@@ -796,7 +871,7 @@ pub mod quantum {
     )]
     #[etherror(name = "ERC1967NonPayable", abi = "ERC1967NonPayable()")]
     pub struct ERC1967NonPayable;
-    ///Custom Error type `FailedInnerCall` with signature `FailedInnerCall()` and selector `0x1425ea42`
+    ///Custom Error type `FailedCall` with signature `FailedCall()` and selector `0xd6bda275`
     #[derive(
         Clone,
         ::ethers::contract::EthError,
@@ -807,8 +882,8 @@ pub mod quantum {
         Eq,
         Hash
     )]
-    #[etherror(name = "FailedInnerCall", abi = "FailedInnerCall()")]
-    pub struct FailedInnerCall;
+    #[etherror(name = "FailedCall", abi = "FailedCall()")]
+    pub struct FailedCall;
     ///Custom Error type `InvalidInitialization` with signature `InvalidInitialization()` and selector `0xf92ee8a9`
     #[derive(
         Clone,
@@ -908,7 +983,7 @@ pub mod quantum {
         AddressEmptyCode(AddressEmptyCode),
         ERC1967InvalidImplementation(ERC1967InvalidImplementation),
         ERC1967NonPayable(ERC1967NonPayable),
-        FailedInnerCall(FailedInnerCall),
+        FailedCall(FailedCall),
         InvalidInitialization(InvalidInitialization),
         NotInitializing(NotInitializing),
         OwnableInvalidOwner(OwnableInvalidOwner),
@@ -944,10 +1019,10 @@ pub mod quantum {
             ) {
                 return Ok(Self::ERC1967NonPayable(decoded));
             }
-            if let Ok(decoded) = <FailedInnerCall as ::ethers::core::abi::AbiDecode>::decode(
+            if let Ok(decoded) = <FailedCall as ::ethers::core::abi::AbiDecode>::decode(
                 data,
             ) {
-                return Ok(Self::FailedInnerCall(decoded));
+                return Ok(Self::FailedCall(decoded));
             }
             if let Ok(decoded) = <InvalidInitialization as ::ethers::core::abi::AbiDecode>::decode(
                 data,
@@ -994,7 +1069,7 @@ pub mod quantum {
                 Self::ERC1967NonPayable(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
-                Self::FailedInnerCall(element) => {
+                Self::FailedCall(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
                 Self::InvalidInitialization(element) => {
@@ -1036,9 +1111,7 @@ pub mod quantum {
                     true
                 }
                 _ if selector
-                    == <FailedInnerCall as ::ethers::contract::EthError>::selector() => {
-                    true
-                }
+                    == <FailedCall as ::ethers::contract::EthError>::selector() => true,
                 _ if selector
                     == <InvalidInitialization as ::ethers::contract::EthError>::selector() => {
                     true
@@ -1075,7 +1148,7 @@ pub mod quantum {
                     ::core::fmt::Display::fmt(element, f)
                 }
                 Self::ERC1967NonPayable(element) => ::core::fmt::Display::fmt(element, f),
-                Self::FailedInnerCall(element) => ::core::fmt::Display::fmt(element, f),
+                Self::FailedCall(element) => ::core::fmt::Display::fmt(element, f),
                 Self::InvalidInitialization(element) => {
                     ::core::fmt::Display::fmt(element, f)
                 }
@@ -1116,9 +1189,9 @@ pub mod quantum {
             Self::ERC1967NonPayable(value)
         }
     }
-    impl ::core::convert::From<FailedInnerCall> for QuantumErrors {
-        fn from(value: FailedInnerCall) -> Self {
-            Self::FailedInnerCall(value)
+    impl ::core::convert::From<FailedCall> for QuantumErrors {
+        fn from(value: FailedCall) -> Self {
+            Self::FailedCall(value)
         }
     }
     impl ::core::convert::From<InvalidInitialization> for QuantumErrors {
@@ -1345,6 +1418,36 @@ pub mod quantum {
     pub struct SetAggVKeyCall {
         pub agg_v_key: [u8; 32],
     }
+    ///Container type for all input parameters for the `setBn254ControlId` function with signature `setBn254ControlId(uint256)` and selector `0x31f3c06b`
+    #[derive(
+        Clone,
+        ::ethers::contract::EthCall,
+        ::ethers::contract::EthDisplay,
+        Default,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash
+    )]
+    #[ethcall(name = "setBn254ControlId", abi = "setBn254ControlId(uint256)")]
+    pub struct SetBn254ControlIdCall {
+        pub bn_254_control_id: ::ethers::core::types::U256,
+    }
+    ///Container type for all input parameters for the `setControlRoot` function with signature `setControlRoot(uint256)` and selector `0x2319206f`
+    #[derive(
+        Clone,
+        ::ethers::contract::EthCall,
+        ::ethers::contract::EthDisplay,
+        Default,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash
+    )]
+    #[ethcall(name = "setControlRoot", abi = "setControlRoot(uint256)")]
+    pub struct SetControlRootCall {
+        pub control_root: ::ethers::core::types::U256,
+    }
     ///Container type for all input parameters for the `setVerifier` function with signature `setVerifier(address)` and selector `0x5437988d`
     #[derive(
         Clone,
@@ -1417,7 +1520,7 @@ pub mod quantum {
     )]
     #[ethcall(name = "verifier", abi = "verifier()")]
     pub struct VerifierCall;
-    ///Container type for all input parameters for the `verifySuperproof` function with signature `verifySuperproof((uint256[8],uint256[2],uint256[2]),bytes32)` and selector `0x8aa1f82c`
+    ///Container type for all input parameters for the `verifySuperproof` function with signature `verifySuperproof((uint256[2],uint256[4],uint256[2]),bytes32,uint256[3])` and selector `0x5d433683`
     #[derive(
         Clone,
         ::ethers::contract::EthCall,
@@ -1430,11 +1533,12 @@ pub mod quantum {
     )]
     #[ethcall(
         name = "verifySuperproof",
-        abi = "verifySuperproof((uint256[8],uint256[2],uint256[2]),bytes32)"
+        abi = "verifySuperproof((uint256[2],uint256[4],uint256[2]),bytes32,uint256[3])"
     )]
     pub struct VerifySuperproofCall {
         pub proof: Proof,
         pub super_root: [u8; 32],
+        pub pub_inputs: [::ethers::core::types::U256; 3],
     }
     ///Container type for all of the contract's call
     #[derive(Clone, ::ethers::contract::EthAbiType, Debug, PartialEq, Eq, Hash)]
@@ -1446,6 +1550,8 @@ pub mod quantum {
         ProxiableUUID(ProxiableUUIDCall),
         RenounceOwnership(RenounceOwnershipCall),
         SetAggVKey(SetAggVKeyCall),
+        SetBn254ControlId(SetBn254ControlIdCall),
+        SetControlRoot(SetControlRootCall),
         SetVerifier(SetVerifierCall),
         SuperRootVerified(SuperRootVerifiedCall),
         TransferOwnership(TransferOwnershipCall),
@@ -1492,6 +1598,16 @@ pub mod quantum {
                 data,
             ) {
                 return Ok(Self::SetAggVKey(decoded));
+            }
+            if let Ok(decoded) = <SetBn254ControlIdCall as ::ethers::core::abi::AbiDecode>::decode(
+                data,
+            ) {
+                return Ok(Self::SetBn254ControlId(decoded));
+            }
+            if let Ok(decoded) = <SetControlRootCall as ::ethers::core::abi::AbiDecode>::decode(
+                data,
+            ) {
+                return Ok(Self::SetControlRoot(decoded));
             }
             if let Ok(decoded) = <SetVerifierCall as ::ethers::core::abi::AbiDecode>::decode(
                 data,
@@ -1546,6 +1662,12 @@ pub mod quantum {
                 Self::SetAggVKey(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
+                Self::SetBn254ControlId(element) => {
+                    ::ethers::core::abi::AbiEncode::encode(element)
+                }
+                Self::SetControlRoot(element) => {
+                    ::ethers::core::abi::AbiEncode::encode(element)
+                }
                 Self::SetVerifier(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
@@ -1579,6 +1701,8 @@ pub mod quantum {
                 Self::ProxiableUUID(element) => ::core::fmt::Display::fmt(element, f),
                 Self::RenounceOwnership(element) => ::core::fmt::Display::fmt(element, f),
                 Self::SetAggVKey(element) => ::core::fmt::Display::fmt(element, f),
+                Self::SetBn254ControlId(element) => ::core::fmt::Display::fmt(element, f),
+                Self::SetControlRoot(element) => ::core::fmt::Display::fmt(element, f),
                 Self::SetVerifier(element) => ::core::fmt::Display::fmt(element, f),
                 Self::SuperRootVerified(element) => ::core::fmt::Display::fmt(element, f),
                 Self::TransferOwnership(element) => ::core::fmt::Display::fmt(element, f),
@@ -1621,6 +1745,16 @@ pub mod quantum {
     impl ::core::convert::From<SetAggVKeyCall> for QuantumCalls {
         fn from(value: SetAggVKeyCall) -> Self {
             Self::SetAggVKey(value)
+        }
+    }
+    impl ::core::convert::From<SetBn254ControlIdCall> for QuantumCalls {
+        fn from(value: SetBn254ControlIdCall) -> Self {
+            Self::SetBn254ControlId(value)
+        }
+    }
+    impl ::core::convert::From<SetControlRootCall> for QuantumCalls {
+        fn from(value: SetControlRootCall) -> Self {
+            Self::SetControlRoot(value)
         }
     }
     impl ::core::convert::From<SetVerifierCall> for QuantumCalls {
@@ -1725,7 +1859,7 @@ pub mod quantum {
         Hash
     )]
     pub struct VerifierReturn(pub ::ethers::core::types::Address);
-    ///`Proof(uint256[8],uint256[2],uint256[2])`
+    ///`Proof(uint256[2],uint256[4],uint256[2])`
     #[derive(
         Clone,
         ::ethers::contract::EthAbiType,
@@ -1737,6 +1871,8 @@ pub mod quantum {
         Hash
     )]
     pub struct Proof {
-        pub proof: [::ethers::core::types::U256; 8],
+        pub a: [::ethers::core::types::U256; 2],
+        pub b: [::ethers::core::types::U256; 4],
+        pub c: [::ethers::core::types::U256; 2],
     }
 }

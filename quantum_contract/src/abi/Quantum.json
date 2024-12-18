@@ -33,7 +33,7 @@
   },
   {
     "inputs": [],
-    "name": "FailedInnerCall",
+    "name": "FailedCall",
     "type": "error"
   },
   {
@@ -222,6 +222,32 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "bn254ControlId_",
+        "type": "uint256"
+      }
+    ],
+    "name": "setBn254ControlId",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "controlRoot_",
+        "type": "uint256"
+      }
+    ],
+    "name": "setControlRoot",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "verifierAddress",
         "type": "address"
@@ -300,18 +326,18 @@
       {
         "components": [
           {
-            "internalType": "uint256[8]",
-            "name": "proof",
-            "type": "uint256[8]"
-          },
-          {
             "internalType": "uint256[2]",
-            "name": "commitments",
+            "name": "a",
             "type": "uint256[2]"
           },
           {
+            "internalType": "uint256[4]",
+            "name": "b",
+            "type": "uint256[4]"
+          },
+          {
             "internalType": "uint256[2]",
-            "name": "commitmentPok",
+            "name": "c",
             "type": "uint256[2]"
           }
         ],
@@ -323,6 +349,11 @@
         "internalType": "bytes32",
         "name": "superRoot",
         "type": "bytes32"
+      },
+      {
+        "internalType": "uint256[3]",
+        "name": "pubInputs",
+        "type": "uint256[3]"
       }
     ],
     "name": "verifySuperproof",
