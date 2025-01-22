@@ -56,15 +56,6 @@ use sp1_sdk::{ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1Verifyin
 use tracing::info;
 use utils::hash::{Hasher, KeccakHasher};
 
-// pub async fn handle_proof_aggregation_and_updation_r0 {
-//     proofs: Vec<DBProof>,
-//     superproof_id: u64,
-//     config: &ConfigData,
-// } -> AnyhowResult<()> {
-//     Ok(())
-// }
-
-
 // superroot = digest( risc0_root || sp1_root )
 pub fn get_superroot(risc0_root: &Vec<u8>, sp1_root: &Vec<u8>) -> [u8; 32] {
     KeccakHasher::combine_hash(risc0_root, sp1_root)
@@ -89,11 +80,7 @@ pub async fn handle_proof_aggregation_and_updation(
     } else {
         info!("No new sp1 proofs, using old aggregated_sp1_snark_receipt");
         // use hardocoded aggregated_sp1_snark_receipt_path
-        let aggregated_sp1_snark_receipt_path = get_aggregated_sp1_snark_receipt_path(
-            &config.storage_folder_path,
-            &config.supperproof_path,
-            7615,
-        );
+        let aggregated_sp1_snark_receipt_path = config.sp1_empty_proof_path;
         sp1_snark_proof = SP1ProofWithPublicValues::load(aggregated_sp1_snark_receipt_path)?;
         sp1_aggregation_time = Duration::ZERO;
         sp1_root_bytes  = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -224,7 +211,6 @@ async fn handle_proof_aggregation_sp1(
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<(SP1ProofWithPublicValues, [u8; 32], Duration)> {
-    // TODO: Parth Bhaiya
 
     println!("inside the sp1 aggregation");
     let mut protocol_vkeys: Vec<SP1VerifyingKey> = vec![];
@@ -359,14 +345,7 @@ async fn handle_proof_aggregation_r0(
             }
             _ => {
                 panic!("Shouldnt happen!!")
-            } // ProvingSchemes::Sp1 => {
-              //     let protocol_vkey = Sp1Vkey::read_vk(&protocol_circuit_vkey_path)?;
-              //     protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
-
-              //     let protocol_pis = Sp1Pis::read_pis(&protocol_pis_path)?;
-              //     protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
-              //     protocol_ids.push(7);
-              // },
+            }
         }
     }
 
