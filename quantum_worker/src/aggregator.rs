@@ -83,7 +83,7 @@ pub async fn handle_proof_aggregation_and_updation(
         let aggregated_sp1_snark_receipt_path = config.sp1_empty_proof_path;
         sp1_snark_proof = SP1ProofWithPublicValues::load(aggregated_sp1_snark_receipt_path)?;
         sp1_aggregation_time = Duration::ZERO;
-        sp1_root_bytes  = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        sp1_root_bytes  = [196, 46, 197, 6, 11, 175, 198, 174, 41, 69, 176, 70, 43, 89, 216, 164, 254, 120, 129, 1, 87, 188, 110, 239, 221, 218, 212, 118, 233, 55, 150, 191];
     }
 
 
@@ -256,7 +256,7 @@ async fn handle_proof_aggregation_sp1(
         bincode::deserialize_from(std::fs::File::open(proving_key_path)?)?;
 
     let client = ProverClient::new();
-    let aggregated_proof = client.prove(&aggregation_pk, stdin).groth16().run()?;
+    let aggregated_proof = client.prove(&aggregation_pk, &stdin).groth16().run()?;
     println!("Received SP1 proof");
 
     let aggregation_time = aggregation_start.elapsed();
@@ -641,13 +641,29 @@ mod tests {
     //     println!("circom_proof: {:?}", proof);
     // }
 
-    #[tokio::test]
-    #[ignore]
-    pub async fn leaf_deserialize() {
-        let path = "/home/ubuntu/aditya-risc0-test/quantum-node/storage/superproofs/45/leaves.bin";
-        let bytes = fs::read(path).unwrap();
-        let leaves: Vec<[u8; 32]> = bincode::deserialize(&bytes).unwrap();
+    // #[tokio::test]
+    // #[ignore]
+    // pub async fn leaf_deserialize() {
+    //     let path = "/home/ubuntu/aditya-risc0-test/quantum-node/storage/superproofs/45/leaves.bin";
+    //     let bytes = fs::read(path).unwrap();
+    //     let leaves: Vec<[u8; 32]> = bincode::deserialize(&bytes).unwrap();
 
-        println!("leaves: {:?}", leaves);
-    }
+    //     println!("leaves: {:?}", leaves);
+    // }
+
+    // #[test]
+    // pub fn test_hash() {
+    //     let hash = read_bytes_from_file(&get_sp1_agg_vk_hash_bytes_path(
+    //         "/home/ubuntu/quantum/quantum-node/storage",
+    //         "/sp1_snark_reduction",
+    //     )).unwrap();
+    //     println!("hash: {:?}", hash);
+    // }
+
+    // #[test]
+    // pub fn test_write_bytes_to_file() {
+    //     let bytes = [0, 43, 199, 70, 54, 171, 79, 139, 173, 147, 2, 190, 251, 235, 202, 254, 106, 71, 62, 3, 101, 46, 213, 161, 95, 68, 228, 43, 99, 135, 164, 9].to_vec();
+    //     let path = "/home/ubuntu/quantum/quantum-node/storage/sp1_snark_reduction/sp1_agg_vk_hash.bin";
+    //     write_bytes_to_file(&bytes, path).unwrap();
+    // }
 }
