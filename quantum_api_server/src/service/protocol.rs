@@ -21,7 +21,8 @@ pub async fn generate_auth_token_for_protocol(data: GenerateAuthTokenRequest) ->
         return Err(anyhow!(CustomError::Internal(error_line!("protocol has already been registered".to_string()))));
     }
 
-    let protocol_name_hash = get_keccak_hash_of_string(&protocol_name);
+    let protocol_name_with_secret = std::env::var("auth_token_secret").expect("auth_token_secret must be set.") + &protocol_name;
+    let protocol_name_hash = get_keccak_hash_of_string(&protocol_name_with_secret);
     let token = get_token_from_hash(protocol_name_hash);
 
     insert_protocol_auth_token(get_pool().await, &protocol_name, &token).await?;
