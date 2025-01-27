@@ -43,11 +43,7 @@ use quantum_utils::{
     file::{dump_object, read_bytes_from_file, read_file, write_bytes_to_file},
     keccak::encode_keccak_hash,
     paths::{
-        get_aggregated_r0_proof_receipt_path, get_aggregated_r0_snark_receipt_path,
-        get_aggregated_sp1_snark_receipt_path, get_cs_bytes_path, get_inner_vkey_path,
-        get_r0_aggregate_leaves_path, get_snark_reduction_pk_bytes_path,
-        get_snark_reduction_vk_path, get_sp1_agg_pk_bytes_path, get_sp1_agg_vk_hash_bytes_path,
-        get_sp1_aggregate_leaves_path, get_superproof_pis_path, get_superproof_proof_path,
+        get_aggregated_r0_proof_receipt_path, get_aggregated_r0_snark_receipt_path, get_aggregated_sp1_snark_receipt_path, get_cs_bytes_path, get_inner_vkey_path, get_r0_aggregate_leaves_path, get_snark_reduction_pk_bytes_path, get_snark_reduction_vk_path, get_sp1_agg_pk_bytes_path, get_sp1_agg_vk_hash_bytes_path, get_sp1_aggregate_leaves_path, get_sp1_empty_proof_path, get_superproof_pis_path, get_superproof_proof_path
     },
 };
 use risc0_zkvm::{serde::to_vec, Receipt};
@@ -80,7 +76,7 @@ pub async fn handle_proof_aggregation_and_updation(
     } else {
         info!("No new sp1 proofs, using old aggregated_sp1_snark_receipt");
         // use hardocoded aggregated_sp1_snark_receipt_path
-        let aggregated_sp1_snark_receipt_path = config.sp1_empty_proof_path;
+        let aggregated_sp1_snark_receipt_path = get_sp1_empty_proof_path(&config.storage_folder_path, &config.sp1_folder_path);
         sp1_snark_proof = SP1ProofWithPublicValues::load(aggregated_sp1_snark_receipt_path)?;
         sp1_aggregation_time = Duration::ZERO;
         sp1_root_bytes  = [196, 46, 197, 6, 11, 175, 198, 174, 41, 69, 176, 70, 43, 89, 216, 164, 254, 120, 129, 1, 87, 188, 110, 239, 221, 218, 212, 118, 233, 55, 150, 191];

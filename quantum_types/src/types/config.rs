@@ -25,7 +25,8 @@ pub struct ConfigData {
     pub risc0_snark_reduction_data_path: String,
     pub sp1_snark_reduction_data_path: String,
     pub parallel_bonsai_session_limit: u64,
-    pub pr_batch_max_cycle_count: u64
+    pub pr_batch_max_cycle_count: u64,
+    pub sp1_folder_path: String
 }
 
 impl ConfigData {
