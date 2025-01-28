@@ -7,10 +7,12 @@ use mt_core::tree::get_merkle_tree_sp1;
 use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::traits::pis::Pis;
 use quantum_types::traits::proof::Proof;
+use quantum_types::traits::vkey::Vkey;
 use quantum_types::types::config::ConfigData;
 use quantum_types::types::gnark_groth16::GnarkGroth16Pis;
 use quantum_types::types::gnark_groth16::GnarkGroth16Proof;
 use quantum_types::types::sp1::words_to_bytes_le;
+use quantum_types::types::sp1::Sp1Vkey;
 use quantum_utils::error_line;
 use quantum_utils::file::dump_object;
 use quantum_utils::keccak::encode_keccak_hash;
@@ -75,12 +77,19 @@ pub fn get_agg_inputs_sp1<H: Hasher>(
     protocol_vkeys: Vec<SP1VerifyingKey>,
     protocol_proofs: Vec<SP1ProofWithPublicValues>
 ) -> AnyhowResult<(SP1Stdin, Vec<H::HashOut>, H::HashOut)> {
-    let vkey_hashes = protocol_vkeys.iter().map(|vkey| vkey.hash_u32()).collect::<Vec<_>>();
+    let vkey_hashes_u32 = protocol_vkeys.iter().map(|vkey| vkey.hash_u32()).collect::<Vec<_>>();
+    let mut vkey_hashes: Vec<Vec<u8>> = vec![];
+    for i in 0..protocol_vkeys.len() {
+        let vkey_struct = Sp1Vkey {
+            vkey_bytes: bincode::serialize(&protocol_vkeys[i])?
+        };
+        vkey_hashes.push(vkey_struct.keccak_hash()?.to_vec())
+    }
     let pis = protocol_proofs.iter().map(|proof| proof.public_values.to_vec()).collect::<Vec<_>>();
     let pis_hashes = pis.iter().map(|pis| H::hash_out(pis)).collect::<Vec<_>>();
 
     let combined_hashes = vkey_hashes.iter().zip(pis_hashes.iter()).map(|(v_hash, pis_hash)| {
-        H::combine_hash(&words_to_bytes_le(v_hash), pis_hash.as_ref())
+        H::combine_hash(v_hash, pis_hash.as_ref())
     }).collect::<Vec<_>>();
 
     println!("before sp1 get merkle tree");
@@ -89,7 +98,7 @@ pub fn get_agg_inputs_sp1<H: Hasher>(
     let mut stdin = SP1Stdin::new();
 
     // Write the verification keys.
-    stdin.write::<Vec<[u32; 8]>>(&vkey_hashes);
+    stdin.write::<Vec<[u32; 8]>>(&vkey_hashes_u32);
 
     stdin.write::<Vec<Vec<u8>>>(&pis);
 

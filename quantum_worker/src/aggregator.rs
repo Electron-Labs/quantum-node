@@ -79,7 +79,7 @@ pub async fn handle_proof_aggregation_and_updation(
         let aggregated_sp1_snark_receipt_path = get_sp1_empty_proof_path(&config.storage_folder_path, &config.sp1_folder_path);
         sp1_snark_proof = SP1ProofWithPublicValues::load(aggregated_sp1_snark_receipt_path)?;
         sp1_aggregation_time = Duration::ZERO;
-        sp1_root_bytes  = [196, 46, 197, 6, 11, 175, 198, 174, 41, 69, 176, 70, 43, 89, 216, 164, 254, 120, 129, 1, 87, 188, 110, 239, 221, 218, 212, 118, 233, 55, 150, 191];
+        sp1_root_bytes  = [156, 255, 80, 197, 73, 3, 33, 55, 128, 140, 84, 216, 218, 155, 122, 21, 28, 250, 142, 140, 199, 116, 181, 235, 203, 26, 112, 202, 80, 193, 6, 199];
     }
 
 
@@ -658,7 +658,7 @@ mod tests {
 
     // #[test]
     // pub fn test_write_bytes_to_file() {
-    //     let bytes = [0, 43, 199, 70, 54, 171, 79, 139, 173, 147, 2, 190, 251, 235, 202, 254, 106, 71, 62, 3, 101, 46, 213, 161, 95, 68, 228, 43, 99, 135, 164, 9].to_vec();
+    //     let bytes = [0, 158, 7, 170, 60, 10, 82, 128, 174, 193, 83, 30, 49, 98, 39, 230, 141, 161, 101, 133, 123, 237, 251, 49, 58, 76, 87, 76, 116, 52, 134, 236].to_vec();
     //     let path = "/home/ubuntu/quantum/quantum-node/storage/sp1_snark_reduction/sp1_agg_vk_hash.bin";
     //     write_bytes_to_file(&bytes, path).unwrap();
     // }
