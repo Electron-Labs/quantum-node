@@ -175,40 +175,11 @@ async fn validate_circuit_data_in_submit_proof_request(
         ))));
     }
 
-    validate_on_ongoing_proof_with_same_circuit_hash(&data.circuit_hash).await?;
     Ok(())
 }
 
-pub async fn validate_on_ongoing_proof_with_same_circuit_hash(
-    circuit_hash: &str,
-) -> AnyhowResult<()> {
-    let proof = match get_latest_proof_by_circuit_hash(get_pool().await, circuit_hash).await {
-        Ok(p) => Ok(p),
-        Err(e) => {
-            error!(
-                "error in finding the last proof for circuit hash {:?}: {:?}",
-                circuit_hash,
-                error_line!(e)
-            );
-            Err(e)
-        }
-    };
 
-    if proof.is_err() {
-        return Ok(());
-    }
 
-    let proof = proof?;
-    if proof.proof_status == ProofStatus::Registered
-        || proof.proof_status == ProofStatus::Reducing
-        || proof.proof_status == ProofStatus::Reduced
-    {
-        return Err(anyhow!(CustomError::BadRequest(error_line!(format!("last proof for circuit id {:?} hasn't been verified, rejecting proof submission request", circuit_hash)))));
-    }
-    Ok(())
-}
-
-// TODO: need to change
 pub async fn check_if_proof_already_exist(
     proof_hash: &str,
     _circuit_hash: &str,
@@ -229,14 +200,6 @@ pub async fn check_if_proof_already_exist(
                 "proof already exist".to_string()
             ))));
         }
-        // else {
-        //     let user_circuit_hash = get_user_
-        //     let proof = get_proof_by_proof_hash_within_limits(get_pool().await, proof_hash, circuit_hash, 51).await;
-        //     if proof.is_ok() {
-        //         info!("repeat proof present in the latest 51 proofs");
-        //         return Err(anyhow!(CustomError::BadRequest(error_line!("repeat proof present in the latest 51 proofs".to_string()))));
-        //     }
-        // }
     }
     Ok(())
 }
