@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 // use sp1_sdk::types::SP1VerifyingKey;
 use sp1_sdk::{HashableKey, SP1ProofWithPublicValues, SP1VerifyingKey};
 use utils::hash::{Hasher, KeccakHasher};
+use p3_field::PrimeField;
 
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
@@ -43,7 +44,11 @@ impl Vkey for Sp1Vkey {
     }
 
     fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-        Ok(words_to_bytes_le(&self.get_verifying_key()?.hash_u32()))
+        let a  = &self.get_verifying_key()?.hash_bn254().as_canonical_biguint();
+        let mut bytes = a.to_bytes_le();
+        bytes.resize(32, 0);
+        bytes.reverse();
+        Ok(bytes.try_into().expect("Vector must have exactly 32 elements"))
     }
 
     fn compute_circuit_hash(&self, circuit_verifying_id: [u32; 8]) -> AnyhowResult<[u8; 32]> {

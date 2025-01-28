@@ -50,5 +50,6 @@ halo2-kzg-evm-core = {path = "../../quantum-risc0-circuits/reduction/halo2_kzg_e
 
 risc0-zkvm = { git = "https://github.com/risc0/risc0.git", tag = "v1.1.1", default-features = false, features = ['std'] }
 sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v4.0.0", default-features = false, features = ["network"] }
+p3-field = "=0.2.0-succinct"
 # sp1-prover = { git = "https://github.com/succinctlabs/sp1.git", default-features = false, tag="release/v3.0.0-rc1" }
 # sp1-core =  {path = "../../quantum-risc0-circuits/reduction/sp1/core"}
