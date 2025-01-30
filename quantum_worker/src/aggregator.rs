@@ -1,5 +1,5 @@
-use std::
-    time::{Duration, Instant};
+use std::{sync::Arc,
+    time::{Duration, Instant}};
 
 use crate::{
     bonsai::{execute_aggregation_with_retry, run_stark2snark_with_retry},
@@ -65,23 +65,21 @@ pub async fn handle_proof_aggregation_and_updation(
 ) -> AnyhowResult<()> {
     info!("superproof_id {:?}", superproof_id);
 
-    let (r0_receipt, r0_snark_receipt, r0_root_bytes, r0_aggregation_time) =
-        handle_proof_aggregation_r0(proofs_r0.clone(), superproof_id, config).await?;
-    let sp1_snark_proof: SP1ProofWithPublicValues;
-    let sp1_root_bytes: [u8; 32];
-    let sp1_aggregation_time: Duration;
-    if proofs_sp1.len() != 0 {
-        (sp1_snark_proof, sp1_root_bytes, sp1_aggregation_time) =
-            handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, config).await?;
-    } else {
-        info!("No new sp1 proofs, using old aggregated_sp1_snark_receipt");
-        // use hardocoded aggregated_sp1_snark_receipt_path
-        let aggregated_sp1_snark_receipt_path = get_sp1_empty_proof_path(&config.storage_folder_path, &config.sp1_folder_path);
-        sp1_snark_proof = SP1ProofWithPublicValues::load(aggregated_sp1_snark_receipt_path)?;
-        sp1_aggregation_time = Duration::ZERO;
-        sp1_root_bytes  = [156, 255, 80, 197, 73, 3, 33, 55, 128, 140, 84, 216, 218, 155, 122, 21, 28, 250, 142, 140, 199, 116, 181, 235, 203, 26, 112, 202, 80, 193, 6, 199];
-    }
+    let config_clone = config.clone();
+    let config_clone_sp1 = config.clone();
+    let proof_r0_clone = proofs_r0.clone();
+    let risc0_handle = tokio::spawn(  async move  {handle_proof_aggregation_r0(proof_r0_clone, superproof_id, &config_clone).await});
+    let sp1_handle = tokio::spawn( async move {handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, &config_clone_sp1).await});
+    let risc0_aggregation = risc0_handle.await??;
+    let r0_receipt = risc0_aggregation.0;
+    let r0_snark_receipt = risc0_aggregation.1;
+    let r0_root_bytes = risc0_aggregation.2;
+    let r0_aggregation_time = risc0_aggregation.3;
 
+    let sp1_aggregation = sp1_handle.await??;
+    let sp1_snark_proof = sp1_aggregation.0;
+    let sp1_root_bytes = sp1_aggregation.1;
+    let sp1_aggregation_time = sp1_aggregation.2;
 
     // sp1_snark_proof.save(&aggregated_sp1_snark_receipt_path)?;
     info!(
@@ -207,6 +205,9 @@ async fn handle_proof_aggregation_sp1(
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<(SP1ProofWithPublicValues, [u8; 32], Duration)> {
+    if proofs.len() == 0 {
+        return handle_no_sp1_proof_aggregation(config);
+    }
 
     println!("inside the sp1 aggregation");
     let mut protocol_vkeys: Vec<SP1VerifyingKey> = vec![];
@@ -261,12 +262,24 @@ async fn handle_proof_aggregation_sp1(
     Ok((aggregated_proof, root, aggregation_time))
 }
 
+fn handle_no_sp1_proof_aggregation(config: &ConfigData) -> AnyhowResult<(SP1ProofWithPublicValues, [u8; 32], Duration)>{
+    info!("No new sp1 proofs, using old aggregated_sp1_snark_receipt");
+    // use hardocoded aggregated_sp1_snark_receipt_path
+    let aggregated_sp1_snark_receipt_path = get_sp1_empty_proof_path(&config.storage_folder_path, &config.sp1_folder_path);
+    let sp1_snark_proof = SP1ProofWithPublicValues::load(aggregated_sp1_snark_receipt_path)?;
+    let sp1_aggregation_time = Duration::ZERO;
+    let mut sp1_root_bytes = [0u8; 32];
+    sp1_root_bytes.copy_from_slice(&sp1_snark_proof.public_values.as_slice());
+    Ok((sp1_snark_proof, sp1_root_bytes, sp1_aggregation_time))
+}
+
 async fn handle_proof_aggregation_r0(
     proofs: Vec<DBProof>,
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<(Option<Receipt>, Receipt, [u8; 32], Duration)> {
     info!("superproof_id {:?}", superproof_id);
+    info!("inside risc0 proof aggregation");
 
     // let last_verified_superproof = get_last_verified_superproof(get_pool().await).await?;
     let mut protocol_ids: Vec<u8> = vec![];
@@ -510,8 +523,6 @@ fn form_circom_proof_from_snark_receipt(snark_receipt: &Receipt) -> AnyhowResult
         Curve: "bn128".to_string(),
     };
 
-    println!("circom proof: {:?}", proof);
-
     Ok(proof)
 }
 
@@ -658,8 +669,8 @@ mod tests {
 
     // #[test]
     // pub fn test_write_bytes_to_file() {
-    //     let bytes = [0, 158, 7, 170, 60, 10, 82, 128, 174, 193, 83, 30, 49, 98, 39, 230, 141, 161, 101, 133, 123, 237, 251, 49, 58, 76, 87, 76, 116, 52, 134, 236].to_vec();
-    //     let path = "/home/ubuntu/quantum/quantum-node/storage/sp1_snark_reduction/sp1_agg_vk_hash.bin";
+    //     let bytes = [123, 2, 228, 20, 207, 223, 208, 234, 150, 60, 208, 248, 48, 50, 180, 200, 28, 142, 9, 12, 156, 157, 25, 39, 234, 135, 78, 232, 224, 192, 137, 216].to_vec();
+    //     let path = "/home/ubuntu/quantum/quantum-node/storage/sp1/sp1_empty_root_bytes.bin";
     //     write_bytes_to_file(&bytes, path).unwrap();
     // }
 }
