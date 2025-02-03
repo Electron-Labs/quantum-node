@@ -84,7 +84,11 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
         &proof_hash,
         &pis_full_path,
         &proof_full_path,
-        if data.proof_type==ProvingSchemes::Sp1 {ProofStatus::Reduced} else {ProofStatus::Registered},
+        if data.proof_type == ProvingSchemes::Sp1 {
+            ProofStatus::Reduced
+        } else {
+            ProofStatus::Registered
+        },
         &data.circuit_hash,
         &public_inputs_json_string,
     )
@@ -178,8 +182,6 @@ async fn validate_circuit_data_in_submit_proof_request(
     Ok(())
 }
 
-
-
 pub async fn check_if_proof_already_exist(
     proof_hash: &str,
     _circuit_hash: &str,
@@ -214,20 +216,36 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(
         get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash).await?;
     let pis: T = T::read_pis(&proof.pis_path)?;
     let protocol_pis_hash = pis.keccak_hash()?;
-    let superproof = get_superproof_by_id(get_pool().await, proof.superproof_id.ok_or(anyhow!("missing superproof_id"))?).await?;
+    let superproof = get_superproof_by_id(
+        get_pool().await,
+        proof
+        .superproof_id
+        .ok_or(anyhow!("missing superproof_id"))?,
+    )
+    .await?;
 
     let leaves: Vec<[u8; 32]>;
     let last_proof_elm: [u8; 32];
     let last_proof_elm_position: u8;
     match user_circuit_data.proving_scheme {
         ProvingSchemes::Sp1 => {
-            leaves = read_superproof_leaves::<H>(&superproof.sp1_leaves_path.ok_or(anyhow!("missing sp1 leaves path"))?)?;
-            last_proof_elm = decode_keccak_hex(&superproof.r0_root.ok_or(anyhow!("missing r0_root"))?)?;
+            leaves = read_superproof_leaves::<H>(
+                &superproof
+                    .sp1_leaves_path
+                    .ok_or(anyhow!("missing sp1 leaves path"))?,
+            )?;
+            last_proof_elm =
+                decode_keccak_hex(&superproof.r0_root.ok_or(anyhow!("missing r0_root"))?)?;
             last_proof_elm_position = 0;
-        },
+        }
         _ => {
-            leaves = read_superproof_leaves::<H>(&superproof.r0_leaves_path.ok_or(anyhow!("missing risc0 leaves path"))?)?;
-            last_proof_elm = decode_keccak_hex(&superproof.sp1_root.ok_or(anyhow!("missing r0_root"))?)?;
+            leaves = read_superproof_leaves::<H>(
+                &superproof
+                    .r0_leaves_path
+                    .ok_or(anyhow!("missing risc0 leaves path"))?,
+            )?;
+            last_proof_elm =
+                decode_keccak_hex(&superproof.sp1_root.ok_or(anyhow!("missing sp1_root"))?)?;
             last_proof_elm_position = 1;
         }
     }
@@ -257,12 +275,12 @@ pub async fn get_protocol_proof_exec<T: Pis, V: Vkey>(
 }
 
 pub fn read_superproof_leaves<H: Hasher>(
-    superproof_leaves_path: &str
+    superproof_leaves_path: &str,
 ) -> AnyhowResult<Vec<H::HashOut>> {
     let leaves: Vec<[u8; 32]> = bincode::deserialize(&std::fs::read(&superproof_leaves_path)?)?;
 
-    let mut leaves_hash_type =  Vec::with_capacity(leaves.len());
-    for i in  0..leaves.len() {
+    let mut leaves_hash_type = Vec::with_capacity(leaves.len());
+    for i in 0..leaves.len() {
         leaves_hash_type.push(H::value_from_slice(leaves[i].clone().as_slice())?);
     }
 

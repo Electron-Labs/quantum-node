@@ -2,7 +2,6 @@
 use anyhow::anyhow;
 use anyhow::Result as AnyhowResult;
 use mt_core::tree::get_merkle_tree;
-use mt_core::tree::get_merkle_tree_sp1;
 // use imt_core::types::Leaf;
 use quantum_db::repository::superproof_repository::get_last_verified_superproof;
 use quantum_types::traits::pis::Pis;
@@ -93,7 +92,7 @@ pub fn get_agg_inputs_sp1<H: Hasher>(
     }).collect::<Vec<_>>();
 
     println!("before sp1 get merkle tree");
-    let tree = get_merkle_tree_sp1::<H>(combined_hashes.clone())?;
+    let tree = get_merkle_tree::<H>(combined_hashes.clone())?;
     println!("after sp1 get merkle tree");
     let mut stdin = SP1Stdin::new();
 
