@@ -55,9 +55,14 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
         get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
     let user_vk = V::read_vk(&user_circuit_data.vk_path)?;
 
-    let proof_id_hash = KeccakHasher::combine_hash(&user_vk.keccak_hash()?, &pis.keccak_hash()?);
-    let proof_hash = encode_keccak_hash(&proof_id_hash)?;
+    let proof_id_hash;
+    if data.proof_type != ProvingSchemes::Sp1 {
+    proof_id_hash = KeccakHasher::combine_hash(&user_vk.keccak_hash()?, &pis.keccak_hash()?);
+    } else {
+        proof_id_hash = KeccakHasher::hash_out(&proof.get_proof_bytes()?);
+    }
 
+    let proof_hash = encode_keccak_hash(&proof_id_hash)?;
     proof.validate_proof(&user_circuit_data.vk_path, &data.pis.clone())?;
     info!("proof validated");
     check_if_proof_already_exist(&proof_hash, &data.circuit_hash).await?;

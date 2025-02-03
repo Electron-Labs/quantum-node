@@ -137,6 +137,10 @@ impl Proof for Halo2PoseidonProof {
         // PlonkVerifier::<SHPLONK>::verify(&dk, &protocol, &instances, &proof_).map_err(|e| {anyhow!(error_line!(format!("Halo2Plonk proof validation failed: {:?}", e)))})?;
         Ok(())
     }
+    
+    fn get_proof_bytes(&self) -> AnyhowResult<Vec<u8>> {
+        Ok(self.proof_bytes.clone())
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]

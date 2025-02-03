@@ -99,6 +99,10 @@ impl Proof for Sp1Proof {
         client.verify(&self.get_proof_with_public_inputs()?, &vkey.get_verifying_key()?)?;
         Ok(())
     }
+    
+    fn get_proof_bytes(&self) -> AnyhowResult<Vec<u8>> {
+        Ok(self.proof_bytes.clone())
+    }
 }
 
 impl Sp1Proof {

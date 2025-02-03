@@ -266,6 +266,10 @@ impl Proof for SnarkJSGroth16Proof {
         }
         Ok(()) 
     }
+    
+    fn get_proof_bytes(&self) -> AnyhowResult<Vec<u8>> {
+        self.serialize_proof()
+    }
 }
 
 impl SnarkJSGroth16Proof {

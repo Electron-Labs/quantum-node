@@ -105,6 +105,10 @@ impl Proof for GnarkPlonkSolidityProof {
         }
         Ok(())
     }
+    
+    fn get_proof_bytes(&self) -> AnyhowResult<Vec<u8>> {
+        Ok(self.proof_bytes.clone())
+    }
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]

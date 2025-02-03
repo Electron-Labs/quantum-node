@@ -92,6 +92,10 @@ impl Proof for Risc0Proof {
         self.get_receipt()?.verify(vkey.vkey_bytes)?;
         Ok(())
     }
+    
+    fn get_proof_bytes(&self) -> AnyhowResult<Vec<u8>> {
+        Ok(self.proof_bytes.clone())
+    }
 }
 
 impl Risc0Proof {

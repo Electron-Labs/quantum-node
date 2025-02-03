@@ -239,6 +239,10 @@ impl Proof for SuperproofGnarkGroth16Proof {
     fn validate_proof(&self, _vkey_path: &str, _pis_bytes: &[u8]) -> AnyhowResult<()> {
         Ok(())
     }
+    
+    fn get_proof_bytes(&self) -> AnyhowResult<Vec<u8>> {
+        self.serialize_proof()
+    }
 }
 
 impl SuperproofGnarkGroth16Proof {
@@ -297,6 +301,10 @@ impl Proof for GnarkGroth16Proof {
             return Err(anyhow!(error_line!("gnark-groth16 proof validation failed")))
         }
         Ok(())
+    }
+    
+    fn get_proof_bytes(&self) -> AnyhowResult<Vec<u8>> {
+        Ok(self.proof_bytes.clone())
     }
 }
 

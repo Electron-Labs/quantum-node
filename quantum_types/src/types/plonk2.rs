@@ -131,6 +131,10 @@ impl Proof for Plonky2Proof {
         verifier.verify(proof_with_pis)?;
         Ok(())
     }
+    
+    fn get_proof_bytes(&self) -> AnyhowResult<Vec<u8>> {
+        Ok(self.proof_bytes.clone())
+    }
 }
 
 impl Plonky2Proof {
