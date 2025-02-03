@@ -109,7 +109,7 @@ pub async fn execute_aggregation_with_retry(input_data: &Vec<u8>, image_id: &str
                 error!("aggregation failed in bonsai... retrying with count: {}", retries);
             },
         };
-        std::thread::sleep(Duration::from_secs(120));
+        tokio::time::sleep(Duration::from_secs(120)).await;
     }
     
     Ok((receipt, session_uuid_id, cycle_used))
@@ -185,7 +185,7 @@ pub async fn run_stark2snark_with_retry(agg_session_id: &str, superproof_id: u64
                 error!("stark2snark failed in bonsai... retrying with count: {}", retries);
             },
         };
-        std::thread::sleep(Duration::from_secs(120));
+        tokio::time::sleep(Duration::from_secs(120)).await;
     }
     Ok(receipt)
 }
