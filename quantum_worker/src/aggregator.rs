@@ -188,13 +188,10 @@ pub async fn handle_proof_aggregation_and_updation(
 
     // We only do reduction for r0 proofs
     let proof_with_max_reduction_time = proofs_r0.iter().max_by_key(|proof| proof.reduction_time);
+    let max_reduction_time = proof_with_max_reduction_time.map(|proof| proof.reduction_time).unwrap_or(Some(0)).unwrap_or(0);
 
     // TODO: remove unwrap , check reduction time is not getting update in db
-    let total_proving_time = proof_with_max_reduction_time
-        .unwrap()
-        .reduction_time
-        .unwrap()
-        + total_aggregation_time.as_secs();
+    let total_proving_time = max_reduction_time + total_aggregation_time.as_secs();
     update_superproof_total_proving_time(get_pool().await, total_proving_time, superproof_id)
         .await?;
     Ok(())
