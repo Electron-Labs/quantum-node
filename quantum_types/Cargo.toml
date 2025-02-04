@@ -6,13 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = {version = "1.0.201", features = ["derive"]}
+serde = { version = "1.0.201", features = ["derive"] }
 serde_json = "1.0.117"
-borsh = {version = "1.5.0", features = ["derive"]}
+borsh = { version = "1.5.0", features = ["derive"] }
 borsh-derive = { version = "1.0.0-alpha.6" }
 serde_yaml = "0.9.30"
 anyhow = "1.0.83"
-quantum_utils = {path = "../quantum_utils"}
+quantum_utils = { path = "../quantum_utils" }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["default", "json"] }
 tracing-appender = "0.2.3"
@@ -35,24 +35,34 @@ snark-verifier-sdk = { path = "../../../snark-verifier/snark-verifier-sdk", defa
     "loader_evm",
     "halo2-pse",
 ] }
-sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "mysql", "chrono", "macros", "decimal" ] }
+sqlx = { version = "0.6", features = [
+    "runtime-tokio-rustls",
+    "mysql",
+    "chrono",
+    "macros",
+    "decimal",
+] }
 dotenv = "0.15.0"
-utils = {path = "../../quantum-risc0-circuits/utils"}
-agg-core = {path = "../../quantum-risc0-circuits/aggregation/core"}
-quantum_circuits_interface = {path = "../../quantum-risc0-circuits/quantum_circuits_interface"}
-gnark-bn254-verifier = {path = "../../gnark-bn254-verifier"}
+utils = { path = "../../quantum-risc0-circuits/utils" }
+agg-core = { path = "../../quantum-risc0-circuits/aggregation/core" }
+quantum_circuits_interface = { path = "../../quantum-risc0-circuits/quantum_circuits_interface" }
+gnark-bn254-verifier = { path = "../../gnark-bn254-verifier" }
 
 plonky2 = { git = "https://github.com/0xPolygonZero/plonky2.git", default-features = false }
 
-groth16-core = {path = "../../quantum-risc0-circuits/reduction/groth16/core"}
-plonky2-core = {path = "../../quantum-risc0-circuits/reduction/plonky2/core"}
-halo2-kzg-evm-core = {path = "../../quantum-risc0-circuits/reduction/halo2_kzg_evm/core"}
+groth16-core = { path = "../../quantum-risc0-circuits/reduction/groth16/core" }
+plonky2-core = { path = "../../quantum-risc0-circuits/reduction/plonky2/core" }
+halo2-kzg-evm-core = { path = "../../quantum-risc0-circuits/reduction/halo2_kzg_evm/core" }
 
-risc0-zkvm = { git = "https://github.com/risc0/risc0.git", tag = "v1.1.1", default-features = false, features = ['std'] }
-sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v4.0.0", default-features = false, features = ["network"] }
+risc0-zkvm = { git = "https://github.com/risc0/risc0.git", tag = "v1.1.1", default-features = false, features = [
+    'std',
+] }
+sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v4.0.0", default-features = false, features = [
+    "network",
+] }
 p3-field = "=0.2.0-succinct"
 aws-nitro-enclaves-nsm-api = "0.4.0"
 aws-nitro-enclaves-cose = "0.5.2"
-oyster-sdk = "0.15.0"
+oyster-sdk = { git = "https://github.com/Electron-Labs/oyster-sdk.git", rev = "ac9ef20f2965b07f895944fb1266704f6db00c5b"}
 # sp1-prover = { git = "https://github.com/succinctlabs/sp1.git", default-features = false, tag="release/v3.0.0-rc1" }
 # sp1-core =  {path = "../../quantum-risc0-circuits/reduction/sp1/core"}

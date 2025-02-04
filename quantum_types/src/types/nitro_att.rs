@@ -1,7 +1,5 @@
 use agg_core::inputs::compute_combined_vkey_hash;
 use anyhow::{anyhow, Result as AnyhowResult};
-use aws_nitro_enclaves_cose::{crypto::Openssl, CoseSign1};
-use aws_nitro_enclaves_nsm_api::api::AttestationDoc;
 use borsh::{BorshDeserialize, BorshSerialize};
 use oyster::attestation::AttestationExpectations;
 use quantum_utils::{
@@ -95,15 +93,8 @@ impl Proof for NitroProof {
     }
 
     fn validate_proof(&self, vkey_path: &str, mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
-        let cose_sign1 = CoseSign1::from_bytes(&self.att_doc_bytes)
-            .map_err(|e| anyhow!("CoseSign1 parsing failed: {}", e))?;
-        let payload = cose_sign1
-            .get_payload::<Openssl>(None)
-            .map_err(|e| anyhow!("cose_sign1 get_payload failed: {}", e))?;
-        let att_doc = AttestationDoc::from_binary(&payload)
-            .map_err(|e| anyhow!("AttestationDoc parsing failed: {:?}", e))?;
         let _ =
-            oyster::attestation::verify(&att_doc.to_binary(), AttestationExpectations::default())?;
+            oyster::attestation::verify(&self.att_doc_bytes, AttestationExpectations::default())?;
         Ok(())
     }
 
@@ -114,15 +105,8 @@ impl Proof for NitroProof {
 
 impl NitroProof {
     pub fn get_pis(&self) -> AnyhowResult<Vec<u8>> {
-        let cose_sign1 = CoseSign1::from_bytes(&self.att_doc_bytes)
-            .map_err(|e| anyhow!("CoseSign1 parsing failed: {}", e))?;
-        let payload = cose_sign1
-            .get_payload::<Openssl>(None)
-            .map_err(|e| anyhow!("cose_sign1 get_payload failed: {}", e))?;
-        let att_doc = AttestationDoc::from_binary(&payload)
-            .map_err(|e| anyhow!("AttestationDoc parsing failed: {:?}", e))?;
         let att_decoded =
-            oyster::attestation::verify(&att_doc.to_binary(), AttestationExpectations::default())?;
+            oyster::attestation::verify(&self.att_doc_bytes, AttestationExpectations::default())?;
 
         let mut pis_bytes = vec![];
 

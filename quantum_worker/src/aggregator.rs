@@ -355,7 +355,7 @@ async fn handle_proof_aggregation_r0(
 
                 let protocol_pis = NitroAttPis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
-                protocol_ids.push(7);
+                protocol_ids.push(8);
             }
             _ => {
                 panic!("Shouldnt happen!!")

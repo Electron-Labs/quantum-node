@@ -34,7 +34,7 @@ impl FromStr for ProvingSchemes {
             "halo2poseidon" => Ok(ProvingSchemes::Halo2Poseidon),
             "sp1" => Ok(ProvingSchemes::Sp1),
             "risc0" => Ok(ProvingSchemes::Risc0),
-            "nitro_att" => Ok(ProvingSchemes::NitroAtt),
+            "nitroatt" => Ok(ProvingSchemes::NitroAtt),
             _ => Err(format!("Invalid proving scheme: {}", s)),
         }
     }

@@ -314,10 +314,7 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
 }
 
 fn form_nitro_att_bonsai_inputs(proof: &NitroProof, vk: &NitroAttVkey) -> AnyhowResult<Vec<u8>> {
-    let att_doc_bytes = to_vec(&proof.att_doc_bytes)?;
-    let input_data_vec: Vec<u8> = bytemuck::cast_slice(&att_doc_bytes).to_vec();
-
-    Ok(input_data_vec)
+    Ok(proof.att_doc_bytes.clone())
 }
 
 async fn generate_nitro_att_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
