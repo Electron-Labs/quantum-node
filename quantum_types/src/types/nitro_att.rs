@@ -14,11 +14,11 @@ use utils::hash::{Hasher, KeccakHasher};
 use crate::traits::{pis::Pis, proof::Proof, vkey::Vkey};
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub struct TeeVkey {
+pub struct NitroAttVkey {
     pub pcr0_bytes: Vec<u8>,
 }
 
-impl Vkey for TeeVkey {
+impl Vkey for NitroAttVkey {
     fn serialize_vkey(&self) -> anyhow::Result<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         BorshSerialize::serialize(&self, &mut buffer).map_err(|err| anyhow!(error_line!(err)))?;
@@ -26,7 +26,7 @@ impl Vkey for TeeVkey {
     }
 
     fn deserialize_vkey(bytes: &mut &[u8]) -> anyhow::Result<Self> {
-        let key: TeeVkey =
+        let key: NitroAttVkey =
             BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
@@ -39,7 +39,7 @@ impl Vkey for TeeVkey {
 
     fn read_vk(full_path: &str) -> AnyhowResult<Self> {
         let vkey_bytes = read_bytes_from_file(full_path)?;
-        let vkey = TeeVkey::deserialize_vkey(&mut vkey_bytes.as_slice())?;
+        let vkey = NitroAttVkey::deserialize_vkey(&mut vkey_bytes.as_slice())?;
         Ok(vkey)
     }
 
@@ -65,11 +65,11 @@ impl Vkey for TeeVkey {
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
-pub struct TeeProof {
+pub struct NitroProof {
     pub att_doc_bytes: Vec<u8>,
 }
 
-impl Proof for TeeProof {
+impl Proof for NitroProof {
     fn serialize_proof(&self) -> AnyhowResult<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         BorshSerialize::serialize(&self, &mut buffer)?;
@@ -77,7 +77,7 @@ impl Proof for TeeProof {
     }
 
     fn deserialize_proof(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let key: TeeProof =
+        let key: NitroProof =
             BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
@@ -90,7 +90,7 @@ impl Proof for TeeProof {
 
     fn read_proof(full_path: &str) -> AnyhowResult<Self> {
         let proof_bytes = read_bytes_from_file(full_path)?;
-        let proof = TeeProof::deserialize_proof(&mut proof_bytes.as_slice())?;
+        let proof = NitroProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(proof)
     }
 
@@ -112,7 +112,7 @@ impl Proof for TeeProof {
     }
 }
 
-impl TeeProof {
+impl NitroProof {
     pub fn get_pis(&self) -> AnyhowResult<Vec<u8>> {
         let cose_sign1 = CoseSign1::from_bytes(&self.att_doc_bytes)
             .map_err(|e| anyhow!("CoseSign1 parsing failed: {}", e))?;
@@ -126,8 +126,7 @@ impl TeeProof {
 
         let mut pis_bytes = vec![];
 
-        pis_bytes.extend_from_slice(&att_decoded.timestamp.to_be_bytes());
-        // let a = att_decoded.pcrs.iter().flatten().collect();
+        pis_bytes.extend_from_slice(&(att_decoded.timestamp as u64).to_be_bytes());
         pis_bytes.extend_from_slice(
             &att_decoded
                 .pcrs
@@ -147,9 +146,9 @@ impl TeeProof {
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq)]
-pub struct TeePis(pub Vec<String>);
+pub struct NitroAttPis(pub Vec<String>);
 
-impl Pis for TeePis {
+impl Pis for NitroAttPis {
     fn serialize_pis(&self) -> AnyhowResult<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         BorshSerialize::serialize(&self, &mut buffer)?;
@@ -157,7 +156,7 @@ impl Pis for TeePis {
     }
 
     fn deserialize_pis(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let key: TeePis =
+        let key: NitroAttPis =
             BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
@@ -170,7 +169,7 @@ impl Pis for TeePis {
 
     fn read_pis(full_path: &str) -> AnyhowResult<Self> {
         let pis_bytes = read_bytes_from_file(full_path)?;
-        let gnark_pis = TeePis::deserialize_pis(&mut pis_bytes.as_slice())?;
+        let gnark_pis = NitroAttPis::deserialize_pis(&mut pis_bytes.as_slice())?;
         Ok(gnark_pis)
     }
 
@@ -184,40 +183,3 @@ impl Pis for TeePis {
         Ok(self.0.clone())
     }
 }
-
-// fn validate(&self) -> AnyhowResult<()> {
-//   let cose_sign1 = CoseSign1::from_bytes(&self.doc_bytes)
-//       .map_err(|e| anyhow!("CoseSign1 parsing failed: {}", e))?;
-//   let payload = cose_sign1
-//       .get_payload::<Openssl>(None)
-//       .map_err(|e| anyhow!("cose_sign1 get_payload failed: {}", e))?;
-//   let att_doc = AttestationDoc::from_binary(&payload)
-//       .map_err(|e| anyhow!("AttestationDoc parsing failed: {:?}", e))?;
-//   let pcr0_bytes = att_doc
-//       .pcrs
-//       .get(&0)
-//       .ok_or(anyhow!("PCR0 not found"))?
-//       .to_vec();
-//   if self.pcr0_bytes.len() != 48 {
-//       return Err(anyhow!("Invalid PCR0 bytes length"));
-//   }
-//   Ok(())
-// }
-
-// fn keccak_hash(&self) -> AnyhowResult<[u8; 32]> {
-//   let cose_sign1 = CoseSign1::from_bytes(&self.doc_bytes)
-//       .map_err(|e| anyhow!("CoseSign1 parsing failed: {}", e))?;
-//   let payload = cose_sign1
-//       .get_payload::<Openssl>(None)
-//       .map_err(|e| anyhow!("cose_sign1 get_payload failed: {}", e))?;
-//   let att_doc = AttestationDoc::from_binary(&payload)
-//       .map_err(|e| anyhow!("AttestationDoc parsing failed: {:?}", e))?;
-//   let pcr0_bytes = att_doc
-//       .pcrs
-//       .get(&0)
-//       .ok_or(anyhow!("PCR0 not found"))?
-//       .to_vec();
-//   Ok(pcr0_bytes[..32]
-//       .try_into()
-//       .map_err(|e| anyhow!("invalid pcr0_bytes, {}", e))?)
-// }

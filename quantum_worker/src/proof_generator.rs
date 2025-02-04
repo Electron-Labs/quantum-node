@@ -13,7 +13,7 @@ use quantum_types::{
         vkey::Vkey,
     },
     types::{
-        config::ConfigData, db::{proof::Proof as DBProof, user_circuit_data::UserCircuitData}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Proof, Sp1Vkey}, tee::{TeeProof, TeeVkey}
+        config::ConfigData, db::{proof::Proof as DBProof, user_circuit_data::UserCircuitData}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Proof, Sp1Vkey}, nitro_att::{NitroProof, NitroAttVkey}
     },
 };
 use quantum_utils::error_line;
@@ -87,8 +87,8 @@ async fn generate_reduced_proof(user_circuit_data: &UserCircuitData, proof_data:
         (receipt, reduction_time) = generate_plonky2_reduced_proof(user_circuit_data, proof_data).await?;
     } else if user_circuit_data.proving_scheme == ProvingSchemes::Risc0 {
         (receipt, reduction_time) = generate_risc0_reduced_proof(user_circuit_data, proof_data).await?;
-    } else if user_circuit_data.proving_scheme == ProvingSchemes::Tee {
-        (receipt, reduction_time) = generate_tee_reduced_proof(user_circuit_data, proof_data).await?;
+    } else if user_circuit_data.proving_scheme == ProvingSchemes::NitroAtt {
+        (receipt, reduction_time) = generate_nitro_att_reduced_proof(user_circuit_data, proof_data).await?;
     }
     //else if user_circuit_data.proving_scheme == ProvingSchemes::Sp1 {
         // (receipt, reduction_time) = generate_sp1_reduced_proof(user_circuit_data, proof_data).await?;
@@ -313,14 +313,14 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
     Ok((receipt, reduction_time))
 }
 
-fn form_tee_bonsai_inputs(proof: &TeeProof, vk: &TeeVkey) -> AnyhowResult<Vec<u8>> {
+fn form_nitro_att_bonsai_inputs(proof: &NitroProof, vk: &NitroAttVkey) -> AnyhowResult<Vec<u8>> {
     let att_doc_bytes = to_vec(&proof.att_doc_bytes)?;
     let input_data_vec: Vec<u8> = bytemuck::cast_slice(&att_doc_bytes).to_vec();
 
     Ok(input_data_vec)
 }
 
-async fn generate_tee_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
+async fn generate_nitro_att_reduced_proof(user_circuit_data: &UserCircuitData, proof_data: &DBProof) -> AnyhowResult<(Option<Receipt>, u64)> {
     // Get inner_proof
     let proof_path = &proof_data.proof_path;
     println!("proof_path :: {:?}", proof_path);
@@ -329,10 +329,10 @@ async fn generate_tee_reduced_proof(user_circuit_data: &UserCircuitData, proof_d
     let vk_path = &user_circuit_data.vk_path;
     println!("vk_path :: {:?}", vk_path);
 
-    let proof = TeeProof::read_proof(&proof_path)?;
-    let vk = TeeVkey::read_vk(&vk_path)?;
+    let proof = NitroProof::read_proof(&proof_path)?;
+    let vk = NitroAttVkey::read_vk(&vk_path)?;
 
-    let input_data = form_tee_bonsai_inputs(&proof, &vk)?;
+    let input_data = form_nitro_att_bonsai_inputs(&proof, &vk)?;
 
     let assumptions = vec![];
     let reduction_start_time = Instant::now();

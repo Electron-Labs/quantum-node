@@ -35,7 +35,7 @@ use quantum_types::{
         plonk2::{Plonky2Pis, Plonky2Vkey},
         riscs0::{Risc0Pis, Risc0Vkey},
         snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
-        sp1::{Sp1Proof, Sp1Vkey}, tee::{TeePis, TeeVkey},
+        sp1::{Sp1Proof, Sp1Vkey}, nitro_att::{NitroAttPis, NitroAttVkey},
     },
 };
 use quantum_utils::{
@@ -349,11 +349,11 @@ async fn handle_proof_aggregation_r0(
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(6);
             }
-            ProvingSchemes::Tee => {
-                let protocol_vkey = TeeVkey::read_vk(&protocol_circuit_vkey_path)?;
+            ProvingSchemes::NitroAtt => {
+                let protocol_vkey = NitroAttVkey::read_vk(&protocol_circuit_vkey_path)?;
                 protocol_vkey_hashes.push(protocol_vkey.keccak_hash()?);
 
-                let protocol_pis = TeePis::read_pis(&protocol_pis_path)?;
+                let protocol_pis = NitroAttPis::read_pis(&protocol_pis_path)?;
                 protocol_pis_hashes.push(protocol_pis.keccak_hash()?);
                 protocol_ids.push(7);
             }
