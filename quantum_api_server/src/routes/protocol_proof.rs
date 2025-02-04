@@ -1,6 +1,6 @@
 use anyhow::Result as AnyhowResult;
 use quantum_db::repository::{proof_repository::get_proof_by_proof_hash, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes}, types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Vkey}}};
+use quantum_types::{enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes}, types::{gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Vkey}, tee::{TeePis, TeeVkey}}};
 use quantum_utils::error_line;
 use rocket::{get, serde::json::Json};
 use tracing::error;
@@ -30,6 +30,7 @@ pub async fn get_protocol_proof(_auth_token: AuthToken, proof_hash: String) -> A
         ProvingSchemes::Halo2Poseidon => response = get_protocol_proof_exec::<Halo2PoseidonPis, Halo2PoseidonVkey>(&proof).await,
         ProvingSchemes::Sp1 => response = get_protocol_proof_exec::<Sp1Pis, Sp1Vkey>(&proof).await,
         ProvingSchemes::Risc0 => response = get_protocol_proof_exec::<Risc0Pis, Risc0Vkey>(&proof).await,
+        ProvingSchemes::Tee => response = get_protocol_proof_exec::<TeePis, TeeVkey>(&proof).await,
         _ => return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
     }
 

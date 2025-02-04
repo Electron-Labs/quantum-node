@@ -1,6 +1,6 @@
 use anyhow::Result as AnyhowResult;
 use quantum_db::repository::protocol::get_protocol_by_auth_token;
-use quantum_types::{enums::proving_schemes::ProvingSchemes, types::{config::ConfigData, gnark_groth16::GnarkGroth16Vkey, gnark_plonk::GnarkPlonkVkey, halo2_plonk::Halo2PlonkVkey, halo2_poseidon::Halo2PoseidonVkey, plonk2::Plonky2Vkey, riscs0::Risc0Vkey, snarkjs_groth16::SnarkJSGroth16Vkey, sp1::Sp1Vkey}};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, types::{config::ConfigData, gnark_groth16::GnarkGroth16Vkey, gnark_plonk::GnarkPlonkVkey, halo2_plonk::Halo2PlonkVkey, halo2_poseidon::Halo2PoseidonVkey, plonk2::Plonky2Vkey, riscs0::Risc0Vkey, snarkjs_groth16::SnarkJSGroth16Vkey, sp1::Sp1Vkey, tee::TeeVkey}};
 use quantum_utils::error_line;
 use rocket::post;
 use rocket::serde::json::Json;
@@ -48,6 +48,8 @@ pub async fn register_circuit(auth_token: AuthToken, data: RegisterCircuitReques
         response = register_circuit_exec::<Sp1Vkey>(data, config_data, protocol).await;
     }else if data.proof_type == ProvingSchemes::Risc0 {
         response = register_circuit_exec::<Risc0Vkey>(data, config_data, protocol).await;
+    }else if data.proof_type == ProvingSchemes::Tee {
+        response = register_circuit_exec::<TeeVkey>(data, config_data, protocol).await;
     } else {
         return Err(CustomError::Internal(String::from("Unsupported Proving Scheme")))
     }

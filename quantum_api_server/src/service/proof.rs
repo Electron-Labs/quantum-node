@@ -57,7 +57,7 @@ pub async fn submit_proof_exec<T: Proof, F: Pis, V: Vkey>(
 
     let proof_id_hash;
     if data.proof_type != ProvingSchemes::Sp1 {
-    proof_id_hash = KeccakHasher::combine_hash(&user_vk.keccak_hash()?, &pis.keccak_hash()?);
+        proof_id_hash = KeccakHasher::combine_hash(&user_vk.keccak_hash()?, &pis.keccak_hash()?);
     } else {
         proof_id_hash = KeccakHasher::hash_out(&proof.get_proof_bytes()?);
     }
