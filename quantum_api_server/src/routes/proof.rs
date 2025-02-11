@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use quantum_db::repository::{protocol::get_protocol_by_auth_token, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::user_circuit_data, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey}, nitro_att::{NitroAttPis, NitroProof, NitroAttVkey} }};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::user_circuit_data, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey}, nitro_att::{NitroAttPis, NitroAttProof, NitroAttVkey} }};
 use quantum_utils::error_line;
 use rocket::{get, post, serde::json::Json, State};
 use tracing::{error, info};
@@ -67,13 +67,13 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
         response = submit_proof_exec::<Risc0Proof, Risc0Pis, Risc0Vkey>(data, config_data).await;
     }  else if data.proof_type == ProvingSchemes::NitroAtt {
         let proof_bytes = data.proof.clone();
-        let proof = NitroProof::deserialize_proof(&mut proof_bytes.as_slice())?;
+        let proof = NitroAttProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         let pis_bytes = proof.get_pis()?;
         let pis = hex::encode(pis_bytes);
         let nitro_att_pis = NitroAttPis(vec![pis]);
         let pis_bytes_borsh = nitro_att_pis.serialize_pis()?;
         data.pis = pis_bytes_borsh;
-        response = submit_proof_exec::<NitroProof, NitroAttPis, NitroAttVkey>(data, config_data).await;
+        response = submit_proof_exec::<NitroAttProof, NitroAttPis, NitroAttVkey>(data, config_data).await;
     } else {
         error!("unsupported proving scheme");
         return Err(CustomError::Internal(error_line!(String::from("/proof Unsupported Proving Scheme"))))

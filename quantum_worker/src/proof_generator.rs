@@ -13,7 +13,7 @@ use quantum_types::{
         vkey::Vkey,
     },
     types::{
-        config::ConfigData, db::{proof::Proof as DBProof, user_circuit_data::UserCircuitData}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Proof, Sp1Vkey}, nitro_att::{NitroProof, NitroAttVkey}
+        config::ConfigData, db::{proof::Proof as DBProof, user_circuit_data::UserCircuitData}, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Proof, Sp1Vkey}, nitro_att::{NitroAttProof, NitroAttVkey}
     },
 };
 use quantum_utils::error_line;
@@ -313,7 +313,7 @@ async fn generate_risc0_reduced_proof(user_circuit_data: &UserCircuitData, proof
     Ok((receipt, reduction_time))
 }
 
-fn form_nitro_att_bonsai_inputs(proof: &NitroProof, vk: &NitroAttVkey) -> AnyhowResult<Vec<u8>> {
+fn form_nitro_att_bonsai_inputs(proof: &NitroAttProof, vk: &NitroAttVkey) -> AnyhowResult<Vec<u8>> {
     Ok(proof.att_doc_bytes.clone())
 }
 
@@ -326,7 +326,7 @@ async fn generate_nitro_att_reduced_proof(user_circuit_data: &UserCircuitData, p
     let vk_path = &user_circuit_data.vk_path;
     println!("vk_path :: {:?}", vk_path);
 
-    let proof = NitroProof::read_proof(&proof_path)?;
+    let proof = NitroAttProof::read_proof(&proof_path)?;
     let vk = NitroAttVkey::read_vk(&vk_path)?;
 
     let input_data = form_nitro_att_bonsai_inputs(&proof, &vk)?;

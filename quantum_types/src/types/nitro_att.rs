@@ -63,11 +63,11 @@ impl Vkey for NitroAttVkey {
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
-pub struct NitroProof {
+pub struct NitroAttProof {
     pub att_doc_bytes: Vec<u8>,
 }
 
-impl Proof for NitroProof {
+impl Proof for NitroAttProof {
     fn serialize_proof(&self) -> AnyhowResult<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         BorshSerialize::serialize(&self, &mut buffer)?;
@@ -75,7 +75,7 @@ impl Proof for NitroProof {
     }
 
     fn deserialize_proof(bytes: &mut &[u8]) -> AnyhowResult<Self> {
-        let key: NitroProof =
+        let key: NitroAttProof =
             BorshDeserialize::deserialize(bytes).map_err(|err| anyhow!(error_line!(err)))?;
         Ok(key)
     }
@@ -88,7 +88,7 @@ impl Proof for NitroProof {
 
     fn read_proof(full_path: &str) -> AnyhowResult<Self> {
         let proof_bytes = read_bytes_from_file(full_path)?;
-        let proof = NitroProof::deserialize_proof(&mut proof_bytes.as_slice())?;
+        let proof = NitroAttProof::deserialize_proof(&mut proof_bytes.as_slice())?;
         Ok(proof)
     }
 
@@ -103,7 +103,7 @@ impl Proof for NitroProof {
     }
 }
 
-impl NitroProof {
+impl NitroAttProof {
     pub fn get_pis(&self) -> AnyhowResult<Vec<u8>> {
         let att_decoded =
             oyster::attestation::verify(&self.att_doc_bytes, AttestationExpectations::default())?;
