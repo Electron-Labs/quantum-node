@@ -14,9 +14,9 @@ use quantum_db::repository::{
     proof_repository::{get_proofs_in_superproof_id, update_proof_status},
     superproof_repository::{
         get_first_non_submitted_superproof, get_last_verified_superproof, update_superproof_fields_after_onchain_submission, update_superproof_gas_data, update_superproof_onchain_submission_time
-    },
+    }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
 };
-use quantum_types::types::gnark_groth16::SuperproofGnarkGroth16Proof;
+use quantum_types::{enums::proving_schemes::ProvingSchemes, types::{db::user_circuit_data, gnark_groth16::SuperproofGnarkGroth16Proof}};
 use quantum_types::{
     enums::{proof_status::ProofStatus, superproof_status::SuperproofStatus},
     traits::proof::Proof,
@@ -37,6 +37,7 @@ const SUPERPROOF_SUBMISSION_RETRY: u64 = 5 * 60;
 const SUPERPROOF_SUBMISSION_DURATION: u64 = 15 * 60;
 const SLEEP_DURATION_WHEN_NEW_SUPERPROOF_IS_NOT_VERIFIED: u64 = 30;
 const RETRY_COUNT: u64 = 3;
+const NITRO_PROOF_DIRECT_VERIFICATION_GAS_COST: u64= 20000000 - 300000;
 
 
 async fn initialize_superproof_submission_loop(
@@ -155,7 +156,16 @@ async fn initialize_superproof_submission_loop(
         )
         .await?;
 
-        let total_gas_saved_batch = gas_used*(proofs.len() as u64) - gas_used ;
+        let mut nitro_proofs_count: u64= 0;
+        for proof in &proofs {
+            let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &proof.user_circuit_hash).await?;
+            nitro_proofs_count += if user_circuit_data.proving_scheme == ProvingSchemes::NitroAtt {1} else {0};
+
+        }
+        // let total_gas_saved_batch = gas_used*(proofs.len() as u64) - gas_used ;
+        let gas_per_proof = gas_used/(proofs.len() as u64);
+        let total_gas_saved_batch = (gas_used-gas_per_proof)*(proofs.len() as u64  - nitro_proofs_count) + ((NITRO_PROOF_DIRECT_VERIFICATION_GAS_COST - gas_per_proof) * nitro_proofs_count) ;
+        info!("total gas saved:{:?}", total_gas_saved_batch);
         let total_usd_saved_batch = calc_total_cost_usd(total_gas_saved_batch, gas_cost, eth_price);
         udpate_cost_saved_data(get_pool().await, total_gas_saved_batch, total_usd_saved_batch).await?;
 
