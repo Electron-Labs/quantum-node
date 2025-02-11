@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use quantum_db::repository::{protocol::get_protocol_by_auth_token, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash};
-use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::user_circuit_data, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey} }};
+use quantum_types::{enums::proving_schemes::ProvingSchemes, traits::{pis::Pis, proof::Proof}, types::{config::ConfigData, db::user_circuit_data, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Proof, GnarkGroth16Vkey}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkSolidityProof, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkProof, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonProof, Halo2PoseidonVkey}, plonk2::{Plonky2Pis, Plonky2Proof, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Proof, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Proof, SnarkJSGroth16Vkey}, sp1::{Sp1Pis, Sp1Proof, Sp1Vkey}, nitro_att::{NitroAttPis, NitroAttProof, NitroAttVkey} }};
 use quantum_utils::error_line;
 use rocket::{get, post, serde::json::Json, State};
 use tracing::{error, info};
@@ -10,7 +10,7 @@ use crate::{connection::get_pool, error::error::CustomError, service::proof::{ge
 #[post("/proof", data = "<data>")]
 pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, config_data: &State<ConfigData>) -> AnyhowResult<Json<SubmitProofResponse>, CustomError>{
     let protocol = get_protocol_by_auth_token(get_pool().await, &_auth_token.0).await?;
-    
+
     let protocol = match protocol {
         Some(p) => Ok(p),
         None => {
@@ -21,7 +21,7 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
     let protocol = protocol?;
 
     let user_circuit_data = get_user_circuit_data_by_circuit_hash(get_pool().await, &data.circuit_hash).await?;
-    
+
     if user_circuit_data.protocol_name.to_uppercase() != protocol.protocol_name.to_uppercase() {
         info!("circuit reduction not completed");
         return Err(CustomError::BadRequest(error_line!("circuit reduction not completed".to_string())));
@@ -65,6 +65,15 @@ pub async fn submit_proof(_auth_token: AuthToken, mut data: SubmitProofRequest, 
         let pis_bytes = risco_pis.serialize_pis()?;
         data.pis = pis_bytes;
         response = submit_proof_exec::<Risc0Proof, Risc0Pis, Risc0Vkey>(data, config_data).await;
+    }  else if data.proof_type == ProvingSchemes::NitroAtt {
+        let proof_bytes = data.proof.clone();
+        let proof = NitroAttProof::deserialize_proof(&mut proof_bytes.as_slice())?;
+        let pis_bytes = proof.get_pis()?;
+        let pis = hex::encode(pis_bytes);
+        let nitro_att_pis = NitroAttPis(vec![pis]);
+        let pis_bytes_borsh = nitro_att_pis.serialize_pis()?;
+        data.pis = pis_bytes_borsh;
+        response = submit_proof_exec::<NitroAttProof, NitroAttPis, NitroAttVkey>(data, config_data).await;
     } else {
         error!("unsupported proving scheme");
         return Err(CustomError::Internal(error_line!(String::from("/proof Unsupported Proving Scheme"))))

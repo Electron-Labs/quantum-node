@@ -11,3 +11,4 @@ pub mod halo2_poseidon;
 pub mod plonk2;
 pub mod riscs0;
 pub mod sp1;
+pub mod nitro_att;
