@@ -184,7 +184,7 @@ pub async fn update_cycle_used_in_proof(pool: &Pool<MySql>, proof_id: u64, cycle
 
 pub async fn get_reduced_proofs_r0(pool: &Pool<MySql>) -> AnyhowResult<Vec<Proof>> {
     let query  = sqlx::query("
-        SELECT * from proof join user_circuit_data on proof.user_circuit_hash = user_circuit_data.circuit_hash where proof.proof_status = ? and user_circuit_data.proving_scheme != ? order by id desc;
+        SELECT * from proof join user_circuit_data on proof.user_circuit_hash = user_circuit_data.circuit_hash where proof.proof_status = ? and user_circuit_data.proving_scheme != ? order by id;
     ").bind(ProofStatus::Reduced.as_u8()).bind(ProvingSchemes::Sp1.to_string());
 
     info!("{}", query.sql());
@@ -203,13 +203,13 @@ pub async fn get_reduced_proofs_r0(pool: &Pool<MySql>) -> AnyhowResult<Vec<Proof
     Ok(proofs)
 }
 
-pub async fn get_reduced_proofs_sp1(pool: &Pool<MySql>) -> AnyhowResult<Vec<Proof>> {
+pub async fn get_reduced_proofs_sp1(pool: &Pool<MySql>, limit: u64) -> AnyhowResult<Vec<Proof>> {
     let query  = sqlx::query("
-        SELECT * from proof join user_circuit_data on proof.user_circuit_hash = user_circuit_data.circuit_hash where proof.proof_status = ? and user_circuit_data.proving_scheme = ? order by id desc;
-    ").bind(ProofStatus::Reduced.as_u8()).bind(ProvingSchemes::Sp1.to_string());
+        SELECT * from proof join user_circuit_data on proof.user_circuit_hash = user_circuit_data.circuit_hash where proof.proof_status = ? and user_circuit_data.proving_scheme = ? order by id limit ?;
+    ").bind(ProofStatus::Reduced.as_u8()).bind(ProvingSchemes::Sp1.to_string()).bind(limit);
 
     info!("{}", query.sql());
-    info!("arguments: {}", ProofStatus::Reduced.as_u8());
+    info!("arguments: {}, {}, {}", ProofStatus::Reduced.as_u8(), ProvingSchemes::Sp1.to_string(), limit);
 
     let db_rows = match query.fetch_all(pool).await {
         Ok(t) => Ok(t),

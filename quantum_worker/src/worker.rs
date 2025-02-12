@@ -6,7 +6,7 @@ use quantum_db::
         proof_repository::{
             get_reduced_proofs_r0, get_reduced_proofs_sp1, update_proof_status, update_superproof_id_in_proof
         },
-        superproof_repository::{get_last_aggregated_superproof, get_last_verified_superproof, insert_new_superproof, update_superproof_status},
+        superproof_repository::{get_last_aggregated_superproof, get_last_verified_superproof, insert_new_superproof, update_proof_ids_in_superproof, update_superproof_status},
         task_repository::{get_unpicked_tasks, update_task_status}
     };
 use quantum_types::{
@@ -34,32 +34,34 @@ pub async fn increment_cycle(cycle_used: i64) {
 }
 
 pub async fn handle_aggregate_proof_task(
-    proofs_r0: Vec<Proof>,
-    proofs_sp1: Vec<Proof>,
+    proofs_r0: &Vec<Proof>,
+    proofs_sp1: &mut Vec<Proof>,
     config: &ConfigData,
     superproof_id: u64,
 ) -> AnyhowResult<()>
 {
-    let mut proof_ids: Vec<u64> = vec![];
-    for proof in &proofs_r0 {
-        let proof_id = match proof.id {
-            Some(id) => Ok(id),
-            None => Err(anyhow!(error_line!("not able to find proofId"))),
-        };
-        let proof_id = proof_id?;
-        proof_ids.push(proof_id);
-    }
-    for proof in &proofs_sp1 {
-        let proof_id = match proof.id {
-            Some(id) => Ok(id),
-            None => Err(anyhow!(error_line!("not able to find proofId"))),
-        };
-        let proof_id = proof_id?;
-        proof_ids.push(proof_id);
-    }
-    
+    let aggregation_request = handle_proof_aggregation_and_updation(&proofs_r0, proofs_sp1, superproof_id, config).await;
 
-    let aggregation_request = handle_proof_aggregation_and_updation(proofs_r0.clone(),proofs_sp1.clone(), superproof_id, config).await;
+    let mut proof_ids: Vec<u64> = vec![];
+    for proof in proofs_r0 {
+        let proof_id = match proof.id {
+            Some(id) => Ok(id),
+            None => Err(anyhow!(error_line!("not able to find proofId"))),
+        };
+        let proof_id = proof_id?;
+        proof_ids.push(proof_id);
+    }
+    for proof in proofs_sp1.iter() {
+        let proof_id = match proof.id {
+            Some(id) => Ok(id),
+            None => Err(anyhow!(error_line!("not able to find proofId"))),
+        };
+        let proof_id = proof_id?;
+        proof_ids.push(proof_id);
+    }
+    let proof_json_string = serde_json::to_string(&proof_ids)?;
+    update_proof_ids_in_superproof(get_pool().await, &proof_json_string, superproof_id).await?;
+
 
     match aggregation_request {
         Ok(_) => {
@@ -141,13 +143,13 @@ pub async fn handle_proof_generation_task(
 }
 
 pub async fn aggregate_and_generate_new_superproof(
-    aggregation_awaiting_proofs_r0: Vec<Proof>, 
-    aggregation_awaiting_proofs_sp1: Vec<Proof>, 
+    aggregation_awaiting_proofs_r0: &Vec<Proof>, 
+    aggregation_awaiting_proofs_sp1: &mut Vec<Proof>, 
     config_data: &ConfigData) -> AnyhowResult<()>
 {
     // INSERT NEW SUPERPROOF RECORD
     let mut proof_ids: Vec<u64> = vec![];
-    for proof in &aggregation_awaiting_proofs_r0 {
+    for proof in aggregation_awaiting_proofs_r0 {
         let proof_id = match proof.id {
             Some(id) => Ok(id),
             None => Err(anyhow!(error_line!("not able to find proofId"))),
@@ -155,7 +157,7 @@ pub async fn aggregate_and_generate_new_superproof(
         let proof_id = proof_id?;
         proof_ids.push(proof_id);
     }
-    for proof in &aggregation_awaiting_proofs_sp1 {
+    for proof in aggregation_awaiting_proofs_sp1.iter() {
         let proof_id = match proof.id {
             Some(id) => Ok(id),
             None => Err(anyhow!(error_line!("not able to find proofId"))),
@@ -163,8 +165,8 @@ pub async fn aggregate_and_generate_new_superproof(
         let proof_id = proof_id?;
         proof_ids.push(proof_id);
     }
-    let proof_json_string = serde_json::to_string(&proof_ids)?;
-    let superproof_id = insert_new_superproof(get_pool().await, &proof_json_string, SuperproofStatus::InProgress).await?;
+
+    let superproof_id = insert_new_superproof(get_pool().await, SuperproofStatus::InProgress).await?;
     info!("added new superproof record => superproof_id={}",superproof_id);
 
 
@@ -176,7 +178,7 @@ pub async fn aggregate_and_generate_new_superproof(
         update_superproof_id_in_proof(get_pool().await, proof_id, superproof_id).await?;
     }
 
-    handle_aggregate_proof_task(aggregation_awaiting_proofs_r0, aggregation_awaiting_proofs_sp1, config_data, superproof_id).await?;
+    handle_aggregate_proof_task(&aggregation_awaiting_proofs_r0, aggregation_awaiting_proofs_sp1, config_data, superproof_id).await?;
 
     Ok(())
 }
@@ -189,7 +191,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
         // Get reduced proofs through RISC0 stream
         // Get reduced proofs through SP1 stream
         let aggregation_awaiting_r0_proofs = get_reduced_proofs_r0(get_pool().await).await?;
-        let aggregation_awaitin_sp1_proofs = get_reduced_proofs_sp1(get_pool().await).await?;
+        let mut aggregation_awaitin_sp1_proofs = get_reduced_proofs_sp1(get_pool().await, 5).await?;
         // aggregation awaitin r0 proofs
         // aggregation awaitin sp1 proofs
         let last_agg_superproof = get_last_aggregated_superproof(get_pool().await).await?;
@@ -211,7 +213,7 @@ pub async fn worker(sleep_duration: Duration, config_data: &ConfigData) -> Anyho
                 let permit: tokio::sync::OwnedSemaphorePermit = semaphore.clone().acquire_owned().await.map_err(|e| anyhow!(error_line!(format!("error in acquiring the semaphore: {:?}", e))))?;
                 info!("Picked up Proofs aggregation");
 
-                aggregate_and_generate_new_superproof(aggregation_awaiting_r0_proofs.clone(), aggregation_awaitin_sp1_proofs.clone(), config_data).await?;
+                aggregate_and_generate_new_superproof(&aggregation_awaiting_r0_proofs, &mut aggregation_awaitin_sp1_proofs, config_data).await?;
 
                 increment_cycle(-1 as i64 * (config_data.pr_batch_max_cycle_count as i64)).await;
                 let final_value = *GLOBAL_CYCLE_COUNTER.lock().await;

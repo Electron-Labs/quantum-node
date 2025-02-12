@@ -140,7 +140,9 @@ async fn initialize_superproof_submission_loop(
 
         // TODO: remove unwrap
         for proof in &proofs {
-            update_proof_status(get_pool().await, proof.id.unwrap(), ProofStatus::Verified).await?;
+            if proof.proof_status == ProofStatus::Aggregated {
+                update_proof_status(get_pool().await, proof.id.unwrap(), ProofStatus::Verified).await?;
+            }
         }
 
         // update gas data in DB for superproof
