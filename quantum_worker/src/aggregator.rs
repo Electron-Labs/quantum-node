@@ -13,29 +13,18 @@ use quantum_circuits_interface::ffi::circuit_builder::{
     Risc0Data, Sp1Data, G1, G1A, G2,
 };
 use quantum_db::repository::{
-    bonsai_image::get_aggregate_circuit_bonsai_image,
-    superproof_repository::{
+    bonsai_image::get_aggregate_circuit_bonsai_image, proof_repository::{update_proof_status, update_superproof_id_in_proof}, superproof_repository::{
         update_cycles_in_superproof, update_r0_leaves_path,
         update_r0_receipts_path, update_r0_root, update_sp1_leaves_path, update_sp1_root,
         update_sp1_snark_receipt_path, update_superproof_agg_time, update_superproof_pis_path,
         update_superproof_proof_path, update_superproof_root, update_superproof_total_proving_time,
-    },
-    user_circuit_data_repository::get_user_circuit_data_by_circuit_hash,
+    }, user_circuit_data_repository::get_user_circuit_data_by_circuit_hash
 };
 use quantum_types::{
-    enums::proving_schemes::ProvingSchemes,
+    enums::{proof_status::ProofStatus, proving_schemes::ProvingSchemes},
     traits::{pis::Pis, proof::Proof, vkey::Vkey},
     types::{
-        config::ConfigData,
-        db::proof::Proof as DBProof,
-        gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof},
-        gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey},
-        halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey},
-        halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey},
-        plonk2::{Plonky2Pis, Plonky2Vkey},
-        riscs0::{Risc0Pis, Risc0Vkey},
-        snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey},
-        sp1::{Sp1Proof, Sp1Vkey}, nitro_att::{NitroAttPis, NitroAttVkey},
+        config::ConfigData, db::proof::Proof as DBProof, gnark_groth16::{GnarkGroth16Pis, GnarkGroth16Vkey, SuperproofGnarkGroth16Proof}, gnark_plonk::{GnarkPlonkPis, GnarkPlonkVkey}, halo2_plonk::{Halo2PlonkPis, Halo2PlonkVkey}, halo2_poseidon::{Halo2PoseidonPis, Halo2PoseidonVkey}, nitro_att::{NitroAttPis, NitroAttVkey}, plonk2::{Plonky2Pis, Plonky2Vkey}, riscs0::{Risc0Pis, Risc0Vkey}, snarkjs_groth16::{SnarkJSGroth16Pis, SnarkJSGroth16Vkey}, sp1::{Sp1Proof, Sp1Vkey}
     },
 };
 use quantum_utils::{
@@ -49,6 +38,7 @@ use quantum_utils::{
 use risc0_zkvm::{serde::to_vec, Receipt};
 use serde::Serialize;
 use sp1_sdk::{ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1VerifyingKey};
+use tokio::time;
 use tracing::info;
 use utils::hash::{Hasher, KeccakHasher};
 
@@ -58,8 +48,8 @@ pub fn get_superroot(risc0_root: &Vec<u8>, sp1_root: &Vec<u8>) -> [u8; 32] {
 }
 
 pub async fn handle_proof_aggregation_and_updation(
-    proofs_r0: Vec<DBProof>,
-    proofs_sp1: Vec<DBProof>,
+    proofs_r0: &Vec<DBProof>,
+    proofs_sp1: &mut Vec<DBProof>,
     superproof_id: u64,
     config: &ConfigData,
 ) -> AnyhowResult<()> {
@@ -68,18 +58,49 @@ pub async fn handle_proof_aggregation_and_updation(
     let config_clone = config.clone();
     let config_clone_sp1 = config.clone();
     let proof_r0_clone = proofs_r0.clone();
+    let proof_sp1_clone = proofs_sp1.clone();
     let risc0_handle = tokio::spawn(  async move  {handle_proof_aggregation_r0(proof_r0_clone, superproof_id, &config_clone).await});
-    let sp1_handle = tokio::spawn( async move {handle_proof_aggregation_sp1(proofs_sp1.clone(), superproof_id, &config_clone_sp1).await});
+    let mut sp1_handle = tokio::spawn( async move {handle_proof_aggregation_sp1(proof_sp1_clone, superproof_id, &config_clone_sp1).await});
+    
+    let sp1_aggregation = tokio::select! {
+        result = &mut sp1_handle => {
+            match result {
+                Ok(agg) => agg,
+                Err(e) => {
+                    println!("got tokio error");
+                    error_line!(format!("sp1 tokio task panked or aborted:{}",e));
+                    for proof in proofs_sp1.iter() {
+                        update_proof_status(get_pool().await, proof.id.unwrap_or_else(|| 0), ProofStatus::Reduced).await?;
+                        update_superproof_id_in_proof(get_pool().await, proof.id.unwrap_or_else(|| 0), 0).await?;
+                    }
+                    proofs_sp1.clear();
+                    handle_no_sp1_proof_aggregation(config)
+
+                },
+            }
+        }
+        _ = time::sleep(Duration::from_secs(7*60)) => {
+            println!("sp1 task timeout");
+            error_line!("----------------sp1 proof aggregation Timeout after 10 minutes----------");
+            sp1_handle.abort();
+            for proof in proofs_sp1.iter() {
+                update_proof_status(get_pool().await, proof.id.unwrap_or_else(|| 0), ProofStatus::Reduced).await?;
+                update_superproof_id_in_proof(get_pool().await, proof.id.unwrap_or_else(|| 0), 0).await?;
+            }
+            proofs_sp1.clear();
+            handle_no_sp1_proof_aggregation(config)
+        }
+    }?;
+
+    let sp1_snark_proof = sp1_aggregation.0;
+    let sp1_root_bytes = sp1_aggregation.1;
+    let sp1_aggregation_time = sp1_aggregation.2;
+
     let risc0_aggregation = risc0_handle.await??;
     let r0_receipt = risc0_aggregation.0;
     let r0_snark_receipt = risc0_aggregation.1;
     let r0_root_bytes = risc0_aggregation.2;
     let r0_aggregation_time = risc0_aggregation.3;
-
-    let sp1_aggregation = sp1_handle.await??;
-    let sp1_snark_proof = sp1_aggregation.0;
-    let sp1_root_bytes = sp1_aggregation.1;
-    let sp1_aggregation_time = sp1_aggregation.2;
 
     // sp1_snark_proof.save(&aggregated_sp1_snark_receipt_path)?;
     info!(

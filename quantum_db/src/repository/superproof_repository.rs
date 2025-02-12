@@ -24,18 +24,32 @@ pub async fn get_superproof_by_id(pool: &Pool<MySql>, id: u64) -> AnyhowResult<S
     superproof
 }
 
-pub async fn insert_new_superproof(pool: &Pool<MySql>, proof_ids_string: &str, superproof_status: SuperproofStatus) -> AnyhowResult<u64, AnyhowError> {
-    let query  = sqlx::query("INSERT into superproof(proof_ids, status) VALUES(?,?)")
-        .bind(proof_ids_string).bind(superproof_status.as_u8());
+pub async fn insert_new_superproof(pool: &Pool<MySql>, superproof_status: SuperproofStatus) -> AnyhowResult<u64, AnyhowError> {
+    let query  = sqlx::query("INSERT into superproof(status) VALUES(?)")
+        .bind(superproof_status.as_u8());
 
     info!("{}", query.sql());
-    info!("arguments: {}, {}", proof_ids_string, superproof_status.as_u8());
+    info!("arguments: {}", superproof_status.as_u8());
 
     let superproof_id = match query.execute(pool).await {
         Ok(t) => Ok(t.last_insert_id()),
         Err(e) => Err(anyhow!(error_line!(e)))
     };
     superproof_id
+}
+
+pub async fn update_proof_ids_in_superproof(pool: &Pool<MySql>, proof_ids_string: &str, superproof_id: u64) -> AnyhowResult<()> {
+    let query  = sqlx::query("UPDATE superproof set proof_ids = ? where id = ?")
+                .bind(proof_ids_string).bind(superproof_id);
+
+    info!("{}", query.sql());
+    info!("arguments: {}, {}", proof_ids_string, superproof_id);
+
+    let row_affected = match query.execute(pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(CustomError::DB(error_line!(e))))
+    };
+    row_affected
 }
 
 pub async fn update_superproof_status(pool: &Pool<MySql>, superproof_status: SuperproofStatus, superproof_id: u64) -> AnyhowResult<()>{

@@ -24,9 +24,7 @@ use tokio::time::Instant;
 use tracing::info;
 use quantum_db::repository::proof_repository::get_proof_by_proof_id;
 use crate::{bonsai::{execute_proof_reduction_with_retry, upload_receipt}, connection::get_pool};
-use crate::bonsai::execute_proof_reduction;
 use crate::utils::dump_reduction_proof_data;
-use std::ops::Deref;
 pub const SP1_CIRCUIT_VERSION: &str = "v3.0.0-rc1";
 
 pub async fn handle_proof_generation_and_updation(
