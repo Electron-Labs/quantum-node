@@ -89,6 +89,7 @@ impl Proof for Risc0Proof {
     
     fn validate_proof(&self, vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = Risc0Vkey::read_vk(vkey_path)?;
+        self.get_receipt()?.inner.succinct().map_err(|err| anyhow!(error_line!(format!("error in getting succinct receipt of risc0 proof:{}", err))))?;
         self.get_receipt()?.verify(vkey.vkey_bytes)?;
         Ok(())
     }

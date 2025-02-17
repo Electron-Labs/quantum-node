@@ -96,6 +96,11 @@ impl Proof for Sp1Proof {
     fn validate_proof(&self, vkey_path: &str,mut _pis_bytes: &[u8]) -> AnyhowResult<()> {
         let vkey = Sp1Vkey::read_vk(vkey_path)?;
         let client = sp1_sdk::ProverClient::new();
+        let proof_with_public_input = self.get_proof_with_public_inputs()?;
+        match proof_with_public_input.proof {
+            sp1_sdk::SP1Proof::Compressed(_) => {},
+            _ => {Err(anyhow!("sp1 is not of compressed type"))}?,
+        }
         client.verify(&self.get_proof_with_public_inputs()?, &vkey.get_verifying_key()?)?;
         Ok(())
     }
