@@ -62,7 +62,7 @@ pub async fn execute_proof_reduction_with_retry(input_data: &Vec<u8>, image_id: 
                 error!("proof reduction failed in bonsai... retrying with count: {}", retries);
             },
         };
-        std::thread::sleep(Duration::from_secs(120));
+        tokio::time::sleep(Duration::from_secs(120)).await;
     }
     
     Ok((receipt, session_uuid_id))
@@ -127,7 +127,7 @@ async fn check_session_status(session: SessionId, client: Client, circuit_verify
                 res.status,
                 res.state.unwrap_or_default()
             );
-            std::thread::sleep(Duration::from_secs(15));
+            tokio::time::sleep(Duration::from_secs(15)).await;
             continue;
         }
         if res.status == "SUCCEEDED" {
@@ -202,7 +202,7 @@ pub async fn run_stark2snark(agg_session_id: &str, superproof_id: u64) -> Anyhow
         match res.status.as_str() {
             "RUNNING" => {
                 println!("continue polling...");
-                std::thread::sleep(Duration::from_secs(15));
+                tokio::time::sleep(Duration::from_secs(15)).await;
                 continue;
             }
             "SUCCEEDED" => {
